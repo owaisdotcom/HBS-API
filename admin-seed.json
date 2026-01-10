@@ -1,0 +1,11 @@
+{
+  "email": "admin@hijabsbyshiza.com",
+  "password": "$2a$10$YourHashedPasswordHere",
+  "name": "Admin User",
+  "role": "admin",
+  "isActive": true,
+  "createdAt": "2026-01-10T00:00:00.000Z",
+  "updatedAt": "2026-01-10T00:00:00.000Z"
+}
+
+

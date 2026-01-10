@@ -26,7 +26,10 @@ const categorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category'
   }],
-  image: String,
+  coverImage: {
+    type: String,
+    default: null
+  },
   displayOrder: {
     type: Number,
     default: 0
@@ -43,7 +46,7 @@ const categorySchema = new mongoose.Schema({
 });
 
 // Update path and level before saving
-categorySchema.pre('save', async function(next) {
+categorySchema.pre('save', async function() {
   if (this.isModified('parentId')) {
     if (this.parentId) {
       const parent = await this.constructor.findById(this.parentId);
@@ -56,7 +59,6 @@ categorySchema.pre('save', async function(next) {
       this.path = [];
     }
   }
-  next();
 });
 
 // Indexes

@@ -109,36 +109,55 @@ export const getProduct = asyncHandler(async (req, res, next) => {
 // @desc    Create new product
 // @access  Private (Admin)
 export const createProduct = asyncHandler(async (req, res, next) => {
-  const {
-    name,
-    slug,
-    description,
-    shortDescription,
-    categoryId,
-    price,
-    originalPrice,
-    colors,
-    sizes,
-    stock,
-    sku,
-    features,
-    careInstructions,
-    isFeatured,
-    isNewArrival,
-    status,
-    metaTitle,
-    metaDescription,
-    tags
-  } = req.body;
+  const productData = { ...req.body };
+
+  // Parse JSON strings if present
+  if (productData.colors && typeof productData.colors === 'string') {
+    productData.colors = JSON.parse(productData.colors);
+  }
+  if (productData.sizes && typeof productData.sizes === 'string') {
+    productData.sizes = JSON.parse(productData.sizes);
+  }
+  if (productData.features && typeof productData.features === 'string') {
+    productData.features = JSON.parse(productData.features);
+  }
+  if (productData.careInstructions && typeof productData.careInstructions === 'string') {
+    productData.careInstructions = JSON.parse(productData.careInstructions);
+  }
+  if (productData.tags && typeof productData.tags === 'string') {
+    productData.tags = JSON.parse(productData.tags);
+  }
+  if (productData.dimensions && typeof productData.dimensions === 'string') {
+    productData.dimensions = JSON.parse(productData.dimensions);
+  }
+  if (productData.shipping && typeof productData.shipping === 'string') {
+    productData.shipping = JSON.parse(productData.shipping);
+  }
+
+  // Convert boolean strings from FormData
+  if (typeof productData.isFeatured === 'string') {
+    productData.isFeatured = productData.isFeatured === 'true';
+  }
+  if (typeof productData.isNewArrival === 'string') {
+    productData.isNewArrival = productData.isNewArrival === 'true';
+  }
+
+  // Convert numeric strings from FormData
+  const numericFields = ['price', 'originalPrice', 'costPrice', 'stock', 'lowStockThreshold', 'weight'];
+  numericFields.forEach(field => {
+    if (productData[field] && typeof productData[field] === 'string') {
+      productData[field] = parseFloat(productData[field]);
+    }
+  });
 
   // Check if category exists
-  const category = await Category.findById(categoryId);
+  const category = await Category.findById(productData.categoryId);
   if (!category) {
     return next(new ApiError('Category not found', 404));
   }
 
   // Build category path
-  const categoryPath = [...category.path, category._id];
+  productData.categoryPath = [...category.path, category._id];
 
   // Handle image uploads
   let images = [];
@@ -151,31 +170,14 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }));
   }
 
+  productData.images = images;
+  productData.publishedAt = new Date();
+  if (!productData.status) {
+    productData.status = 'active';
+  }
+
   // Create product
-  const product = await Product.create({
-    name,
-    slug,
-    description,
-    shortDescription,
-    categoryId,
-    categoryPath,
-    price,
-    originalPrice,
-    images,
-    colors: colors ? JSON.parse(colors) : [],
-    sizes: sizes ? JSON.parse(sizes) : [],
-    stock,
-    sku,
-    features: features ? JSON.parse(features) : [],
-    careInstructions: careInstructions ? JSON.parse(careInstructions) : [],
-    isFeatured: isFeatured === 'true',
-    isNewArrival: isNewArrival === 'true',
-    status: status || 'active',
-    metaTitle,
-    metaDescription,
-    tags: tags ? JSON.parse(tags) : [],
-    publishedAt: new Date()
-  });
+  const product = await Product.create(productData);
 
   res.status(201).json(
     new ApiResponse(201, { product }, 'Product created successfully')
@@ -194,16 +196,33 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  // Handle image uploads if provided
+  // Handle existing images (images to keep)
+  let existingImages = [];
+  if (req.body.existingImages) {
+    try {
+      existingImages = JSON.parse(req.body.existingImages);
+    } catch (e) {
+      existingImages = [];
+    }
+  }
+
+  // Handle new image uploads
+  let newImages = [];
   if (req.files && req.files.length > 0) {
     const imageUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    const newImages = imageUrls.map((url, index) => ({
+    newImages = imageUrls.map((url, index) => ({
       url,
-      isPrimary: product.images.length === 0 && index === 0,
-      order: product.images.length + index
+      isPrimary: existingImages.length === 0 && index === 0,
+      order: existingImages.length + index
     }));
-    product.images.push(...newImages);
   }
+
+  // Combine existing and new images, maintaining order
+  const allImages = [...existingImages, ...newImages].map((img, index) => ({
+    url: img.url,
+    isPrimary: index === 0,
+    order: index
+  }));
 
   // Update fields
   const updateFields = { ...req.body };
@@ -224,6 +243,28 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (updateFields.tags && typeof updateFields.tags === 'string') {
     updateFields.tags = JSON.parse(updateFields.tags);
   }
+  if (updateFields.dimensions && typeof updateFields.dimensions === 'string') {
+    updateFields.dimensions = JSON.parse(updateFields.dimensions);
+  }
+  if (updateFields.shipping && typeof updateFields.shipping === 'string') {
+    updateFields.shipping = JSON.parse(updateFields.shipping);
+  }
+
+  // Convert boolean strings from FormData
+  if (typeof updateFields.isFeatured === 'string') {
+    updateFields.isFeatured = updateFields.isFeatured === 'true';
+  }
+  if (typeof updateFields.isNewArrival === 'string') {
+    updateFields.isNewArrival = updateFields.isNewArrival === 'true';
+  }
+
+  // Convert numeric strings from FormData
+  const numericFields = ['price', 'originalPrice', 'costPrice', 'stock', 'lowStockThreshold', 'weight'];
+  numericFields.forEach(field => {
+    if (updateFields[field] && typeof updateFields[field] === 'string') {
+      updateFields[field] = parseFloat(updateFields[field]);
+    }
+  });
 
   // Update category path if category changed
   if (updateFields.categoryId && updateFields.categoryId !== product.categoryId.toString()) {
@@ -232,12 +273,29 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       return next(new ApiError('Category not found', 404));
     }
     updateFields.categoryPath = [...category.path, category._id];
+    product.categoryId = updateFields.categoryId;
+    product.categoryPath = updateFields.categoryPath;
   }
 
-  product = await Product.findByIdAndUpdate(id, updateFields, {
-    new: true,
-    runValidators: true
+  // Remove fields that shouldn't be directly updated
+  delete updateFields.existingImages;
+  delete updateFields._id;
+  delete updateFields.__v;
+  delete updateFields.createdAt;
+  delete updateFields.updatedAt;
+
+  // Apply all fields to product
+  Object.keys(updateFields).forEach(key => {
+    if (updateFields[key] !== undefined) {
+      product[key] = updateFields[key];
+    }
   });
+
+  // Set images (already processed above)
+  product.images = allImages;
+
+  // Save product
+  await product.save();
 
   res.json(
     new ApiResponse(200, { product }, 'Product updated successfully')

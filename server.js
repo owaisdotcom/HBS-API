@@ -13,10 +13,10 @@ connectDB();
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`┌──────────────────────────────────────┐`);
-  console.log(`│  🚀 HBS API Server Running            │`);
+  console.log(`│  🚀 HBS API Server Running           │`);
   console.log(`│  📍 Port: ${PORT}                       │`);
-  console.log(`│  🌍 Mode: ${process.env.NODE_ENV}           │`);
-  console.log(`│  🔗 URL: http://localhost:${PORT}     │`);
+  console.log(`│  🌍 Mode: ${process.env.NODE_ENV}                │`);
+  console.log(`│  🔗 URL: http://localhost:${PORT}       │`);
   console.log(`└──────────────────────────────────────┘`);
 });
 

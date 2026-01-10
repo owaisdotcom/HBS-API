@@ -134,13 +134,12 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Generate orderId before saving
-orderSchema.pre('save', async function(next) {
+orderSchema.pre('save', async function() {
   if (this.isNew && !this.orderId) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.orderId = `HBS-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 // Add to status history when status changes

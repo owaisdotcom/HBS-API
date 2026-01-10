@@ -201,9 +201,9 @@ export const createCategory = asyncHandler(async (req, res, next) => {
   }
 
   // Handle image upload
-  let image = null;
+  let coverImage = null;
   if (req.file) {
-    image = await uploadService.uploadSingle(req.file, 'hbs-categories');
+    coverImage = await uploadService.uploadSingle(req.file, 'hbs-categories');
   }
 
   // Create category
@@ -212,7 +212,7 @@ export const createCategory = asyncHandler(async (req, res, next) => {
     slug,
     description,
     parentId: parentId || null,
-    image,
+    coverImage,
     displayOrder,
     status: status || 'active',
     metaTitle,
@@ -238,8 +238,8 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
 
   // Handle image upload
   if (req.file) {
-    const image = await uploadService.uploadSingle(req.file, 'hbs-categories');
-    req.body.image = image;
+    const coverImage = await uploadService.uploadSingle(req.file, 'hbs-categories');
+    req.body.coverImage = coverImage;
   }
 
   // Check if slug is being changed and if it already exists

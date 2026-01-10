@@ -85,6 +85,12 @@ const productSchema = new mongoose.Schema({
     width: Number,
     height: Number
   },
+  shipping: {
+    domestic: String,
+    cod: String,
+    delivery: String,
+    returns: String
+  },
   
   // SEO
   metaTitle: String,
@@ -129,7 +135,7 @@ const productSchema = new mongoose.Schema({
 });
 
 // Update stock status based on stock quantity
-productSchema.pre('save', function(next) {
+productSchema.pre('save', async function() {
   if (this.stock === 0) {
     this.stockStatus = 'out_of_stock';
   } else if (this.stock <= this.lowStockThreshold) {
@@ -137,7 +143,6 @@ productSchema.pre('save', function(next) {
   } else {
     this.stockStatus = 'in_stock';
   }
-  next();
 });
 
 // Indexes
