@@ -25,18 +25,18 @@ router.get('/sections', getHomepageSections);
 router.get('/site-settings', getSiteSettings);
 
 // Admin routes - Navigation
-router.put('/navigation/:id', protectAdmin, updateNavigation);
+router.put('/navigation', protectAdmin, updateNavigation);
 
 // Admin routes - Hero Slider
-router.put('/hero-slider/:id', protectAdmin, updateHeroSlider);
-router.post('/hero-slider/:id/slides', protectAdmin, uploadSingle, addSlide);
-router.delete('/hero-slider/:id/slides/:slideId', protectAdmin, deleteSlide);
+router.put('/hero-slider', protectAdmin, updateHeroSlider);
+router.post('/hero-slider/slides', protectAdmin, uploadSingle, addSlide);
+router.delete('/hero-slider/slides/:slideId', protectAdmin, deleteSlide);
 
 // Admin routes - Homepage Sections
-router.put('/sections/:id', protectAdmin, updateHomepageSections);
+router.put('/sections', protectAdmin, updateHomepageSections);
 
 // Admin routes - Site Settings
-router.put('/site-settings/:id', protectAdmin, uploadFields, updateSiteSettings);
+router.put('/site-settings', protectAdmin, uploadFields, updateSiteSettings);
 
 export default router;
 

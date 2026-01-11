@@ -27,10 +27,5 @@ router.get('/:id', protect, getOrder);
 router.post('/:id/receipt', uploadSingle, uploadReceipt);
 router.put('/:id/cancel', protect, cancelOrder);
 
-// Admin routes
-router.get('/stats/summary', protectAdmin, getOrderStats);
-router.put('/:id/status', protectAdmin, updateOrderStatusValidator, validate, updateOrderStatus);
-router.put('/:id/verify-payment', protectAdmin, verifyPayment);
-
 export default router;
 

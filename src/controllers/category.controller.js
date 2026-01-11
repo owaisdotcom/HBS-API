@@ -18,6 +18,29 @@ export const getAllCategories = asyncHandler(async (req, res) => {
     .populate('parentId', 'name slug')
     .select('-__v');
 
+  // Get product counts for all categories
+  const categoryIds = categories.map(cat => cat._id);
+  const productCounts = await Product.aggregate([
+    {
+      $match: {
+        categoryId: { $in: categoryIds },
+        status: 'active'
+      }
+    },
+    {
+      $group: {
+        _id: '$categoryId',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  // Create a map of category ID to product count
+  const productCountMap = {};
+  productCounts.forEach(item => {
+    productCountMap[item._id.toString()] = item.count;
+  });
+
   // Build hierarchy
   const categoryMap = {};
   const rootCategories = [];
@@ -25,7 +48,8 @@ export const getAllCategories = asyncHandler(async (req, res) => {
   categories.forEach(category => {
     categoryMap[category._id] = {
       ...category.toObject(),
-      children: []
+      children: [],
+      productCount: productCountMap[category._id.toString()] || 0
     };
   });
 
@@ -200,10 +224,17 @@ export const createCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Slug already exists', 400));
   }
 
-  // Handle image upload
+  // Handle image uploads
+  let thumbnail = null;
   let coverImage = null;
-  if (req.file) {
-    coverImage = await uploadService.uploadSingle(req.file, 'hbs-categories');
+  
+  if (req.files) {
+    if (req.files.thumbnail && req.files.thumbnail[0]) {
+      thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
+    }
+    if (req.files.coverImage && req.files.coverImage[0]) {
+      coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
+    }
   }
 
   // Create category
@@ -212,6 +243,7 @@ export const createCategory = asyncHandler(async (req, res, next) => {
     slug,
     description,
     parentId: parentId || null,
+    thumbnail,
     coverImage,
     displayOrder,
     status: status || 'active',
@@ -236,10 +268,16 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Category not found', 404));
   }
 
-  // Handle image upload
-  if (req.file) {
-    const coverImage = await uploadService.uploadSingle(req.file, 'hbs-categories');
-    req.body.coverImage = coverImage;
+  // Handle image uploads
+  if (req.files) {
+    if (req.files.thumbnail && req.files.thumbnail[0]) {
+      const thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
+      req.body.thumbnail = thumbnail;
+    }
+    if (req.files.coverImage && req.files.coverImage[0]) {
+      const coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
+      req.body.coverImage = coverImage;
+    }
   }
 
   // Check if slug is being changed and if it already exists

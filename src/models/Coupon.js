@@ -105,11 +105,10 @@ couponSchema.methods.isValid = function() {
 };
 
 // Update status based on expiry
-couponSchema.pre('save', function(next) {
+couponSchema.pre('save', async function() {
   if (this.isExpired()) {
     this.status = 'expired';
   }
-  next();
 });
 
 // Indexes

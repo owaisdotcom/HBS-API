@@ -143,7 +143,7 @@ orderSchema.pre('save', async function() {
 });
 
 // Add to status history when status changes
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', async function() {
   if (this.isModified('status') && !this.isNew) {
     this.statusHistory.push({
       status: this.status,
@@ -156,7 +156,6 @@ orderSchema.pre('save', function(next) {
     if (this.status === 'delivered') this.deliveredAt = new Date();
     if (this.status === 'cancelled') this.cancelledAt = new Date();
   }
-  next();
 });
 
 // Indexes

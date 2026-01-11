@@ -60,7 +60,7 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Ensure only one default address
-userSchema.pre('save', function(next) {
+userSchema.pre('save', async function() {
   if (this.addresses && this.addresses.length > 0) {
     const defaultAddresses = this.addresses.filter(addr => addr.isDefault);
     if (defaultAddresses.length > 1) {
@@ -70,7 +70,6 @@ userSchema.pre('save', function(next) {
       });
     }
   }
-  next();
 });
 
 // Indexes

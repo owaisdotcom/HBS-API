@@ -196,33 +196,69 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  // Handle existing images (images to keep)
-  let existingImages = [];
+  // Handle existing images (images to keep) with order
+  let existingImagesWithOrder = [];
+  let newImagesOrder = [];
+  let shouldUpdateImages = false;
+  
   if (req.body.existingImages) {
+    shouldUpdateImages = true;
     try {
-      existingImages = JSON.parse(req.body.existingImages);
+      existingImagesWithOrder = JSON.parse(req.body.existingImages);
     } catch (e) {
-      existingImages = [];
+      existingImagesWithOrder = [];
+    }
+  }
+
+  if (req.body.newImagesOrder) {
+    try {
+      newImagesOrder = JSON.parse(req.body.newImagesOrder);
+    } catch (e) {
+      newImagesOrder = [];
     }
   }
 
   // Handle new image uploads
-  let newImages = [];
+  let uploadedNewImages = [];
   if (req.files && req.files.length > 0) {
+    shouldUpdateImages = true;
     const imageUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    newImages = imageUrls.map((url, index) => ({
+    uploadedNewImages = imageUrls.map((url, index) => ({
       url,
-      isPrimary: existingImages.length === 0 && index === 0,
-      order: existingImages.length + index
+      fileIndex: index
     }));
   }
 
-  // Combine existing and new images, maintaining order
-  const allImages = [...existingImages, ...newImages].map((img, index) => ({
-    url: img.url,
-    isPrimary: index === 0,
-    order: index
-  }));
+  // Only update images if FormData was sent (not plain JSON)
+  if (shouldUpdateImages) {
+    // Create a map of all images with their final order
+    const imageMap = [];
+
+    // Add existing images with their order
+    existingImagesWithOrder.forEach(img => {
+      imageMap.push({ url: img.url, order: img.order, type: 'existing' });
+    });
+
+    // Add new images with their order
+    newImagesOrder.forEach(orderInfo => {
+      const newImage = uploadedNewImages.find(img => img.fileIndex === orderInfo.fileIndex);
+      if (newImage) {
+        imageMap.push({ url: newImage.url, order: orderInfo.order, type: 'new' });
+      }
+    });
+
+    // Sort by order and format for DB
+    const allImages = imageMap
+      .sort((a, b) => a.order - b.order)
+      .map((img, index) => ({
+        url: img.url,
+        isPrimary: index === 0,
+        order: index
+      }));
+
+    console.log('📸 Final images order:', allImages);
+    product.images = allImages;
+  }
 
   // Update fields
   const updateFields = { ...req.body };
@@ -290,9 +326,6 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       product[key] = updateFields[key];
     }
   });
-
-  // Set images (already processed above)
-  product.images = allImages;
 
   // Save product
   await product.save();

@@ -26,6 +26,10 @@ const categorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category'
   }],
+  thumbnail: {
+    type: String,
+    default: null
+  },
   coverImage: {
     type: String,
     default: null
