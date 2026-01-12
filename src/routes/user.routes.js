@@ -17,3 +17,4 @@ router.delete('/:id', protectAdmin, deleteUser);
 
 export default router;
 
+

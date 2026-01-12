@@ -4,14 +4,14 @@ import { Readable } from 'stream';
 class UploadService {
   async uploadSingle(file, folder = 'hbs-products') {
     return new Promise((resolve, reject) => {
+      // Different transformations based on folder
+      const transformations = this.getTransformations(folder);
+      
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
           resource_type: 'auto',
-          transformation: [
-            { width: 1000, height: 1000, crop: 'limit' },
-            { quality: 'auto:good' }
-          ]
+          transformation: transformations
         },
         (error, result) => {
           if (error) {
@@ -24,6 +24,23 @@ class UploadService {
 
       Readable.from(file.buffer).pipe(uploadStream);
     });
+  }
+
+  getTransformations(folder) {
+    // Hero slider images need different transformations
+    if (folder === 'hbs-hero') {
+      return [
+        { width: 1920, height: 800, crop: 'fill', gravity: 'center' },
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ];
+    }
+    
+    // Default product/general images
+    return [
+      { width: 1000, height: 1000, crop: 'limit' },
+      { quality: 'auto:good' }
+    ];
   }
 
   async uploadMultiple(files, folder = 'hbs-products') {

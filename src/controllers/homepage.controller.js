@@ -8,6 +8,36 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 
+const normalizeHeroSlider = (heroSlider) => {
+  if (!heroSlider) return heroSlider;
+  const slider = heroSlider.toObject ? heroSlider.toObject() : { ...heroSlider };
+
+  if (Array.isArray(slider.slides)) {
+    slider.slides = slider.slides.map((slide) => {
+      const normalizedSlide = { ...slide };
+      const rawButtons = Array.isArray(normalizedSlide.buttons)
+        ? [...normalizedSlide.buttons]
+        : [];
+
+      if (rawButtons.length === 0 && normalizedSlide.button) {
+        rawButtons.push({
+          text: normalizedSlide.button.text,
+          link: normalizedSlide.button.link ?? normalizedSlide.button.url,
+          style: normalizedSlide.button.style,
+          isVisible: normalizedSlide.button.isVisible,
+          _id: normalizedSlide.button._id
+        });
+      }
+
+      normalizedSlide.buttons = rawButtons;
+      delete normalizedSlide.button;
+      return normalizedSlide;
+    });
+  }
+
+  return slider;
+};
+
 // @route   GET /api/homepage/settings
 // @desc    Get complete homepage configuration
 // @access  Public
@@ -20,7 +50,7 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
     .populate('menuItems.megaMenuColumns.items.categoryId', 'name slug');
 
   // Get hero slider
-  const heroSlider = await HeroSlider.findOne({ isActive: true });
+  const heroSlider = normalizeHeroSlider(await HeroSlider.findOne({ isActive: true }));
 
   // Get homepage sections
   const homepageSections = await HomepageSection.findOne({ isActive: true })
@@ -92,7 +122,48 @@ export const getNavigation = asyncHandler(async (req, res) => {
     position,
     isActive: true
   }).populate('menuItems.categoryId', 'name slug')
-    .populate('menuItems.megaMenuColumns.items.categoryId', 'name slug');
+    .populate('menuItems.children.categoryId', 'name slug')
+    .populate('menuItems.children.children.categoryId', 'name slug'); // Third level
+
+  // Transform menu items to include label from category if category-based
+  if (navigation && navigation.menuItems) {
+    navigation.menuItems = navigation.menuItems.map(item => {
+      const itemObj = item.toObject();
+      if (itemObj.itemType === 'category' && itemObj.categoryId) {
+        itemObj.label = itemObj.categoryId.name;
+        itemObj.link = `/category/${itemObj.categoryId.slug}`;
+      }
+      
+      // Transform children (level 2)
+      if (itemObj.children && itemObj.children.length > 0) {
+        itemObj.children = itemObj.children.map(child => {
+          const processedChild = { ...child };
+          if (processedChild.itemType === 'category' && processedChild.categoryId) {
+            processedChild.label = processedChild.categoryId.name;
+            processedChild.link = `/category/${processedChild.categoryId.slug}`;
+          }
+          
+          // Transform grandchildren (level 3)
+          if (processedChild.children && processedChild.children.length > 0) {
+            processedChild.children = processedChild.children.map(grandchild => {
+              if (grandchild.itemType === 'category' && grandchild.categoryId) {
+                return {
+                  ...grandchild,
+                  label: grandchild.categoryId.name,
+                  link: `/category/${grandchild.categoryId.slug}`
+                };
+              }
+              return grandchild;
+            });
+          }
+          
+          return processedChild;
+        });
+      }
+      
+      return itemObj;
+    });
+  }
 
   res.json(
     new ApiResponse(200, { navigation }, 'Navigation retrieved successfully')
@@ -115,7 +186,40 @@ export const updateNavigation = asyncHandler(async (req, res, next) => {
     id,
     { ...req.body, updatedBy: req.admin.id },
     { new: true, runValidators: true }
+  ).populate('menuItems.categoryId', 'name slug')
+   .populate('menuItems.children.categoryId', 'name slug');
+
+  res.json(
+    new ApiResponse(200, { navigation }, 'Navigation updated successfully')
   );
+});
+
+// @route   PUT /api/homepage/navigation
+// @desc    Update or create navigation menu (simplified endpoint)
+// @access  Private (Admin)
+export const updateOrCreateNavigation = asyncHandler(async (req, res) => {
+  const { position = 'header', menuItems } = req.body;
+
+  let navigation = await NavigationMenu.findOne({ position });
+
+  if (!navigation) {
+    // Create new navigation
+    navigation = await NavigationMenu.create({
+      position,
+      menuItems,
+      updatedBy: req.admin.id,
+      isActive: true
+    });
+  } else {
+    // Update existing navigation
+    navigation.menuItems = menuItems;
+    navigation.updatedBy = req.admin.id;
+    await navigation.save();
+  }
+
+  // Populate categories
+  await navigation.populate('menuItems.categoryId', 'name slug');
+  await navigation.populate('menuItems.children.categoryId', 'name slug');
 
   res.json(
     new ApiResponse(200, { navigation }, 'Navigation updated successfully')
@@ -126,7 +230,7 @@ export const updateNavigation = asyncHandler(async (req, res, next) => {
 // @desc    Get hero slider
 // @access  Public
 export const getHeroSlider = asyncHandler(async (req, res) => {
-  const heroSlider = await HeroSlider.findOne({ isActive: true });
+  const heroSlider = normalizeHeroSlider(await HeroSlider.findOne({ isActive: true }));
 
   res.json(
     new ApiResponse(200, { heroSlider }, 'Hero slider retrieved successfully')
@@ -134,7 +238,7 @@ export const getHeroSlider = asyncHandler(async (req, res) => {
 });
 
 // @route   PUT /api/homepage/hero-slider/:id
-// @desc    Update hero slider
+// @desc    Update hero slider by ID
 // @access  Private (Admin)
 export const updateHeroSlider = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
@@ -157,7 +261,42 @@ export const updateHeroSlider = asyncHandler(async (req, res, next) => {
   );
 
   res.json(
-    new ApiResponse(200, { heroSlider }, 'Hero slider updated successfully')
+    new ApiResponse(
+      200,
+      { heroSlider: normalizeHeroSlider(heroSlider) },
+      'Hero slider updated successfully'
+    )
+  );
+});
+
+// @route   PUT /api/homepage/hero-slider
+// @desc    Update or create hero slider (upsert)
+// @access  Private (Admin)
+export const updateOrCreateHeroSlider = asyncHandler(async (req, res) => {
+  let heroSlider = await HeroSlider.findOne({ isActive: true });
+
+  if (!heroSlider) {
+    // Create new hero slider
+    heroSlider = await HeroSlider.create({
+      ...req.body,
+      updatedBy: req.admin.id,
+      isActive: true
+    });
+  } else {
+    // Update existing hero slider
+    heroSlider = await HeroSlider.findByIdAndUpdate(
+      heroSlider._id,
+      { ...req.body, updatedBy: req.admin.id },
+      { new: true, runValidators: true }
+    );
+  }
+
+  res.json(
+    new ApiResponse(
+      200,
+      { heroSlider: normalizeHeroSlider(heroSlider) },
+      'Hero slider updated successfully'
+    )
   );
 });
 
@@ -234,22 +373,24 @@ export const getHomepageSections = asyncHandler(async (req, res) => {
   );
 });
 
-// @route   PUT /api/homepage/sections/:id
-// @desc    Update homepage sections
+// @route   PUT /api/homepage/sections
+// @desc    Update or create homepage sections (upsert)
 // @access  Private (Admin)
 export const updateHomepageSections = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  let homepageSections = await HomepageSection.findById(id);
-
-  if (!homepageSections) {
-    return next(new ApiError('Homepage sections not found', 404));
-  }
-
-  homepageSections = await HomepageSection.findByIdAndUpdate(
-    id,
-    { ...req.body, updatedBy: req.admin.id },
-    { new: true, runValidators: true }
+  // Upsert: Find the active homepage sections and update or create
+  const homepageSections = await HomepageSection.findOneAndUpdate(
+    { isActive: true },
+    { 
+      ...req.body, 
+      isActive: true,
+      updatedBy: req.admin.id 
+    },
+    { 
+      new: true, 
+      upsert: true, 
+      runValidators: true,
+      setDefaultsOnInsert: true
+    }
   );
 
   res.json(
@@ -268,18 +409,10 @@ export const getSiteSettings = asyncHandler(async (req, res) => {
   );
 });
 
-// @route   PUT /api/homepage/site-settings/:id
-// @desc    Update site settings
+// @route   PUT /api/homepage/site-settings/:id?
+// @desc    Update or create site settings (upsert)
 // @access  Private (Admin)
 export const updateSiteSettings = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  let siteSettings = await SiteSetting.findById(id);
-
-  if (!siteSettings) {
-    return next(new ApiError('Site settings not found', 404));
-  }
-
   // Handle logo/favicon uploads
   if (req.files) {
     if (req.files.logo) {
@@ -292,10 +425,20 @@ export const updateSiteSettings = asyncHandler(async (req, res, next) => {
     }
   }
 
-  siteSettings = await SiteSetting.findByIdAndUpdate(
-    id,
-    { ...req.body, updatedBy: req.admin.id },
-    { new: true, runValidators: true }
+  // Upsert: Find by key 'general_settings' and update or create
+  const siteSettings = await SiteSetting.findOneAndUpdate(
+    { key: 'general_settings' },
+    { 
+      ...req.body, 
+      key: 'general_settings', // Ensure key is set
+      updatedBy: req.admin.id 
+    },
+    { 
+      new: true, 
+      upsert: true, 
+      runValidators: true,
+      setDefaultsOnInsert: true
+    }
   );
 
   res.json(

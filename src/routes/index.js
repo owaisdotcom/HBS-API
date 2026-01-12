@@ -9,12 +9,15 @@ import wishlistRoutes from './wishlist.routes.js';
 import reviewRoutes from './review.routes.js';
 import homepageRoutes from './homepage.routes.js';
 import contactRoutes from './contact.routes.js';
+import uploadRoutes from './upload.routes.js';
+import announcementRoutes from './announcement.routes.js';
 
 const router = express.Router();
 
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
+router.use('/admin/upload', uploadRoutes);
 router.use('/products', productRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);
@@ -23,6 +26,7 @@ router.use('/wishlist', wishlistRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/homepage', homepageRoutes);
 router.use('/contact', contactRoutes);
+router.use('/announcements', announcementRoutes);
 
 export default router;
 

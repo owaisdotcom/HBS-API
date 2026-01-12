@@ -3,8 +3,10 @@ import {
   getHomepageSettings,
   getNavigation,
   updateNavigation,
+  updateOrCreateNavigation,
   getHeroSlider,
   updateHeroSlider,
+  updateOrCreateHeroSlider,
   addSlide,
   deleteSlide,
   getHomepageSections,
@@ -25,10 +27,12 @@ router.get('/sections', getHomepageSections);
 router.get('/site-settings', getSiteSettings);
 
 // Admin routes - Navigation
-router.put('/navigation', protectAdmin, updateNavigation);
+router.put('/navigation/:id', protectAdmin, updateNavigation);
+router.put('/navigation', protectAdmin, updateOrCreateNavigation);
 
 // Admin routes - Hero Slider
-router.put('/hero-slider', protectAdmin, updateHeroSlider);
+router.put('/hero-slider/:id', protectAdmin, updateHeroSlider);
+router.put('/hero-slider', protectAdmin, updateOrCreateHeroSlider);
 router.post('/hero-slider/slides', protectAdmin, uploadSingle, addSlide);
 router.delete('/hero-slider/slides/:slideId', protectAdmin, deleteSlide);
 

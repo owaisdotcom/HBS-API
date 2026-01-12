@@ -4,41 +4,66 @@ const navigationMenuSchema = new mongoose.Schema({
   position: {
     type: String,
     enum: ['header', 'footer'],
-    required: true
+    default: 'header'
   },
   menuItems: [{
-    type: {
+    // Menu Item Type: 'custom' for manual links, 'category' for category-based
+    itemType: {
       type: String,
-      enum: ['category', 'link', 'megamenu'],
-      required: true
+      enum: ['custom', 'category'],
+      required: true,
+      default: 'custom'
     },
+    
+    // For Custom Items
     label: {
       type: String,
-      required: true
+      required: function() {
+        return this.itemType === 'custom';
+      }
     },
-    url: String,
+    link: {
+      type: String,
+      required: function() {
+        return this.itemType === 'custom' && !this.categoryId;
+      }
+    },
+    
+    // For Category-Based Items
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Category'
+      ref: 'Category',
+      required: function() {
+        return this.itemType === 'category';
+      }
     },
-    icon: String,
     
-    // Mega Menu Configuration
-    hasMegaMenu: {
-      type: Boolean,
-      default: false
-    },
-    megaMenuColumns: [{
-      title: String,
-      items: [{
+    // Children/Submenu Items (can be custom or category-based)
+    children: [{
+      itemType: {
+        type: String,
+        enum: ['custom', 'category'],
+        default: 'custom'
+      },
+      label: String,
+      link: String,
+      categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category'
+      },
+      // Third level - Sub-submenu
+      children: [{
+        itemType: {
+          type: String,
+          enum: ['custom', 'category'],
+          default: 'custom'
+        },
         label: String,
-        url: String,
+        link: String,
         categoryId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Category'
-        },
-        isNew: Boolean,
-        isHot: Boolean
+        }
       }]
     }],
     
@@ -51,8 +76,10 @@ const navigationMenuSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     },
-    openInNewTab: Boolean,
-    cssClass: String,
+    openInNewTab: {
+      type: Boolean,
+      default: false
+    },
     
     // Mobile Settings
     showOnMobile: {

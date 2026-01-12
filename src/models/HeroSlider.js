@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 const heroSliderSchema = new mongoose.Schema({
   slides: [{
-    // Image
+    // Image - support both simple URL and responsive images
+    imageUrl: String, // Simple single URL (primary)
     image: {
       desktop: String,
       tablet: String,
@@ -10,9 +11,11 @@ const heroSliderSchema = new mongoose.Schema({
       alt: String
     },
     
-    // Text Overlay
-    heading: String,
-    subheading: String,
+    // Text Overlay - support both naming conventions
+    title: String, // Primary heading
+    heading: String, // Alternative field name
+    subtitle: String, // Subheading
+    subheading: String, // Alternative field name
     description: String,
     
     // Text Positioning & Styling
@@ -30,10 +33,11 @@ const heroSliderSchema = new mongoose.Schema({
       default: true
     },
     
-    // Call-to-Action Button
+    // Call-to-Action Buttons - support both single button (legacy) and multiple buttons
     button: {
       text: String,
-      url: String,
+      link: String, // Primary field
+      url: String, // Alternative field name
       style: {
         type: String,
         enum: ['primary', 'secondary', 'outline'],
@@ -44,6 +48,20 @@ const heroSliderSchema = new mongoose.Schema({
         default: true
       }
     },
+    buttons: [{
+      text: String,
+      link: String,
+      url: String,
+      style: {
+        type: String,
+        enum: ['primary', 'secondary', 'outline'],
+        default: 'primary'
+      },
+      isVisible: {
+        type: Boolean,
+        default: true
+      }
+    }],
     
     // Display Settings
     displayOrder: {

@@ -16,9 +16,13 @@ const homepageSectionSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category'
     },
+    categoryIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category'
+    }],
     productSelection: {
       type: String,
-      enum: ['manual', 'newest', 'bestselling', 'featured'],
+      enum: ['manual', 'newest', 'bestselling', 'featured', 'category'],
       default: 'newest'
     },
     productIds: [{
