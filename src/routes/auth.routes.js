@@ -7,7 +7,13 @@ import {
   changePassword,
   addAddress,
   updateAddress,
-  deleteAddress
+  deleteAddress,
+  verifyEmail,
+  verifyOTP,
+  resendOTP,
+  resendVerification,
+  forgotPassword,
+  resetPassword
 } from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import validate from '../middleware/validate.middleware.js';
@@ -24,9 +30,15 @@ const router = express.Router();
 // Public routes
 router.post('/signup', signupValidator, validate, signup);
 router.post('/login', loginValidator, validate, login);
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
+router.get('/verify-email/:token', verifyEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
 router.get('/me', protect, getMe);
+router.post('/resend-verification', protect, resendVerification);
 router.put('/profile', protect, updateProfileValidator, validate, updateProfile);
 router.put('/password', protect, changePasswordValidator, validate, changePassword);
 

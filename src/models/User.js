@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const userSchema = new mongoose.Schema({
   fullName: {
@@ -43,7 +44,17 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: 'customer'
   },
-  lastLoginAt: Date
+  lastLoginAt: Date,
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: String,
+  emailVerificationExpire: Date,
+  emailVerificationOTP: String,
+  emailVerificationOTPExpire: Date,
+  resetPasswordToken: String,
+  resetPasswordExpire: Date
 }, {
   timestamps: true
 });
@@ -57,6 +68,48 @@ userSchema.pre('save', async function() {
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Generate email verification token
+userSchema.methods.generateEmailVerificationToken = function() {
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  
+  this.emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+  
+  this.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  
+  return verificationToken;
+};
+
+// Generate email verification OTP (6-digit)
+userSchema.methods.generateEmailVerificationOTP = function() {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  
+  this.emailVerificationOTP = crypto
+    .createHash('sha256')
+    .update(otp)
+    .digest('hex');
+  
+  this.emailVerificationOTPExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  
+  return otp;
+};
+
+// Generate password reset token
+userSchema.methods.generatePasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
+  
+  return resetToken;
 };
 
 // Ensure only one default address

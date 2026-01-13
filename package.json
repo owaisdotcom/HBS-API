@@ -10,7 +10,12 @@
     "seed:admin": "node src/utils/seedAdmin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["ecommerce", "api", "hijabs", "modest-fashion"],
+  "keywords": [
+    "ecommerce",
+    "api",
+    "hijabs",
+    "modest-fashion"
+  ],
   "author": "HBS Team",
   "license": "ISC",
   "dependencies": {
@@ -27,6 +32,8 @@
     "mongoose": "^8.7.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "node-mailer": "^0.1.1",
+    "nodemailer": "^7.0.12",
     "winston": "^3.15.0",
     "xss-clean": "^0.1.4"
   },

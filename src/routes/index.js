@@ -6,11 +6,13 @@ import categoryRoutes from './category.routes.js';
 import orderRoutes from './order.routes.js';
 import couponRoutes from './coupon.routes.js';
 import wishlistRoutes from './wishlist.routes.js';
+import cartRoutes from './cart.routes.js';
 import reviewRoutes from './review.routes.js';
 import homepageRoutes from './homepage.routes.js';
 import contactRoutes from './contact.routes.js';
 import uploadRoutes from './upload.routes.js';
 import announcementRoutes from './announcement.routes.js';
+import testEmailRoutes from './test-email.routes.js';
 
 const router = express.Router();
 
@@ -23,10 +25,16 @@ router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/wishlist', wishlistRoutes);
+router.use('/cart', cartRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/homepage', homepageRoutes);
 router.use('/contact', contactRoutes);
 router.use('/announcements', announcementRoutes);
+
+// Test routes (only in development)
+if (process.env.NODE_ENV === 'development') {
+  router.use('/test-email', testEmailRoutes);
+}
 
 export default router;
 
