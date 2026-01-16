@@ -4,7 +4,7 @@ import ApiError from '../utils/ApiError.js';
 
 const storage = multer.memoryStorage();
 
-const fileFilter = (req, file, cb) => {
+const imageFileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
@@ -16,15 +16,36 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const receiptFileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    cb(null, true);
+  } else {
+    cb(new ApiError('Only image or PDF files are allowed (jpeg, jpg, png, gif, webp, pdf)', 400), false);
+  }
+};
+
 const upload = multer({
   storage,
-  fileFilter,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+
+const receiptUpload = multer({
+  storage,
+  fileFilter: receiptFileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB
   }
 });
 
 export const uploadSingle = upload.single('image');
+export const uploadReceiptSingle = receiptUpload.single('receipt');
 export const uploadMultiple = upload.array('images', 10);
 export const uploadFields = upload.fields([
   { name: 'images', maxCount: 10 },

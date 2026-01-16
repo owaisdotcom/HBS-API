@@ -133,12 +133,28 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate orderId before saving
-orderSchema.pre('save', async function() {
+// Generate orderId before validation (required field)
+orderSchema.pre('validate', async function() {
   if (this.isNew && !this.orderId) {
-    const year = new Date().getFullYear();
-    const count = await this.constructor.countDocuments();
-    this.orderId = `HBS-${year}-${String(count + 1).padStart(4, '0')}`;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const datePrefix = `${year}${month}${day}`;
+    
+    // Get the start and end of today
+    const startOfDay = new Date(year, now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(year, now.getMonth(), now.getDate(), 23, 59, 59);
+    
+    // Count orders created today
+    const todayOrderCount = await this.constructor.countDocuments({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+    
+    // Generate sequential number for today (starting from 1)
+    const sequentialNumber = String(todayOrderCount + 1).padStart(4, '0');
+    
+    this.orderId = `HBS-${datePrefix}${sequentialNumber}`;
   }
 });
 

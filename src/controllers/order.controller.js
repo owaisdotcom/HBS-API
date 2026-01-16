@@ -19,6 +19,10 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     customerNotes
   } = req.body;
 
+  if (!req.file) {
+    return next(new ApiError('Payment receipt is required', 400));
+  }
+
   // Validate and calculate totals
   let subtotal = 0;
   const orderItems = [];
@@ -86,6 +90,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   // Calculate total
   const total = subtotal - discount + shipping;
 
+  // Upload receipt to cloud
+  const receiptUrl = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+
   // Create order
   const order = await Order.create({
     userId: req.user?.id || null,
@@ -105,7 +112,12 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     couponCode: couponCode?.toUpperCase(),
     couponDiscount,
     paymentMethod: paymentMethod || 'bank_transfer',
-    customerNotes
+    customerNotes,
+    paymentReceipt: {
+      url: receiptUrl,
+      uploadedAt: new Date()
+    },
+    paymentStatus: 'pending'
   });
 
   // Update coupon usage if applicable
@@ -244,6 +256,29 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order not found', 404));
   }
 
+  const allowedTransitions = {
+    received: ['confirmed', 'cancelled'],
+    confirmed: ['processing', 'cancelled'],
+    processing: ['shipped', 'cancelled'],
+    shipped: ['delivered', 'cancelled'],
+    delivered: [],
+    cancelled: []
+  };
+
+  if (order.status === status) {
+    return next(new ApiError('Order is already in this status', 400));
+  }
+
+  const nextStatuses = allowedTransitions[order.status] || [];
+  if (!nextStatuses.includes(status)) {
+    return next(new ApiError(`Invalid status transition from ${order.status} to ${status}`, 400));
+  }
+
+  // Enforce payment verification before confirmation
+  if (status === 'confirmed' && order.paymentStatus !== 'verified') {
+    return next(new ApiError('Payment must be verified before confirming the order', 400));
+  }
+
   order.status = status;
   order.statusHistory.push({
     status,
@@ -253,6 +288,17 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   });
 
   await order.save();
+
+  if (status === 'cancelled') {
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: {
+          stock: item.quantity,
+          soldCount: -item.quantity
+        }
+      });
+    }
+  }
 
   res.json(
     new ApiResponse(200, { order }, 'Order status updated successfully')
@@ -266,7 +312,7 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
   if (!req.file) {
-    return next(new ApiError('Please upload a receipt image', 400));
+    return next(new ApiError('Please upload a receipt file', 400));
   }
 
   const order = await Order.findById(id);
@@ -295,6 +341,7 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin)
 export const verifyPayment = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
+  const { isVerified = true } = req.body;
 
   const order = await Order.findById(id);
 
@@ -306,25 +353,60 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('No receipt uploaded for this order', 400));
   }
 
-  order.paymentStatus = 'verified';
-  order.paymentReceipt.verifiedAt = new Date();
-  order.paymentReceipt.verifiedBy = req.admin.id;
+  if (isVerified) {
+    order.paymentStatus = 'verified';
+    order.paymentReceipt.verifiedAt = new Date();
+    order.paymentReceipt.verifiedBy = req.admin.id;
 
-  // Auto-update order status to confirmed if still in received
-  if (order.status === 'received') {
-    order.status = 'confirmed';
-    order.statusHistory.push({
-      status: 'confirmed',
-      note: 'Payment verified',
-      updatedBy: req.admin.id,
-      timestamp: new Date()
-    });
+    // Auto-update order status to confirmed if still in received
+    if (order.status === 'received') {
+      order.status = 'confirmed';
+      order.statusHistory.push({
+        status: 'confirmed',
+        note: 'Payment verified',
+        updatedBy: req.admin.id,
+        timestamp: new Date()
+      });
+    }
+  } else {
+    // Reject payment and cancel the order
+    order.paymentStatus = 'failed';
+
+    if (['shipped', 'delivered'].includes(order.status)) {
+      return next(new ApiError('Cannot reject payment for shipped or delivered orders', 400));
+    }
+
+    if (order.status !== 'cancelled') {
+      order.status = 'cancelled';
+      order.cancelledAt = new Date();
+      order.statusHistory.push({
+        status: 'cancelled',
+        note: 'Payment rejected',
+        updatedBy: req.admin.id,
+        timestamp: new Date()
+      });
+    }
   }
 
   await order.save();
 
+  if (!isVerified && order.status === 'cancelled') {
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: {
+          stock: item.quantity,
+          soldCount: -item.quantity
+        }
+      });
+    }
+  }
+
   res.json(
-    new ApiResponse(200, { order }, 'Payment verified successfully')
+    new ApiResponse(
+      200,
+      { order },
+      isVerified ? 'Payment verified successfully' : 'Payment rejected and order cancelled'
+    )
   );
 });
 

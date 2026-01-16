@@ -6,6 +6,7 @@ import {
   setupSuperAdmin,
   changeAdminPassword
 } from '../controllers/admin.controller.js';
+import { getDashboardOverview } from '../controllers/admin-dashboard.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import validate from '../middleware/validate.middleware.js';
 import { adminLoginValidator, setupSuperAdminValidator, createAdminValidator, changePasswordValidator } from '../validators/auth.validator.js';
@@ -22,6 +23,7 @@ router.post('/login', adminLoginValidator, validate, adminLogin);
 // Protected routes (requires authentication)
 router.get('/profile', protectAdmin, getAdminProfile);
 router.put('/password', protectAdmin, changePasswordValidator, validate, changeAdminPassword);
+router.get('/dashboard/overview', protectAdmin, getDashboardOverview);
 
 // Admin management (requires super_admin role - add middleware check if needed)
 router.post('/register', protectAdmin, createAdminValidator, validate, createAdmin);

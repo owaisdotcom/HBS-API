@@ -24,6 +24,12 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getProductsValidator, validate, getAllProducts);
+router.get('/search', (req, _res, next) => {
+  if (req.query.q && !req.query.search) {
+    req.query.search = req.query.q;
+  }
+  next();
+}, getProductsValidator, validate, getAllProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/new-arrivals', getNewArrivals);
 router.get('/:id', optionalAuth, getProduct);
