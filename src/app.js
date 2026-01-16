@@ -9,8 +9,23 @@ import errorHandler from './middleware/error.middleware.js';
 const app = express();
 
 // CORS middleware
+const allowedOrigins = new Set(
+  [
+    'https://hbs-qa.vercel.app',
+    'https://hijabsbyshiza.com',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    process.env.FRONTEND_URL
+  ].filter(Boolean)
+);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
