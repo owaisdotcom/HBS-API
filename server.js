@@ -8,7 +8,10 @@ dotenv.config();
 const PORT = process.env.PORT || 5000;
 
 // Connect to database
-connectDB();
+connectDB().catch((error) => {
+  console.error('✗ Database connection failed. Shutting down...', error.message);
+  process.exit(1);
+});
 
 // Start server
 const server = app.listen(PORT, () => {
