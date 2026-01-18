@@ -1,5 +1,14 @@
 import { body } from 'express-validator';
 
+const emailNormalizationOptions = {
+  gmail_remove_dots: false,
+  gmail_remove_subaddress: false,
+  gmail_convert_googlemaildotcom: false,
+  outlookdotcom_remove_subaddress: false,
+  yahoo_remove_subaddress: false,
+  icloud_remove_subaddress: false
+};
+
 export const signupValidator = [
   body('fullName')
     .trim()
@@ -14,7 +23,7 @@ export const signupValidator = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .normalizeEmail(emailNormalizationOptions),
   
   body('password')
     .notEmpty()
@@ -36,7 +45,7 @@ export const loginValidator = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .normalizeEmail(emailNormalizationOptions),
   
   body('password')
     .notEmpty()
@@ -98,7 +107,7 @@ export const adminLoginValidator = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .normalizeEmail(emailNormalizationOptions),
   
   body('password')
     .notEmpty()
@@ -121,7 +130,7 @@ export const setupSuperAdminValidator = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .normalizeEmail(emailNormalizationOptions),
   
   body('password')
     .notEmpty()
@@ -153,7 +162,7 @@ export const createAdminValidator = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .normalizeEmail(emailNormalizationOptions),
   
   body('password')
     .notEmpty()
