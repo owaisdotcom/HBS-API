@@ -28,7 +28,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const orderItems = [];
 
   for (const item of items) {
-    const product = await Product.findById(item.productId);
+    const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } });
 
     if (!product) {
       return next(new ApiError(`Product ${item.productId} not found`, 404));

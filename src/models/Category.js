@@ -44,7 +44,17 @@ const categorySchema = new mongoose.Schema({
     default: 'active'
   },
   metaTitle: String,
-  metaDescription: String
+  metaDescription: String,
+  
+  // Soft delete fields
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  }
 }, {
   timestamps: true
 });
@@ -53,7 +63,7 @@ const categorySchema = new mongoose.Schema({
 categorySchema.pre('save', async function() {
   if (this.isModified('parentId')) {
     if (this.parentId) {
-      const parent = await this.constructor.findById(this.parentId);
+      const parent = await this.constructor.findOne({ _id: this.parentId, isDeleted: { $ne: true } });
       if (parent) {
         this.level = parent.level + 1;
         this.path = [...parent.path, parent._id];
@@ -66,10 +76,11 @@ categorySchema.pre('save', async function() {
 });
 
 // Indexes
-categorySchema.index({ slug: 1 }, { unique: true });
+categorySchema.index({ slug: 1 }, { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } });
 categorySchema.index({ parentId: 1 });
 categorySchema.index({ path: 1 });
 categorySchema.index({ status: 1, displayOrder: 1 });
+categorySchema.index({ isDeleted: 1 });
 
 export default mongoose.model('Category', categorySchema);
 

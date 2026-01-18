@@ -11,7 +11,7 @@ import uploadService from '../services/upload.service.js';
 export const getAllCategories = asyncHandler(async (req, res) => {
   const { status = 'active', includeInactive } = req.query;
 
-  const query = includeInactive ? {} : { status };
+  const query = includeInactive ? { isDeleted: { $ne: true } } : { status, isDeleted: { $ne: true } };
 
   const categories = await Category.find(query)
     .sort('displayOrder level')
@@ -24,7 +24,8 @@ export const getAllCategories = asyncHandler(async (req, res) => {
     {
       $match: {
         categoryId: { $in: categoryIds },
-        status: 'active'
+        status: 'active',
+        isDeleted: { $ne: true }
       }
     },
     {
@@ -78,7 +79,7 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 export const getFlatCategories = asyncHandler(async (req, res) => {
   const { status = 'active' } = req.query;
 
-  const categories = await Category.find({ status })
+  const categories = await Category.find({ status, isDeleted: { $ne: true } })
     .sort('level displayOrder')
     .populate('parentId', 'name slug')
     .select('-__v');
@@ -98,11 +99,11 @@ export const getCategory = asyncHandler(async (req, res, next) => {
 
   // Try to find by ID first, then by slug
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
-    category = await Category.findById(id)
+    category = await Category.findOne({ _id: id, isDeleted: { $ne: true } })
       .populate('parentId', 'name slug')
       .populate('path', 'name slug');
   } else {
-    category = await Category.findOne({ slug: id })
+    category = await Category.findOne({ slug: id, isDeleted: { $ne: true } })
       .populate('parentId', 'name slug')
       .populate('path', 'name slug');
   }
@@ -114,13 +115,15 @@ export const getCategory = asyncHandler(async (req, res, next) => {
   // Get subcategories
   const subcategories = await Category.find({
     parentId: category._id,
-    status: 'active'
+    status: 'active',
+    isDeleted: { $ne: true }
   }).sort('displayOrder');
 
   // Get product count
   const productCount = await Product.countDocuments({
     categoryId: category._id,
-    status: 'active'
+    status: 'active',
+    isDeleted: { $ne: true }
   });
 
   res.json(
@@ -149,9 +152,9 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
 
   // Try to find by ID first, then by slug
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
-    category = await Category.findById(id);
+    category = await Category.findOne({ _id: id, isDeleted: { $ne: true } });
   } else {
-    category = await Category.findOne({ slug: id });
+    category = await Category.findOne({ slug: id, isDeleted: { $ne: true } });
   }
 
   if (!category) {
@@ -164,7 +167,8 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
       { categoryId: category._id },
       { categoryPath: category._id }
     ],
-    status: 'active'
+    status: 'active',
+    isDeleted: { $ne: true }
   };
 
   // Price range filter
@@ -218,8 +222,8 @@ export const createCategory = asyncHandler(async (req, res, next) => {
     metaDescription
   } = req.body;
 
-  // Check if slug already exists
-  const existingCategory = await Category.findOne({ slug });
+  // Check if slug already exists (excluding soft-deleted)
+  const existingCategory = await Category.findOne({ slug, isDeleted: { $ne: true } });
   if (existingCategory) {
     return next(new ApiError('Slug already exists', 400));
   }
@@ -262,7 +266,7 @@ export const createCategory = asyncHandler(async (req, res, next) => {
 export const updateCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  let category = await Category.findById(id);
+  let category = await Category.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!category) {
     return next(new ApiError('Category not found', 404));
@@ -280,18 +284,21 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Check if slug is being changed and if it already exists
+  // Check if slug is being changed and if it already exists (excluding soft-deleted)
   if (req.body.slug && req.body.slug !== category.slug) {
-    const existingCategory = await Category.findOne({ slug: req.body.slug });
+    const existingCategory = await Category.findOne({ slug: req.body.slug, isDeleted: { $ne: true } });
     if (existingCategory) {
       return next(new ApiError('Slug already exists', 400));
     }
   }
 
-  category = await Category.findByIdAndUpdate(id, req.body, {
-    new: true,
-    runValidators: true
+  // Update category (ensure it's not soft-deleted)
+  Object.keys(req.body).forEach(key => {
+    if (req.body[key] !== undefined) {
+      category[key] = req.body[key];
+    }
   });
+  await category.save();
 
   res.json(
     new ApiResponse(200, { category }, 'Category updated successfully')
@@ -299,30 +306,39 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
 });
 
 // @route   DELETE /api/categories/:id
-// @desc    Delete category
+// @desc    Soft delete category
 // @access  Private (Admin)
 export const deleteCategory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const category = await Category.findById(id);
+  const category = await Category.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!category) {
     return next(new ApiError('Category not found', 404));
   }
 
-  // Check if category has subcategories
-  const subcategories = await Category.countDocuments({ parentId: id });
+  // Check if category has active subcategories
+  const subcategories = await Category.countDocuments({ 
+    parentId: id, 
+    isDeleted: { $ne: true } 
+  });
   if (subcategories > 0) {
     return next(new ApiError('Cannot delete category with subcategories', 400));
   }
 
-  // Check if category has products
-  const products = await Product.countDocuments({ categoryId: id });
+  // Check if category has active products
+  const products = await Product.countDocuments({ 
+    categoryId: id, 
+    isDeleted: { $ne: true } 
+  });
   if (products > 0) {
     return next(new ApiError('Cannot delete category with products', 400));
   }
 
-  await category.deleteOne();
+  // Soft delete
+  category.isDeleted = true;
+  category.deletedAt = new Date();
+  await category.save();
 
   res.json(
     new ApiResponse(200, null, 'Category deleted successfully')
@@ -335,7 +351,7 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
 export const getSubcategories = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const category = await Category.findById(id);
+  const category = await Category.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!category) {
     return next(new ApiError('Category not found', 404));
@@ -343,7 +359,8 @@ export const getSubcategories = asyncHandler(async (req, res, next) => {
 
   const subcategories = await Category.find({
     parentId: id,
-    status: 'active'
+    status: 'active',
+    isDeleted: { $ne: true }
   }).sort('displayOrder');
 
   res.json(

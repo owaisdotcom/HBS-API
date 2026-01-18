@@ -24,7 +24,9 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   } = req.query;
 
   // Build query
-  const query = {};
+  const query = {
+    isDeleted: { $ne: true } // Exclude soft-deleted products
+  };
 
   if (status) query.status = status;
   if (category) query.categoryId = category;
@@ -83,11 +85,11 @@ export const getProduct = asyncHandler(async (req, res, next) => {
 
   // Try to find by ID first, then by slug
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
-    product = await Product.findById(id)
+    product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
       .populate('categoryId', 'name slug')
       .populate('categoryPath', 'name slug');
   } else {
-    product = await Product.findOne({ slug: id })
+    product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
       .populate('categoryId', 'name slug')
       .populate('categoryPath', 'name slug');
   }
@@ -150,8 +152,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Check if category exists
-  const category = await Category.findById(productData.categoryId);
+  // Check if category exists and is not deleted
+  const category = await Category.findOne({ _id: productData.categoryId, isDeleted: { $ne: true } });
   if (!category) {
     return next(new ApiError('Category not found', 404));
   }
@@ -190,7 +192,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
 export const updateProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  let product = await Product.findById(id);
+  let product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!product) {
     return next(new ApiError('Product not found', 404));
@@ -304,7 +306,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 
   // Update category path if category changed
   if (updateFields.categoryId && updateFields.categoryId !== product.categoryId.toString()) {
-    const category = await Category.findById(updateFields.categoryId);
+    const category = await Category.findOne({ _id: updateFields.categoryId, isDeleted: { $ne: true } });
     if (!category) {
       return next(new ApiError('Category not found', 404));
     }
@@ -336,18 +338,21 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 });
 
 // @route   DELETE /api/products/:id
-// @desc    Delete product
+// @desc    Soft delete product
 // @access  Private (Admin)
 export const deleteProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  const product = await Product.findById(id);
+  const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!product) {
     return next(new ApiError('Product not found', 404));
   }
 
-  await product.deleteOne();
+  // Soft delete
+  product.isDeleted = true;
+  product.deletedAt = new Date();
+  await product.save();
 
   res.json(
     new ApiResponse(200, null, 'Product deleted successfully')
@@ -360,7 +365,7 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
 export const deleteProductImage = asyncHandler(async (req, res, next) => {
   const { id, imageId } = req.params;
 
-  const product = await Product.findById(id);
+  const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!product) {
     return next(new ApiError('Product not found', 404));
@@ -389,7 +394,8 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({
     isFeatured: true,
     status: 'active',
-    stock: { $gt: 0 }
+    stock: { $gt: 0 },
+    isDeleted: { $ne: true }
   })
     .sort('-createdAt')
     .limit(Number(limit))
@@ -410,7 +416,8 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
   const products = await Product.find({
     isNewArrival: true,
     status: 'active',
-    stock: { $gt: 0 }
+    stock: { $gt: 0 },
+    isDeleted: { $ne: true }
   })
     .sort('-publishedAt')
     .limit(Number(limit))
@@ -429,7 +436,7 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { limit = 8 } = req.query;
 
-  const product = await Product.findById(id);
+  const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!product) {
     return next(new ApiError('Product not found', 404));
@@ -439,7 +446,8 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
     _id: { $ne: id },
     categoryId: product.categoryId,
     status: 'active',
-    stock: { $gt: 0 }
+    stock: { $gt: 0 },
+    isDeleted: { $ne: true }
   })
     .sort('-rating -soldCount')
     .limit(Number(limit))

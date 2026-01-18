@@ -129,7 +129,17 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  publishedAt: Date
+  publishedAt: Date,
+  
+  // Soft delete fields
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  }
 }, {
   timestamps: true
 });
@@ -146,8 +156,8 @@ productSchema.pre('save', async function() {
 });
 
 // Indexes
-productSchema.index({ slug: 1 }, { unique: true });
-productSchema.index({ sku: 1 }, { unique: true, sparse: true });
+productSchema.index({ slug: 1 }, { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } });
+productSchema.index({ sku: 1 }, { unique: true, sparse: true, partialFilterExpression: { isDeleted: { $ne: true } } });
 productSchema.index({ categoryId: 1 });
 productSchema.index({ categoryPath: 1 });
 productSchema.index({ status: 1 });
@@ -156,6 +166,7 @@ productSchema.index({ isFeatured: 1, createdAt: -1 });
 productSchema.index({ isNewArrival: 1, createdAt: -1 });
 productSchema.index({ tags: 1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ isDeleted: 1 });
 
 export default mongoose.model('Product', productSchema);
 

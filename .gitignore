@@ -37,3 +37,4 @@ Thumbs.db
 # Uploads (if storing locally)
 uploads/
 temp/
+.vercel

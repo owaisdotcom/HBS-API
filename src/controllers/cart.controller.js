@@ -21,9 +21,11 @@ export const getCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // Filter out products that no longer exist or are inactive
+  // Filter out products that no longer exist, are inactive, or soft-deleted
   const validItems = cart.items.filter(item => 
-    item.productId && item.productId.status === 'active'
+    item.productId && 
+    item.productId.status === 'active' &&
+    !item.productId.isDeleted
   );
   
   // Update cart if items were filtered out
@@ -53,8 +55,8 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Quantity must be at least 1', 400));
   }
 
-  // Check if product exists
-  const product = await Product.findById(productId);
+  // Check if product exists and is not soft-deleted
+  const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } });
   if (!product) {
     return next(new ApiError('Product not found', 404));
   }
@@ -254,10 +256,10 @@ export const syncCart = asyncHandler(async (req, res, next) => {
 
   // Process each item from local cart
   for (const localItem of items) {
-    const product = await Product.findById(localItem.productId);
+    const product = await Product.findOne({ _id: localItem.productId, isDeleted: { $ne: true } });
     
     if (!product || product.status !== 'active') {
-      continue; // Skip invalid products
+      continue; // Skip invalid or soft-deleted products
     }
 
     // Check if item already exists in DB cart (with same variant)
