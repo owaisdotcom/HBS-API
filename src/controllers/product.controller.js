@@ -45,9 +45,15 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     query.stock = { $gt: 0 };
   }
 
-  // Text search
+  // Text search (partial match)
   if (search) {
-    query.$text = { $search: search };
+    const searchRegex = new RegExp(search, 'i');
+    query.$or = [
+      { name: searchRegex },
+      { slug: searchRegex },
+      { sku: searchRegex },
+      { description: searchRegex }
+    ];
   }
 
   const skip = (page - 1) * limit;

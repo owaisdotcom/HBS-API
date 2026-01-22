@@ -145,7 +145,12 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
     limit = 20,
     sort = '-createdAt',
     minPrice,
-    maxPrice
+    maxPrice,
+    search,
+    status = 'active',
+    isFeatured,
+    isNewArrival,
+    inStock
   } = req.query;
 
   let category;
@@ -162,20 +167,45 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
   }
 
   // Build query for products in this category and subcategories
+  const categoryClause = [
+    { categoryId: category._id },
+    { categoryPath: category._id }
+  ];
+
   const query = {
-    $or: [
-      { categoryId: category._id },
-      { categoryPath: category._id }
-    ],
-    status: 'active',
+    $or: categoryClause,
+    status,
     isDeleted: { $ne: true }
   };
+
+  if (isFeatured !== undefined) query.isFeatured = isFeatured === 'true';
+  if (isNewArrival !== undefined) query.isNewArrival = isNewArrival === 'true';
 
   // Price range filter
   if (minPrice || maxPrice) {
     query.price = {};
     if (minPrice) query.price.$gte = Number(minPrice);
     if (maxPrice) query.price.$lte = Number(maxPrice);
+  }
+
+  if (inStock === 'true') {
+    query.stock = { $gt: 0 };
+  }
+
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+    query.$and = [
+      { $or: categoryClause },
+      {
+        $or: [
+          { name: searchRegex },
+          { slug: searchRegex },
+          { sku: searchRegex },
+          { description: searchRegex }
+        ]
+      }
+    ];
+    delete query.$or;
   }
 
   const skip = (page - 1) * limit;
