@@ -5,7 +5,7 @@ const homepageSectionSchema = new mongoose.Schema({
     // Section Type
     type: {
       type: String,
-      enum: ['category_grid', 'product_slider', 'banner', 'custom'],
+      enum: ['category_grid', 'product_slider', 'category_products_slider', 'banner', 'custom'],
       required: true
     },
     title: String,
