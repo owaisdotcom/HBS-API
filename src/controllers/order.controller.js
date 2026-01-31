@@ -260,7 +260,8 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     received: ['confirmed', 'cancelled'],
     confirmed: ['processing', 'cancelled'],
     processing: ['shipped', 'cancelled'],
-    shipped: ['delivered', 'cancelled'],
+    shipped: ['remain_undelivered', 'delivered', 'cancelled'],
+    remain_undelivered: ['delivered', 'cancelled'],
     delivered: [],
     cancelled: []
   };
@@ -372,7 +373,7 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     // Reject payment and cancel the order
     order.paymentStatus = 'failed';
 
-    if (['shipped', 'delivered'].includes(order.status)) {
+    if (['shipped', 'remain_undelivered', 'delivered'].includes(order.status)) {
       return next(new ApiError('Cannot reject payment for shipped or delivered orders', 400));
     }
 
@@ -428,7 +429,7 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
   }
 
   // Cannot cancel if already shipped or delivered
-  if (['shipped', 'delivered'].includes(order.status)) {
+  if (['shipped', 'remain_undelivered', 'delivered'].includes(order.status)) {
     return next(new ApiError('Cannot cancel order that has been shipped or delivered', 400));
   }
 

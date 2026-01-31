@@ -64,9 +64,11 @@ export const addToWishlist = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product already in wishlist', 400));
   }
 
+  const isOutOfStock = product.stock <= 0 || product.stockStatus === 'out_of_stock';
   wishlist.items.push({
     productId,
-    addedAt: new Date()
+    addedAt: new Date(),
+    notifyOnRestock: isOutOfStock
   });
 
   await wishlist.save();

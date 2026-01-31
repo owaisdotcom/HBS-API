@@ -99,7 +99,7 @@ const orderSchema = new mongoose.Schema({
   // Order Status
   status: {
     type: String,
-    enum: ['received', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+    enum: ['received', 'confirmed', 'processing', 'shipped', 'remain_undelivered', 'delivered', 'cancelled'],
     default: 'received'
   },
   statusHistory: [{
@@ -127,6 +127,7 @@ const orderSchema = new mongoose.Schema({
   // Timestamps
   confirmedAt: Date,
   shippedAt: Date,
+  remainUndeliveredAt: Date,
   deliveredAt: Date,
   cancelledAt: Date
 }, {
@@ -169,6 +170,7 @@ orderSchema.pre('save', async function() {
     // Update specific timestamp fields
     if (this.status === 'confirmed') this.confirmedAt = new Date();
     if (this.status === 'shipped') this.shippedAt = new Date();
+    if (this.status === 'remain_undelivered') this.remainUndeliveredAt = new Date();
     if (this.status === 'delivered') this.deliveredAt = new Date();
     if (this.status === 'cancelled') this.cancelledAt = new Date();
   }

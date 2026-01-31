@@ -25,6 +25,10 @@ const cartItemSchema = new mongoose.Schema({
   addedAt: {
     type: Date,
     default: Date.now
+  },
+  reservedUntil: {
+    type: Date,
+    default: null
   }
 });
 

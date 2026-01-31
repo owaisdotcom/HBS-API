@@ -1,9 +1,36 @@
+import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Category from '../models/Category.js';
+import Wishlist from '../models/Wishlist.js';
+import Cart from '../models/Cart.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { sendWishlistRestockEmail } from '../services/email.service.js';
+
+const getReservationMap = async (productIds = []) => {
+  if (productIds.length === 0) return new Map();
+  const now = new Date();
+  const ids = productIds.map((id) => new mongoose.Types.ObjectId(id));
+  const results = await Cart.aggregate([
+    { $unwind: '$items' },
+    {
+      $match: {
+        'items.productId': { $in: ids },
+        'items.reservedUntil': { $gt: now }
+      }
+    },
+    {
+      $group: {
+        _id: '$items.productId',
+        total: { $sum: '$items.quantity' }
+      }
+    }
+  ]);
+
+  return new Map(results.map((row) => [row._id.toString(), row.total]));
+};
 
 // @route   GET /api/products
 // @desc    Get all products with filters, search, and pagination
@@ -68,9 +95,20 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   const total = await Product.countDocuments(query);
 
+  const reservationMap = await getReservationMap(products.map((p) => p._id));
+  const productsWithAvailability = products.map((product) => {
+    const reserved = reservationMap.get(product._id.toString()) || 0;
+    const availableStock = Math.max(product.stock - reserved, 0);
+    return {
+      ...product.toObject(),
+      availableStock,
+      reservedStock: reserved
+    };
+  });
+
   res.json(
     new ApiResponse(200, {
-      products,
+      products: productsWithAvailability,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -108,8 +146,18 @@ export const getProduct = asyncHandler(async (req, res, next) => {
   product.viewCount += 1;
   await product.save({ validateBeforeSave: false });
 
+  const reservationMap = await getReservationMap([product._id]);
+  const reserved = reservationMap.get(product._id.toString()) || 0;
+  const availableStock = Math.max(product.stock - reserved, 0);
+
   res.json(
-    new ApiResponse(200, { product }, 'Product retrieved successfully')
+    new ApiResponse(200, {
+      product: {
+        ...product.toObject(),
+        availableStock,
+        reservedStock: reserved
+      }
+    }, 'Product retrieved successfully')
   );
 });
 
@@ -203,6 +251,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (!product) {
     return next(new ApiError('Product not found', 404));
   }
+
+  const previousStock = product.stock;
 
   // Handle existing images (images to keep) with order
   let existingImagesWithOrder = [];
@@ -337,6 +387,56 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 
   // Save product
   await product.save();
+
+  // Wishlist restock notifications
+  const nowInStock = product.stock > 0;
+  const wasOutOfStock = previousStock <= 0;
+  const becameOutOfStock = previousStock > 0 && product.stock <= 0;
+
+  if (becameOutOfStock) {
+    try {
+      await Wishlist.updateMany(
+        { 'items.productId': product._id },
+        { $set: { 'items.$[item].notifyOnRestock': true } },
+        { arrayFilters: [{ 'item.productId': product._id }] }
+      );
+    } catch (error) {
+      console.error('Failed to flag wishlist items for restock notifications:', error);
+    }
+  }
+
+  if (wasOutOfStock && nowInStock) {
+    try {
+      const wishlists = await Wishlist.find({
+        'items.productId': product._id,
+        'items.notifyOnRestock': true
+      }).populate('userId', 'fullName email');
+
+      for (const wishlist of wishlists) {
+        const userEmail = wishlist.userId?.email;
+        if (!userEmail) continue;
+
+        const item = wishlist.items.find((entry) => (
+          entry.productId.toString() === product._id.toString() && entry.notifyOnRestock
+        ));
+
+        if (!item) continue;
+
+        try {
+          await sendWishlistRestockEmail(userEmail, wishlist.userId?.fullName, product);
+          await Wishlist.updateOne(
+            { _id: wishlist._id },
+            { $set: { 'items.$[item].notifyOnRestock': false } },
+            { arrayFilters: [{ 'item.productId': product._id }] }
+          );
+        } catch (error) {
+          console.error(`Failed to send restock email to ${userEmail}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to process wishlist restock notifications:', error);
+    }
+  }
 
   res.json(
     new ApiResponse(200, { product }, 'Product updated successfully')

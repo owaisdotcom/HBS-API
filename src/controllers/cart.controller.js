@@ -1,8 +1,31 @@
+import mongoose from 'mongoose';
 import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
+
+const RESERVATION_MINUTES = 10;
+
+const getReservedQuantity = async (productId, excludeUserId) => {
+  const now = new Date();
+  const match = {
+    'items.productId': new mongoose.Types.ObjectId(productId),
+    'items.reservedUntil': { $gt: now }
+  };
+
+  if (excludeUserId) {
+    match.userId = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
+  }
+
+  const results = await Cart.aggregate([
+    { $unwind: '$items' },
+    { $match: match },
+    { $group: { _id: null, total: { $sum: '$items.quantity' } } }
+  ]);
+
+  return results[0]?.total || 0;
+};
 
 // @route   GET /api/cart
 // @desc    Get user's cart
@@ -75,6 +98,10 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     });
   }
 
+  const reservedByOthers = await getReservedQuantity(productId, req.user.id);
+  const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+  const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+
   // Check if product already in cart (with same variant)
   const existingItemIndex = cart.items.findIndex(
     item => item.productId.toString() === productId &&
@@ -87,13 +114,17 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     const newQuantity = cart.items[existingItemIndex].quantity + quantity;
     
     // Check if new quantity exceeds stock
-    if (newQuantity > product.stock) {
-      return next(new ApiError(`Only ${product.stock} items available in stock`, 400));
+    if (newQuantity > availableForUser) {
+      return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
     }
     
     cart.items[existingItemIndex].quantity = newQuantity;
     cart.items[existingItemIndex].price = product.price; // Update price in case it changed
+    cart.items[existingItemIndex].reservedUntil = reservationUntil;
   } else {
+    if (quantity > availableForUser) {
+      return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
+    }
     // Add new item to cart
     cart.items.push({
       productId,
@@ -101,7 +132,8 @@ export const addToCart = asyncHandler(async (req, res, next) => {
       price: product.price,
       selectedColor: selectedColor || null,
       selectedSize: selectedSize || null,
-      addedAt: new Date()
+      addedAt: new Date(),
+      reservedUntil: reservationUntil
     });
   }
 
@@ -152,12 +184,15 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  if (quantity > product.stock) {
-    return next(new ApiError(`Only ${product.stock} items available in stock`, 400));
+  const reservedByOthers = await getReservedQuantity(item.productId, req.user.id);
+  const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+  if (quantity > availableForUser) {
+    return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
   }
 
   item.quantity = quantity;
   item.price = product.price; // Update price in case it changed
+  item.reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
   
   await cart.save();
 
@@ -262,6 +297,10 @@ export const syncCart = asyncHandler(async (req, res, next) => {
       continue; // Skip invalid or soft-deleted products
     }
 
+    const reservedByOthers = await getReservedQuantity(product._id, req.user.id);
+    const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+    const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+
     // Check if item already exists in DB cart (with same variant)
     const existingItemIndex = cart.items.findIndex(
       item => item.productId.toString() === localItem.productId &&
@@ -271,19 +310,25 @@ export const syncCart = asyncHandler(async (req, res, next) => {
 
     if (existingItemIndex > -1) {
       // Merge quantities (take max to avoid losing items)
-      cart.items[existingItemIndex].quantity = Math.max(
+      const mergedQuantity = Math.max(
         cart.items[existingItemIndex].quantity,
         localItem.quantity
       );
+      cart.items[existingItemIndex].quantity = Math.min(mergedQuantity, availableForUser);
       cart.items[existingItemIndex].price = product.price;
+      cart.items[existingItemIndex].reservedUntil = reservationUntil;
     } else {
+      if (availableForUser <= 0) {
+        continue;
+      }
       // Add new item from local cart
       cart.items.push({
         productId: localItem.productId,
-        quantity: Math.min(localItem.quantity, product.stock), // Respect stock limits
+        quantity: Math.min(localItem.quantity, availableForUser), // Respect stock limits
         price: product.price,
         selectedColor: localItem.selectedColor || null,
-        selectedSize: localItem.selectedSize || null
+        selectedSize: localItem.selectedSize || null,
+        reservedUntil: reservationUntil
       });
     }
   }
