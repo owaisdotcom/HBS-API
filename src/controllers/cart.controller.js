@@ -7,12 +7,20 @@ import asyncHandler from '../utils/asyncHandler.js';
 
 const RESERVATION_MINUTES = 10;
 
-const getReservedQuantity = async (productId, excludeUserId) => {
+const getReservedQuantity = async (productId, excludeUserId, variantId = null) => {
   const now = new Date();
   const match = {
     'items.productId': new mongoose.Types.ObjectId(productId),
     'items.reservedUntil': { $gt: now }
   };
+  if (variantId) {
+    match['items.variantId'] = variantId;
+  } else {
+    match.$or = [
+      { 'items.variantId': null },
+      { 'items.variantId': { $exists: false } }
+    ];
+  }
 
   if (excludeUserId) {
     match.userId = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
@@ -71,7 +79,7 @@ export const getCart = asyncHandler(async (req, res) => {
 // @desc    Add product to cart
 // @access  Private
 export const addToCart = asyncHandler(async (req, res, next) => {
-  const { productId, quantity = 1, selectedColor, selectedSize } = req.body;
+  const { productId, quantity = 1, selectedColor, selectedSize, variantId } = req.body;
 
   // Validate quantity
   if (quantity < 1) {
@@ -84,9 +92,21 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  // Check stock
-  if (product.stockStatus === 'out_of_stock' || product.stock < quantity) {
-    return next(new ApiError('Product is out of stock or insufficient quantity', 400));
+  // If variantId provided, validate variant stock/price
+  let chosenVariant = null;
+  if (variantId && Array.isArray(product.variants)) {
+    chosenVariant = product.variants.find(v => v.variantId === variantId && v.isActive !== false);
+    if (!chosenVariant) {
+      return next(new ApiError('Variant not found', 404));
+    }
+    if (chosenVariant.stock < quantity || chosenVariant.stock === 0) {
+      return next(new ApiError('Variant is out of stock or insufficient quantity', 400));
+    }
+  } else {
+    // Check stock for product-level (fallback)
+    if (product.stockStatus === 'out_of_stock' || product.stock < quantity) {
+      return next(new ApiError('Product is out of stock or insufficient quantity', 400));
+    }
   }
 
   let cart = await Cart.findOne({ userId: req.user.id });
@@ -98,15 +118,16 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const reservedByOthers = await getReservedQuantity(productId, req.user.id);
-  const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+  const reservedByOthers = await getReservedQuantity(productId, req.user.id, variantId || null);
+  const availableForUser = Math.max((chosenVariant?.stock ?? product.stock) - reservedByOthers, 0);
   const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   // Check if product already in cart (with same variant)
   const existingItemIndex = cart.items.findIndex(
     item => item.productId.toString() === productId &&
             item.selectedColor === selectedColor &&
-            item.selectedSize === selectedSize
+            item.selectedSize === selectedSize &&
+            item.variantId === (variantId || null)
   );
 
   if (existingItemIndex > -1) {
@@ -119,22 +140,34 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     }
     
     cart.items[existingItemIndex].quantity = newQuantity;
-    cart.items[existingItemIndex].price = product.price; // Update price in case it changed
+    // Update price from variant if present, else product price
+    cart.items[existingItemIndex].price = chosenVariant ? (chosenVariant.price ?? product.price) : product.price;
     cart.items[existingItemIndex].reservedUntil = reservationUntil;
   } else {
     if (quantity > availableForUser) {
       return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
     }
-    // Add new item to cart
-    cart.items.push({
+    // Add new item to cart (include variant snapshot if applicable)
+    const itemToPush = {
       productId,
       quantity,
-      price: product.price,
+      price: chosenVariant ? (chosenVariant.price ?? product.price) : product.price,
       selectedColor: selectedColor || null,
       selectedSize: selectedSize || null,
       addedAt: new Date(),
-      reservedUntil: reservationUntil
-    });
+      reservedUntil: reservationUntil,
+      variantId: variantId || null,
+      variantSnapshot: chosenVariant ? {
+        sku: chosenVariant.sku || null,
+        price: chosenVariant.price || null,
+        image: chosenVariant.images?.[0]?.url || null,
+        color: chosenVariant.color || null,
+        size: chosenVariant.size || null,
+        specs: chosenVariant.specs || null
+      } : null
+    };
+
+    cart.items.push(itemToPush);
   }
 
   await cart.save();
@@ -184,14 +217,21 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  const reservedByOthers = await getReservedQuantity(item.productId, req.user.id);
-  const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+  const chosenVariant = item.variantId && Array.isArray(product.variants)
+    ? product.variants.find(v => v.variantId === item.variantId && v.isActive !== false)
+    : null;
+  if (item.variantId && !chosenVariant) {
+    return next(new ApiError('Variant not found', 404));
+  }
+
+  const reservedByOthers = await getReservedQuantity(item.productId, req.user.id, item.variantId || null);
+  const availableForUser = Math.max((chosenVariant?.stock ?? product.stock) - reservedByOthers, 0);
   if (quantity > availableForUser) {
     return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
   }
 
   item.quantity = quantity;
-  item.price = product.price; // Update price in case it changed
+  item.price = chosenVariant ? (chosenVariant.price ?? product.price) : product.price;
   item.reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
   
   await cart.save();
@@ -297,15 +337,24 @@ export const syncCart = asyncHandler(async (req, res, next) => {
       continue; // Skip invalid or soft-deleted products
     }
 
-    const reservedByOthers = await getReservedQuantity(product._id, req.user.id);
-    const availableForUser = Math.max(product.stock - reservedByOthers, 0);
+    const localVariantId = localItem.variantId || null;
+    const chosenVariant = localVariantId && Array.isArray(product.variants)
+      ? product.variants.find(v => v.variantId === localVariantId && v.isActive !== false)
+      : null;
+    if (localVariantId && !chosenVariant) {
+      continue;
+    }
+
+    const reservedByOthers = await getReservedQuantity(product._id, req.user.id, localVariantId);
+    const availableForUser = Math.max((chosenVariant?.stock ?? product.stock) - reservedByOthers, 0);
     const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
     // Check if item already exists in DB cart (with same variant)
     const existingItemIndex = cart.items.findIndex(
       item => item.productId.toString() === localItem.productId &&
               item.selectedColor === localItem.selectedColor &&
-              item.selectedSize === localItem.selectedSize
+              item.selectedSize === localItem.selectedSize &&
+              item.variantId === (localVariantId || null)
     );
 
     if (existingItemIndex > -1) {
@@ -315,7 +364,7 @@ export const syncCart = asyncHandler(async (req, res, next) => {
         localItem.quantity
       );
       cart.items[existingItemIndex].quantity = Math.min(mergedQuantity, availableForUser);
-      cart.items[existingItemIndex].price = product.price;
+      cart.items[existingItemIndex].price = chosenVariant ? (chosenVariant.price ?? product.price) : product.price;
       cart.items[existingItemIndex].reservedUntil = reservationUntil;
     } else {
       if (availableForUser <= 0) {
@@ -325,10 +374,19 @@ export const syncCart = asyncHandler(async (req, res, next) => {
       cart.items.push({
         productId: localItem.productId,
         quantity: Math.min(localItem.quantity, availableForUser), // Respect stock limits
-        price: product.price,
+        price: chosenVariant ? (chosenVariant.price ?? product.price) : product.price,
         selectedColor: localItem.selectedColor || null,
         selectedSize: localItem.selectedSize || null,
-        reservedUntil: reservationUntil
+        reservedUntil: reservationUntil,
+        variantId: localVariantId || null,
+        variantSnapshot: chosenVariant ? {
+          sku: chosenVariant.sku || null,
+          price: chosenVariant.price || null,
+          image: chosenVariant.images?.[0]?.url || null,
+          color: chosenVariant.color || null,
+          size: chosenVariant.size || null,
+          specs: chosenVariant.specs || null
+        } : null
       });
     }
   }

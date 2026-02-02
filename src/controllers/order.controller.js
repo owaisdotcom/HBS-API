@@ -7,6 +7,13 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 
+const recomputeProductStock = async (productId) => {
+  const product = await Product.findById(productId, 'variants');
+  if (!product) return;
+  const totalStock = (product.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
+};
+
 // @route   POST /api/orders
 // @desc    Create new order
 // @access  Public/Private
@@ -34,19 +41,41 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       return next(new ApiError(`Product ${item.productId} not found`, 404));
     }
 
-    if (product.stock < item.quantity) {
-      return next(new ApiError(`Insufficient stock for ${product.name}`, 400));
+    // If a variantId is provided, prefer variant stock/price/sku
+    let chosenVariant = null;
+    if (item.variantId && Array.isArray(product.variants)) {
+      chosenVariant = product.variants.find(v => v.variantId === item.variantId);
+      if (!chosenVariant) {
+        return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
+      }
+      if (chosenVariant.stock < item.quantity) {
+        return next(new ApiError(`Insufficient stock for ${product.name} (variant)`, 400));
+      }
+    } else {
+      if (product.stock < item.quantity) {
+        return next(new ApiError(`Insufficient stock for ${product.name}`, 400));
+      }
     }
 
-    const itemSubtotal = product.price * item.quantity;
+    const unitPrice = chosenVariant?.price ?? product.price;
+    const itemSubtotal = unitPrice * item.quantity;
     subtotal += itemSubtotal;
 
     orderItems.push({
       productId: product._id,
       productName: product.name,
-      productImage: product.images[0]?.url || '',
-      sku: product.sku,
-      price: product.price,
+      productImage: (chosenVariant?.images?.[0]?.url) || product.images[0]?.url || '',
+      sku: chosenVariant?.sku || product.sku,
+      variantId: chosenVariant?.variantId || null,
+      variantSnapshot: chosenVariant ? {
+        sku: chosenVariant.sku || null,
+        price: chosenVariant.price || null,
+        image: chosenVariant.images?.[0]?.url || null,
+        color: chosenVariant.color || null,
+        size: chosenVariant.size || null,
+        specs: chosenVariant.specs || null
+      } : null,
+      price: unitPrice,
       quantity: item.quantity,
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
@@ -100,9 +129,17 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      address: customer.address,
-      city: customer.city,
-      postalCode: customer.postalCode
+      alternatePhone: customer.alternatePhone || null,
+      houseNumber: customer.houseNumber || null,
+      streetNumber: customer.streetNumber || null,
+      nearestLandmark: customer.nearestLandmark || null,
+      completeAddress: customer.completeAddress || customer.address || '',
+      address: customer.completeAddress || customer.address || '',
+      tehsil: customer.tehsil || null,
+      district: customer.district || null,
+      city: customer.city || null,
+      postalCode: customer.postalCode || null,
+      specialInstructions: customer.specialInstructions || null
     },
     items: orderItems,
     subtotal,
@@ -138,14 +175,29 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Reduce product stock
+  // Reduce variant stock and recompute product stock
+  const touchedProductIds = new Set();
   for (const item of orderItems) {
-    await Product.findByIdAndUpdate(item.productId, {
-      $inc: {
-        stock: -item.quantity,
-        soldCount: item.quantity
-      }
-    });
+    if (item.variantId) {
+      await Product.updateOne(
+        { _id: item.productId, 'variants.variantId': item.variantId },
+        {
+          $inc: {
+            soldCount: item.quantity,
+            'variants.$[v].stock': -item.quantity
+          }
+        },
+        { arrayFilters: [{ 'v.variantId': item.variantId }] }
+      );
+    } else {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { stock: -item.quantity, soldCount: item.quantity }
+      });
+    }
+    touchedProductIds.add(item.productId.toString());
+  }
+  for (const productId of touchedProductIds) {
+    await recomputeProductStock(productId);
   }
 
   res.status(201).json(
@@ -291,13 +343,28 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   await order.save();
 
   if (status === 'cancelled') {
+    const touchedProductIds = new Set();
     for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: {
-          stock: item.quantity,
-          soldCount: -item.quantity
-        }
-      });
+      if (item.variantId) {
+        await Product.updateOne(
+          { _id: item.productId, 'variants.variantId': item.variantId },
+          {
+            $inc: {
+              soldCount: -item.quantity,
+              'variants.$[v].stock': item.quantity
+            }
+          },
+          { arrayFilters: [{ 'v.variantId': item.variantId }] }
+        );
+      } else {
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { stock: item.quantity, soldCount: -item.quantity }
+        });
+      }
+      touchedProductIds.add(item.productId.toString());
+    }
+    for (const productId of touchedProductIds) {
+      await recomputeProductStock(productId);
     }
   }
 
@@ -392,13 +459,28 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
   await order.save();
 
   if (!isVerified && order.status === 'cancelled') {
+    const touchedProductIds = new Set();
     for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: {
-          stock: item.quantity,
-          soldCount: -item.quantity
-        }
-      });
+      if (item.variantId) {
+        await Product.updateOne(
+          { _id: item.productId, 'variants.variantId': item.variantId },
+          {
+            $inc: {
+              soldCount: -item.quantity,
+              'variants.$[v].stock': item.quantity
+            }
+          },
+          { arrayFilters: [{ 'v.variantId': item.variantId }] }
+        );
+      } else {
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { stock: item.quantity, soldCount: -item.quantity }
+        });
+      }
+      touchedProductIds.add(item.productId.toString());
+    }
+    for (const productId of touchedProductIds) {
+      await recomputeProductStock(productId);
     }
   }
 
@@ -444,14 +526,31 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
 
   await order.save();
 
-  // Restore product stock
-  for (const item of order.items) {
-    await Product.findByIdAndUpdate(item.productId, {
-      $inc: {
-        stock: item.quantity,
-        soldCount: -item.quantity
+  // Restore variant stock and recompute product stock
+  {
+    const touchedProductIds = new Set();
+    for (const item of order.items) {
+      if (item.variantId) {
+        await Product.updateOne(
+          { _id: item.productId, 'variants.variantId': item.variantId },
+          {
+            $inc: {
+              soldCount: -item.quantity,
+              'variants.$[v].stock': item.quantity
+            }
+          },
+          { arrayFilters: [{ 'v.variantId': item.variantId }] }
+        );
+      } else {
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { stock: item.quantity, soldCount: -item.quantity }
+        });
       }
-    });
+      touchedProductIds.add(item.productId.toString());
+    }
+    for (const productId of touchedProductIds) {
+      await recomputeProductStock(productId);
+    }
   }
 
   res.json(

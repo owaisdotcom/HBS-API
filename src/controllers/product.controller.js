@@ -216,17 +216,79 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   productData.categoryPath = [...category.path, category._id];
 
   // Handle image uploads
+  // Handle image uploads (product-level and variant-level)
   let images = [];
+  let uploadedUrls = [];
   if (req.files && req.files.length > 0) {
-    const imageUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    images = imageUrls.map((url, index) => ({
+    uploadedUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
+    // Default product-level images if no variant mapping provided
+    images = uploadedUrls.map((url, index) => ({
       url,
       isPrimary: index === 0,
       order: index
     }));
   }
 
-  productData.images = images;
+  // If variants are provided as JSON string, parse
+  if (productData.variants && typeof productData.variants === 'string') {
+    try {
+      productData.variants = JSON.parse(productData.variants);
+    } catch (e) {
+      productData.variants = [];
+    }
+  }
+
+  // If a mapping of uploaded files to variants is provided, consume it
+  // Expect req.body.variantImageMap = JSON.stringify([{ variantId, fileIndexes: [0,1] }])
+  if (req.body.variantImageMap && uploadedUrls.length > 0) {
+    let variantImageMap = [];
+    try {
+      variantImageMap = JSON.parse(req.body.variantImageMap);
+    } catch (e) {
+      variantImageMap = [];
+    }
+
+    // Build image lists per variant
+    const variantImagesById = {};
+    variantImageMap.forEach(mapping => {
+      const { variantId, fileIndexes } = mapping;
+      if (!variantId || !Array.isArray(fileIndexes)) return;
+      variantImagesById[variantId] = fileIndexes
+        .map(idx => uploadedUrls[idx])
+        .filter(Boolean)
+        .map((url, orderIdx) => ({ url, isPrimary: orderIdx === 0, order: orderIdx }));
+    });
+
+    // Attach images to corresponding variants in productData
+    if (Array.isArray(productData.variants)) {
+      productData.variants = productData.variants.map(variant => {
+        const imgs = variantImagesById[variant.variantId] || [];
+        return {
+          ...variant,
+          images: imgs
+        };
+      });
+    }
+  }
+
+  // Derive product stock from variants when present
+  if (Array.isArray(productData.variants) && productData.variants.length > 0) {
+    productData.stock = productData.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  }
+
+  // If a thumbnail index is provided, use only that as product thumbnail
+  const thumbnailFileIndex = req.body.thumbnailFileIndex !== undefined
+    ? parseInt(req.body.thumbnailFileIndex, 10)
+    : null;
+  if (thumbnailFileIndex !== null && uploadedUrls[thumbnailFileIndex]) {
+    productData.images = [{
+      url: uploadedUrls[thumbnailFileIndex],
+      isPrimary: true,
+      order: 0
+    }];
+  } else {
+    productData.images = images;
+  }
   productData.publishedAt = new Date();
   if (!productData.status) {
     productData.status = 'active';
@@ -318,6 +380,63 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     product.images = allImages;
   }
 
+  // Thumbnail update (optional)
+  if (req.body.thumbnailExistingUrl) {
+    product.images = [{
+      url: req.body.thumbnailExistingUrl,
+      isPrimary: true,
+      order: 0
+    }];
+  }
+  if (req.body.thumbnailFileIndex !== undefined) {
+    const idx = parseInt(req.body.thumbnailFileIndex, 10);
+    const newThumb = uploadedNewImages.find(img => img.fileIndex === idx);
+    if (newThumb) {
+      product.images = [{
+        url: newThumb.url,
+        isPrimary: true,
+        order: 0
+      }];
+    }
+  }
+
+  // If a mapping of uploaded files to variants is provided on update, apply it
+  // Expect req.body.variantImageMap = JSON.stringify([{ variantId, fileIndexes: [0,1], existingUrls: [] }])
+  if (req.body.variantImageMap) {
+    let variantImageMap = [];
+    try {
+      variantImageMap = JSON.parse(req.body.variantImageMap);
+    } catch (e) {
+      variantImageMap = [];
+    }
+
+    // Build newImagesByFileIndex map for uploadedNewImages
+    const newImagesByFileIndex = {};
+    uploadedNewImages.forEach(img => {
+      newImagesByFileIndex[img.fileIndex] = img.url;
+    });
+
+    variantImageMap.forEach(mapping => {
+      const { variantId, fileIndexes = [], existingUrls = [] } = mapping;
+      const imagesForVariant = [];
+
+      existingUrls.forEach((url, idx) => {
+        imagesForVariant.push({ url, isPrimary: idx === 0, order: imagesForVariant.length });
+      });
+
+      fileIndexes.forEach((fi) => {
+        const url = newImagesByFileIndex[fi];
+        if (url) imagesForVariant.push({ url, isPrimary: imagesForVariant.length === 0, order: imagesForVariant.length });
+      });
+
+      // Find variant in product and replace its images
+      const variant = product.variants.find(v => v.variantId === variantId);
+      if (variant) {
+        variant.images = imagesForVariant;
+      }
+    });
+  }
+
   // Update fields
   const updateFields = { ...req.body };
 
@@ -342,6 +461,18 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   }
   if (updateFields.shipping && typeof updateFields.shipping === 'string') {
     updateFields.shipping = JSON.parse(updateFields.shipping);
+  }
+  if (updateFields.variants && typeof updateFields.variants === 'string') {
+    try {
+      updateFields.variants = JSON.parse(updateFields.variants);
+    } catch (e) {
+      updateFields.variants = [];
+    }
+  }
+
+  // Derive product stock from variants when present
+  if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
+    updateFields.stock = updateFields.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
   }
 
   // Convert boolean strings from FormData

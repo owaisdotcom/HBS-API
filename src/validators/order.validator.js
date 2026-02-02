@@ -17,11 +17,22 @@ export const createOrderValidator = [
     .trim()
     .notEmpty()
     .withMessage('Phone number is required'),
+
+  body('customer.alternatePhone')
+    .optional()
+    .trim()
+    .custom((value, { req }) => {
+      if (!value) return true;
+      if (value === req.body.customer?.phone) {
+        throw new Error('Alternate number must be different from primary phone');
+      }
+      return true;
+    }),
   
-  body('customer.address')
+  body('customer.completeAddress')
     .trim()
     .notEmpty()
-    .withMessage('Address is required'),
+    .withMessage('Complete address is required'),
   
   body('customer.city')
     .trim()

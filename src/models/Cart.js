@@ -16,6 +16,14 @@ const cartItemSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  variantId: {
+    type: String,
+    default: null
+  },
+  variantSnapshot: {
+    type: Object,
+    default: null
+  },
   selectedColor: {
     type: String
   },

@@ -25,12 +25,21 @@ const orderSchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    address: {
+    alternatePhone: String,
+    houseNumber: String,
+    streetNumber: String,
+    nearestLandmark: String,
+    completeAddress: {
       type: String,
       required: true
     },
+    // keep legacy address for compatibility
+    address: String,
+    tehsil: String,
+    district: String,
     city: String,
-    postalCode: String
+    postalCode: String,
+    specialInstructions: String
   },
   
   // Order Items
@@ -42,6 +51,11 @@ const orderSchema = new mongoose.Schema({
     productName: String,
     productImage: String,
     sku: String,
+    variantId: String,
+    variantSnapshot: {
+      type: Object,
+      default: null
+    },
     price: Number,
     quantity: Number,
     selectedColor: String,

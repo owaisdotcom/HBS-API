@@ -47,6 +47,36 @@ const productSchema = new mongoose.Schema({
   // Variants
   colors: [String],
   sizes: [String],
+
+  // New: Variant-per-combination support
+  variants: [{
+    variantId: { type: String, required: true, index: true }, // UUID or unique string
+    sku: { type: String, sparse: true },
+    color: String,
+    size: String,
+    price: Number,
+    originalPrice: Number,
+    costPrice: Number,
+    stock: {
+      type: Number,
+      min: [0, 'Stock cannot be negative'],
+      default: 0
+    },
+    stockStatus: {
+      type: String,
+      enum: ['in_stock', 'out_of_stock', 'low_stock'],
+      default: 'in_stock'
+    },
+    weight: Number,
+    images: [{
+      url: String,
+      alt: String,
+      isPrimary: { type: Boolean, default: false },
+      order: Number
+    }],
+    specs: { type: Object, default: {} },
+    isActive: { type: Boolean, default: true }
+  }],
   
   // Inventory
   stock: {
@@ -167,6 +197,9 @@ productSchema.index({ isNewArrival: 1, createdAt: -1 });
 productSchema.index({ tags: 1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ isDeleted: 1 });
+// Indexes for variants
+productSchema.index({ 'variants.variantId': 1 }, { sparse: true });
+productSchema.index({ 'variants.sku': 1 }, { sparse: true });
 
 export default mongoose.model('Product', productSchema);
 
