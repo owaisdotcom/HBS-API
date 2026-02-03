@@ -93,13 +93,20 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   }
 
   // If variantId provided, validate variant stock/price
-  let chosenVariant = null;
+  // variantId format: `${colorId}-${sizeId}`
+  let chosenColorVariant = null;
+  let chosenSize = null;
   if (variantId && Array.isArray(product.variants)) {
-    chosenVariant = product.variants.find(v => v.variantId === variantId && v.isActive !== false);
-    if (!chosenVariant) {
-      return next(new ApiError('Variant not found', 404));
+    const [colorId, sizeId] = variantId.split('-');
+    chosenColorVariant = product.variants.find(v => v.colorId === colorId && v.isActive !== false);
+    if (!chosenColorVariant) {
+      return next(new ApiError('Color variant not found', 404));
     }
-    if (chosenVariant.stock < quantity || chosenVariant.stock === 0) {
+    chosenSize = (chosenColorVariant.sizes || []).find(s => s.sizeId === sizeId && s.isActive !== false);
+    if (!chosenSize) {
+      return next(new ApiError('Size variant not found', 404));
+    }
+    if (chosenSize.stock < quantity || chosenSize.stock === 0) {
       return next(new ApiError('Variant is out of stock or insufficient quantity', 400));
     }
   } else {
@@ -119,7 +126,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   }
 
   const reservedByOthers = await getReservedQuantity(productId, req.user.id, variantId || null);
-  const availableForUser = Math.max((chosenVariant?.stock ?? product.stock) - reservedByOthers, 0);
+  const availableForUser = Math.max((chosenSize?.stock ?? product.stock) - reservedByOthers, 0);
   const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   // Check if product already in cart (with same variant)
@@ -140,8 +147,8 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     }
     
     cart.items[existingItemIndex].quantity = newQuantity;
-    // Update price from variant if present, else product price
-    cart.items[existingItemIndex].price = chosenVariant ? (chosenVariant.price ?? product.price) : product.price;
+    // Update price from size variant if present, else product price
+    cart.items[existingItemIndex].price = chosenSize ? (chosenSize.price ?? product.price) : product.price;
     cart.items[existingItemIndex].reservedUntil = reservationUntil;
   } else {
     if (quantity > availableForUser) {
@@ -151,19 +158,19 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     const itemToPush = {
       productId,
       quantity,
-      price: chosenVariant ? (chosenVariant.price ?? product.price) : product.price,
-      selectedColor: selectedColor || null,
-      selectedSize: selectedSize || null,
+      price: chosenSize ? (chosenSize.price ?? product.price) : product.price,
+      selectedColor: selectedColor || (chosenColorVariant?.color || null),
+      selectedSize: selectedSize || (chosenSize?.size || null),
       addedAt: new Date(),
       reservedUntil: reservationUntil,
       variantId: variantId || null,
-      variantSnapshot: chosenVariant ? {
-        sku: chosenVariant.sku || null,
-        price: chosenVariant.price || null,
-        image: chosenVariant.images?.[0]?.url || null,
-        color: chosenVariant.color || null,
-        size: chosenVariant.size || null,
-        specs: chosenVariant.specs || null
+      variantSnapshot: (chosenColorVariant && chosenSize) ? {
+        sku: chosenSize.sku || null,
+        price: chosenSize.price || null,
+        image: chosenColorVariant.images?.[0]?.url || null,
+        color: chosenColorVariant.color || null,
+        size: chosenSize.size || null,
+        specs: chosenColorVariant.specs || null
       } : null
     };
 

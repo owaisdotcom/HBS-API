@@ -238,8 +238,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // If a mapping of uploaded files to variants is provided, consume it
-  // Expect req.body.variantImageMap = JSON.stringify([{ variantId, fileIndexes: [0,1] }])
+  // If a mapping of uploaded files to color variants is provided, consume it
+  // Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
   if (req.body.variantImageMap && uploadedUrls.length > 0) {
     let variantImageMap = [];
     try {
@@ -248,21 +248,28 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       variantImageMap = [];
     }
 
-    // Build image lists per variant
+    // Build image lists per color variant
     const variantImagesById = {};
     variantImageMap.forEach(mapping => {
-      const { variantId, fileIndexes } = mapping;
-      if (!variantId || !Array.isArray(fileIndexes)) return;
-      variantImagesById[variantId] = fileIndexes
+      const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
+      if (!colorId) return;
+      
+      const imagesFromFiles = (fileIndexes || [])
         .map(idx => uploadedUrls[idx])
-        .filter(Boolean)
-        .map((url, orderIdx) => ({ url, isPrimary: orderIdx === 0, order: orderIdx }));
+        .filter(Boolean);
+      
+      const allImages = [
+        ...existingUrls.map((url, idx) => ({ url, isPrimary: idx === 0 && imagesFromFiles.length === 0, order: idx })),
+        ...imagesFromFiles.map((url, idx) => ({ url, isPrimary: existingUrls.length === 0 && idx === 0, order: existingUrls.length + idx }))
+      ];
+      
+      variantImagesById[colorId] = allImages;
     });
 
-    // Attach images to corresponding variants in productData
+    // Attach images to corresponding color variants in productData
     if (Array.isArray(productData.variants)) {
       productData.variants = productData.variants.map(variant => {
-        const imgs = variantImagesById[variant.variantId] || [];
+        const imgs = variantImagesById[variant.colorId] || variant.images || [];
         return {
           ...variant,
           images: imgs
@@ -271,9 +278,12 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Derive product stock from variants when present
+  // Derive product stock from all sizes across all color variants
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
-    productData.stock = productData.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    productData.stock = productData.variants.reduce((sum, colorVariant) => {
+      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => sizeSum + (Number(size.stock) || 0), 0);
+      return sum + sizesStock;
+    }, 0);
   }
 
   // If a thumbnail index is provided, use only that as product thumbnail
@@ -400,8 +410,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // If a mapping of uploaded files to variants is provided on update, apply it
-  // Expect req.body.variantImageMap = JSON.stringify([{ variantId, fileIndexes: [0,1], existingUrls: [] }])
+  // If a mapping of uploaded files to color variants is provided on update, apply it
+  // Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
   if (req.body.variantImageMap) {
     let variantImageMap = [];
     try {
@@ -417,22 +427,22 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     });
 
     variantImageMap.forEach(mapping => {
-      const { variantId, fileIndexes = [], existingUrls = [] } = mapping;
+      const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
       const imagesForVariant = [];
 
       existingUrls.forEach((url, idx) => {
-        imagesForVariant.push({ url, isPrimary: idx === 0, order: imagesForVariant.length });
+        imagesForVariant.push({ url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
       });
 
       fileIndexes.forEach((fi) => {
         const url = newImagesByFileIndex[fi];
-        if (url) imagesForVariant.push({ url, isPrimary: imagesForVariant.length === 0, order: imagesForVariant.length });
+        if (url) imagesForVariant.push({ url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
       });
 
-      // Find variant in product and replace its images
-      const variant = product.variants.find(v => v.variantId === variantId);
-      if (variant) {
-        variant.images = imagesForVariant;
+      // Find color variant in product and replace its images
+      const colorVariant = product.variants.find(v => v.colorId === colorId);
+      if (colorVariant) {
+        colorVariant.images = imagesForVariant;
       }
     });
   }
@@ -470,9 +480,12 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Derive product stock from variants when present
+  // Derive product stock from all sizes across all color variants
   if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
-    updateFields.stock = updateFields.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    updateFields.stock = updateFields.variants.reduce((sum, colorVariant) => {
+      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => sizeSum + (Number(size.stock) || 0), 0);
+      return sum + sizesStock;
+    }, 0);
   }
 
   // Convert boolean strings from FormData
