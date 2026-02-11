@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import connectDB from '../config/database.js';
 import Category from '../models/Category.js';
 import Product from '../models/Product.js';
+import PreMadeBundle from '../models/PreMadeBundle.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
@@ -32,6 +33,7 @@ const seedData = async () => {
 
     const categories = (data.categories || []).map(convertOids);
     const products = (data.products || []).map(convertOids);
+    const preMadeBundles = (data.preMadeBundles || []).map(convertOids);
 
     if (categories.length === 0) {
       console.log('No categories in seed file.');
@@ -53,6 +55,14 @@ const seedData = async () => {
     } else {
       await Product.insertMany(products);
       console.log(`✓ Inserted ${products.length} products.`);
+    }
+
+    const existingBundles = await PreMadeBundle.countDocuments({ isDeleted: { $ne: true } });
+    if (existingBundles > 0) {
+      console.log('Pre-made bundles already exist. Skipping pre-made bundle seed. Delete them first to re-seed.');
+    } else if (preMadeBundles.length > 0) {
+      await PreMadeBundle.insertMany(preMadeBundles);
+      console.log(`✓ Inserted ${preMadeBundles.length} pre-made bundles.`);
     }
 
     console.log('✓ Seed completed.');

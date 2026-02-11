@@ -333,5 +333,169 @@
       "metaTitle": "Long Khimar with Slits",
       "metaDescription": "Long khimar with side arm slits. Black and taupe."
     }
+  ],
+  "preMadeBundles": [
+    {
+      "name": "Starter Hijab Bundle",
+      "slug": "starter-hijab-bundle",
+      "shortDescription": "Everything you need to start: 2 hijabs and a pin set.",
+      "description": "Our best-selling starter bundle includes two versatile hijabs in neutral tones and a set of hijab pins. Perfect for everyday wear and easy to mix with your wardrobe.",
+      "price": 3499,
+      "originalPrice": 4299,
+      "compareAtPrice": 4299,
+      "costPrice": 1800,
+      "images": [
+        { "url": "/uploads/bundles/starter-bundle-1.jpg", "alt": "Starter Hijab Bundle", "isPrimary": true, "order": 0 },
+        { "url": "/uploads/bundles/starter-bundle-2.jpg", "alt": "Bundle contents", "isPrimary": false, "order": 1 }
+      ],
+      "features": ["2 premium hijabs", "Hijab pin set", "Neutral colors", "Gift-ready packaging"],
+      "careInstructions": ["Machine wash cold", "Tumble dry low", "Do not bleach"],
+      "specifications": [
+        { "key": "Contents", "value": "2 Hijabs + Pin Set" },
+        { "key": "Fabric", "value": "Viscose Blend" }
+      ],
+      "weight": 0.3,
+      "dimensions": { "length": 30, "width": 25, "height": 5 },
+      "shipping": {
+        "domestic": "Free shipping on orders over PKR 5000",
+        "cod": "Cash on Delivery available",
+        "delivery": "3-5 business days",
+        "returns": "Easy returns within 7 days"
+      },
+      "metaTitle": "Starter Hijab Bundle - Best Value",
+      "metaDescription": "Starter hijab bundle with 2 hijabs and pins. Perfect for beginners.",
+      "tags": ["bundle", "starter", "hijab", "gift"],
+      "status": "active",
+      "displayOrder": 1,
+      "isFeatured": true,
+      "isNewArrival": true,
+      "viewCount": 0,
+      "soldCount": 0,
+      "rating": 0,
+      "reviewCount": 0,
+      "stock": 50,
+      "publishedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Modest Essentials Bundle",
+      "slug": "modest-essentials-bundle",
+      "shortDescription": "Khimar, niqab, and undercap in one value bundle.",
+      "description": "A complete modest wear set: one khimar, one niqab, and a breathable undercap. Ideal for daily use or travel. All items in coordinating colors.",
+      "price": 5999,
+      "originalPrice": 7499,
+      "compareAtPrice": 7499,
+      "costPrice": 3200,
+      "images": [
+        { "url": "/uploads/bundles/essentials-bundle-1.jpg", "alt": "Modest Essentials Bundle", "isPrimary": true, "order": 0 }
+      ],
+      "features": ["1 Khimar", "1 Niqab", "1 Undercap", "Coordinated colors", "Travel-friendly"],
+      "careInstructions": ["Machine wash cold", "Hang to dry", "Low iron if needed"],
+      "specifications": [
+        { "key": "Contents", "value": "Khimar + Niqab + Undercap" },
+        { "key": "Material", "value": "Premium Viscose" }
+      ],
+      "weight": 0.5,
+      "dimensions": { "length": 35, "width": 30, "height": 8 },
+      "shipping": {
+        "domestic": "Free shipping on orders over PKR 5000",
+        "cod": "Cash on Delivery available",
+        "delivery": "3-5 business days",
+        "returns": "Easy returns within 7 days"
+      },
+      "metaTitle": "Modest Essentials Bundle - Khimar, Niqab, Undercap",
+      "metaDescription": "Complete modest wear bundle: khimar, niqab, and undercap. Best value.",
+      "tags": ["bundle", "khimar", "niqab", "modest", "essentials"],
+      "status": "active",
+      "displayOrder": 2,
+      "isFeatured": true,
+      "isNewArrival": false,
+      "viewCount": 0,
+      "soldCount": 0,
+      "rating": 0,
+      "reviewCount": 0,
+      "stock": 30,
+      "publishedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Luxury Gift Bundle",
+      "slug": "luxury-gift-bundle",
+      "shortDescription": "Premium shaylas and a luxury box—perfect for gifting.",
+      "description": "Three premium shaylas in elegant colors, presented in a luxury gift box. Perfect for Eid, weddings, or as a thoughtful gift for someone special.",
+      "price": 8999,
+      "originalPrice": 10999,
+      "compareAtPrice": 10999,
+      "costPrice": 4800,
+      "images": [
+        { "url": "/uploads/bundles/luxury-gift-1.jpg", "alt": "Luxury Gift Bundle", "isPrimary": true, "order": 0 },
+        { "url": "/uploads/bundles/luxury-gift-2.jpg", "alt": "Gift box", "isPrimary": false, "order": 1 }
+      ],
+      "features": ["3 Premium shaylas", "Luxury gift box", "Eid & wedding ready", "Gift message option"],
+      "careInstructions": ["Dry clean recommended", "Cool iron", "Store in box"],
+      "specifications": [
+        { "key": "Contents", "value": "3 Shaylas + Gift Box" },
+        { "key": "Fabric", "value": "Chiffon & Silk Blend" }
+      ],
+      "weight": 0.6,
+      "dimensions": { "length": 40, "width": 35, "height": 10 },
+      "shipping": {
+        "domestic": "Free shipping on orders over PKR 5000",
+        "cod": "Cash on Delivery available",
+        "delivery": "3-5 business days",
+        "returns": "Easy returns within 7 days"
+      },
+      "metaTitle": "Luxury Gift Bundle - Premium Shaylas",
+      "metaDescription": "Luxury gift bundle with 3 premium shaylas and gift box. Perfect for Eid and weddings.",
+      "tags": ["bundle", "luxury", "gift", "shayla", "eid"],
+      "status": "active",
+      "displayOrder": 3,
+      "isFeatured": true,
+      "isNewArrival": true,
+      "viewCount": 0,
+      "soldCount": 0,
+      "rating": 0,
+      "reviewCount": 0,
+      "stock": 40,
+      "publishedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Everyday Comfort Bundle",
+      "slug": "everyday-comfort-bundle",
+      "shortDescription": "Three jersey hijabs for daily rotation at a great price.",
+      "description": "Three soft jersey hijabs in easy-to-match colors. Perfect for work, school, or casual wear. Stretch fabric stays in place all day.",
+      "price": 2499,
+      "originalPrice": 2999,
+      "compareAtPrice": 2999,
+      "costPrice": 1200,
+      "images": [
+        { "url": "/uploads/bundles/comfort-bundle-1.jpg", "alt": "Everyday Comfort Bundle", "isPrimary": true, "order": 0 }
+      ],
+      "features": ["3 Jersey hijabs", "Stretch & comfortable", "Easy care", "Everyday colors"],
+      "careInstructions": ["Machine wash cold", "Tumble dry low", "No iron needed"],
+      "specifications": [
+        { "key": "Contents", "value": "3 Jersey Hijabs" },
+        { "key": "Material", "value": "Jersey Cotton Blend" }
+      ],
+      "weight": 0.25,
+      "dimensions": { "length": 28, "width": 22, "height": 4 },
+      "shipping": {
+        "domestic": "Free shipping on orders over PKR 5000",
+        "cod": "Cash on Delivery available",
+        "delivery": "3-5 business days",
+        "returns": "Easy returns within 7 days"
+      },
+      "metaTitle": "Everyday Comfort Bundle - 3 Jersey Hijabs",
+      "metaDescription": "Three jersey hijabs for everyday wear. Comfortable and affordable.",
+      "tags": ["bundle", "jersey", "everyday", "comfort"],
+      "status": "active",
+      "displayOrder": 4,
+      "isFeatured": false,
+      "isNewArrival": false,
+      "viewCount": 0,
+      "soldCount": 0,
+      "rating": 0,
+      "reviewCount": 0,
+      "stock": 100,
+      "publishedAt": "2025-01-01T00:00:00.000Z"
+    }
   ]
 }

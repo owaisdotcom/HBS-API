@@ -682,7 +682,9 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
   const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
   if (!product) {
-    return next(new ApiError('Product not found', 404));
+    return res.status(200).json(
+      new ApiResponse(200, { products: [] }, 'Product not found')
+    );
   }
 
   const relatedProducts = await Product.find({

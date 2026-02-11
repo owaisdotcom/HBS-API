@@ -149,11 +149,16 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     if (!bundle) {
       return next(new ApiError('Pre-made bundle not found or inactive', 404));
     }
+    const bundleStock = Number(bundle.stock) ?? 0;
     let cart = await Cart.findOne({ userId: req.user.id });
     if (!cart) {
       cart = await Cart.create({ userId: req.user.id, items: [] });
     }
     const existingIndex = cart.items.findIndex(item => item.preMadeBundleId?.toString() === preMadeBundleId);
+    const newQty = existingIndex > -1 ? cart.items[existingIndex].quantity + quantity : quantity;
+    if (bundleStock < newQty) {
+      return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${newQty}`, 400));
+    }
     if (existingIndex > -1) {
       cart.items[existingIndex].quantity += quantity;
     } else {
@@ -306,20 +311,28 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Item not found in cart', 404));
   }
 
-  // Check stock availability
-  const product = await Product.findById(item.productId);
-  if (!product) {
-    return next(new ApiError('Product not found', 404));
-  }
-
   if (item.preMadeBundleId) {
+    const bundle = await PreMadeBundle.findOne({ _id: item.preMadeBundleId, status: 'active' });
+    if (!bundle) {
+      return next(new ApiError('Pre-made bundle not found or inactive', 404));
+    }
+    const bundleStock = Number(bundle.stock) ?? 0;
+    if (bundleStock < quantity) {
+      return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${quantity}`, 400));
+    }
     item.quantity = quantity;
     await cart.save();
     const populatedCart = await Cart.findById(cart._id)
       .populate('items.productId', 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status')
-      .populate('items.preMadeBundleId', 'name slug price compareAtPrice images status');
+      .populate('items.preMadeBundleId', 'name slug price compareAtPrice images status stock');
     const payload = await buildCartResponse(populatedCart);
     return res.json(new ApiResponse(200, payload, 'Cart updated successfully'));
+  }
+
+  // Check stock availability (product)
+  const product = await Product.findById(item.productId);
+  if (!product) {
+    return next(new ApiError('Product not found', 404));
   }
 
   let colorV = null;

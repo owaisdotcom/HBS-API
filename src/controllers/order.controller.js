@@ -46,6 +46,10 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         return next(new ApiError(`Pre-made bundle ${item.preMadeBundleId} not found or inactive`, 404));
       }
       const qty = Math.max(1, Number(item.quantity) || 1);
+      const bundleStock = Number(bundle.stock) ?? 0;
+      if (bundleStock < qty) {
+        return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${qty}`, 400));
+      }
       const itemSubtotal = bundle.price * qty;
       subtotal += itemSubtotal;
       orderItems.push({
@@ -220,9 +224,19 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Reduce variant stock and recompute product stock
+  // Reduce bundle stock and increment soldCount for pre-made bundle items
+  for (const item of orderItems) {
+    if (item.preMadeBundleId) {
+      await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
+        $inc: { stock: -item.quantity, soldCount: item.quantity }
+      });
+    }
+  }
+
+  // Reduce variant stock and recompute product stock (skip pre-made bundle items)
   const touchedProductIds = new Set();
   for (const item of orderItems) {
+    if (item.productId == null) continue; // pre-made bundle item, no product stock to update
     if (item.variantId) {
       const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
       if (prod && Array.isArray(prod.variants)) {
@@ -379,7 +393,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   };
 
   if (order.status === status) {
-    return next(new ApiError('Order is already in this status', 400));
+    return res.json(
+      new ApiResponse(200, { order }, 'Order is already in this status')
+    );
   }
 
   const nextStatuses = allowedTransitions[order.status] || [];
@@ -405,6 +421,13 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   if (status === 'cancelled') {
     const touchedProductIds = new Set();
     for (const item of order.items) {
+      if (item.preMadeBundleId) {
+        await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
+          $inc: { stock: item.quantity, soldCount: -item.quantity }
+        });
+        continue;
+      }
+      if (item.productId == null) continue;
       if (item.variantId) {
         await Product.updateOne(
           { _id: item.productId, 'variants.variantId': item.variantId },
@@ -477,6 +500,10 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order not found', 404));
   }
 
+  if (order.status === 'cancelled') {
+    return next(new ApiError('Cannot verify or reject payment for a cancelled order', 400));
+  }
+
   if (!order.paymentReceipt || !order.paymentReceipt.url) {
     return next(new ApiError('No receipt uploaded for this order', 400));
   }
@@ -521,6 +548,13 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
   if (!isVerified && order.status === 'cancelled') {
     const touchedProductIds = new Set();
     for (const item of order.items) {
+      if (item.preMadeBundleId) {
+        await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
+          $inc: { stock: item.quantity, soldCount: -item.quantity }
+        });
+        continue;
+      }
+      if (item.productId == null) continue;
       if (item.variantId) {
         await Product.updateOne(
           { _id: item.productId, 'variants.variantId': item.variantId },

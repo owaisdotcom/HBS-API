@@ -44,8 +44,27 @@ export const createOrderValidator = [
     .withMessage('Order must contain at least one item'),
   
   body('items.*.productId')
+    .optional({ values: 'null' })
     .isMongoId()
     .withMessage('Invalid product ID'),
+  
+  body('items.*.preMadeBundleId')
+    .optional({ values: 'null' })
+    .isMongoId()
+    .withMessage('Invalid pre-made bundle ID'),
+  
+  body('items.*')
+    .custom((item) => {
+      const hasProduct = item?.productId != null && String(item.productId).trim() !== '';
+      const hasBundle = item?.preMadeBundleId != null && String(item.preMadeBundleId).trim() !== '';
+      if (!hasProduct && !hasBundle) {
+        throw new Error('Each item must have either productId or preMadeBundleId');
+      }
+      if (hasProduct && hasBundle) {
+        throw new Error('Each item must have either productId or preMadeBundleId, not both');
+      }
+      return true;
+    }),
   
   body('items.*.quantity')
     .isInt({ min: 1 })
