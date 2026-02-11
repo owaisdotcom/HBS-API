@@ -13,6 +13,8 @@ import contactRoutes from './contact.routes.js';
 import uploadRoutes from './upload.routes.js';
 import announcementRoutes from './announcement.routes.js';
 import testEmailRoutes from './test-email.routes.js';
+import bundleCategoryRoutes from './bundleCategory.routes.js';
+import preMadeBundleRoutes from './preMadeBundle.routes.js';
 
 const router = express.Router();
 
@@ -30,6 +32,8 @@ router.use('/reviews', reviewRoutes);
 router.use('/homepage', homepageRoutes);
 router.use('/contact', contactRoutes);
 router.use('/announcements', announcementRoutes);
+router.use('/bundle-categories', bundleCategoryRoutes);
+router.use('/pre-made-bundles', preMadeBundleRoutes);
 
 // Test routes (only in development)
 if (process.env.NODE_ENV === 'development') {

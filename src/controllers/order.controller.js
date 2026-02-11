@@ -1,16 +1,21 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import PreMadeBundle from '../models/PreMadeBundle.js';
 import Coupon from '../models/Coupon.js';
 import User from '../models/User.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
 
 const recomputeProductStock = async (productId) => {
-  const product = await Product.findById(productId, 'variants');
+  const product = await Product.findById(productId, 'variants').lean();
   if (!product) return;
-  const totalStock = (product.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  const totalStock = (product.variants || []).reduce(
+    (sum, v) => sum + (v.sizes || []).reduce((s, sz) => s + (Number(sz.stock) || 0), 0),
+    0
+  );
   await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
 };
 
@@ -35,38 +40,78 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const orderItems = [];
 
   for (const item of items) {
-    const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } });
+    if (item.preMadeBundleId) {
+      const bundle = await PreMadeBundle.findOne({ _id: item.preMadeBundleId, status: 'active' });
+      if (!bundle) {
+        return next(new ApiError(`Pre-made bundle ${item.preMadeBundleId} not found or inactive`, 404));
+      }
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const itemSubtotal = bundle.price * qty;
+      subtotal += itemSubtotal;
+      orderItems.push({
+        productId: null,
+        preMadeBundleId: bundle._id,
+        productName: bundle.name,
+        productImage: bundle.images?.[0]?.url || '',
+        sku: null,
+        variantId: null,
+        variantSnapshot: null,
+        price: bundle.price,
+        quantity: qty,
+        selectedColor: null,
+        selectedSize: null,
+        subtotal: itemSubtotal
+      });
+      continue;
+    }
 
+    const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }).lean();
     if (!product) {
       return next(new ApiError(`Product ${item.productId} not found`, 404));
     }
 
-    // If a variantId is provided, prefer variant stock/price/sku
     let chosenVariant = null;
     if (item.variantId && Array.isArray(product.variants)) {
-      chosenVariant = product.variants.find(v => v.variantId === item.variantId);
+      let colorV = null;
+      let sizeV = null;
+      for (const v of product.variants) {
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+        if (s) {
+          colorV = v;
+          sizeV = s;
+          break;
+        }
+      }
+      chosenVariant = sizeV ? { ...sizeV, images: colorV.images, color: colorV.color, size: sizeV.size } : null;
       if (!chosenVariant) {
         return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
       }
-      if (chosenVariant.stock < item.quantity) {
-        return next(new ApiError(`Insufficient stock for ${product.name} (variant)`, 400));
+      const variantStock = Number(sizeV.stock) || 0;
+      const requestedQty = Number(item.quantity) || 0;
+      if (variantStock < requestedQty) {
+        return next(new ApiError(`Insufficient stock for ${product.name} (variant). Available: ${variantStock}, requested: ${requestedQty}`, 400));
       }
     } else {
-      if (product.stock < item.quantity) {
-        return next(new ApiError(`Insufficient stock for ${product.name}`, 400));
+      const productStock = Number(product.stock) || 0;
+      const requestedQty = Number(item.quantity) || 0;
+      if (productStock < requestedQty) {
+        return next(new ApiError(`Insufficient stock for ${product.name}. Available: ${productStock}, requested: ${requestedQty}`, 400));
       }
     }
 
     const unitPrice = chosenVariant?.price ?? product.price;
-    const itemSubtotal = unitPrice * item.quantity;
-    subtotal += itemSubtotal;
+    const rule = item.variantId ? await getBundleRule(item.productId, item.variantId) : null;
+    const computed = computeLineWithBundle(unitPrice, item.quantity, rule);
+    subtotal += computed.effectiveLineTotal;
+    const effectiveUnitPrice = computed.effectiveLineTotal / item.quantity;
 
     orderItems.push({
       productId: product._id,
+      preMadeBundleId: null,
       productName: product.name,
-      productImage: (chosenVariant?.images?.[0]?.url) || product.images[0]?.url || '',
+      productImage: (chosenVariant?.images?.[0]?.url) || (product.images?.[0]?.url) || '',
       sku: chosenVariant?.sku || product.sku,
-      variantId: chosenVariant?.variantId || null,
+      variantId: item.variantId || null,
       variantSnapshot: chosenVariant ? {
         sku: chosenVariant.sku || null,
         price: chosenVariant.price || null,
@@ -75,11 +120,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         size: chosenVariant.size || null,
         specs: chosenVariant.specs || null
       } : null,
-      price: unitPrice,
+      price: effectiveUnitPrice,
       quantity: item.quantity,
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
-      subtotal: itemSubtotal
+      subtotal: computed.effectiveLineTotal
     });
   }
 
@@ -179,16 +224,31 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const touchedProductIds = new Set();
   for (const item of orderItems) {
     if (item.variantId) {
-      await Product.updateOne(
-        { _id: item.productId, 'variants.variantId': item.variantId },
-        {
-          $inc: {
-            soldCount: item.quantity,
-            'variants.$[v].stock': -item.quantity
+      const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
+      if (prod && Array.isArray(prod.variants)) {
+        let colorId = null;
+        let sizeId = null;
+        for (const v of prod.variants) {
+          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+          if (s) {
+            colorId = v.colorId;
+            sizeId = s.sizeId;
+            break;
           }
-        },
-        { arrayFilters: [{ 'v.variantId': item.variantId }] }
-      );
+        }
+        if (colorId != null && sizeId != null) {
+          await Product.updateOne(
+            { _id: item.productId },
+            {
+              $inc: {
+                soldCount: item.quantity,
+                'variants.$[c].sizes.$[s].stock': -item.quantity
+              }
+            },
+            { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+          );
+        }
+      }
     } else {
       await Product.findByIdAndUpdate(item.productId, {
         $inc: { stock: -item.quantity, soldCount: item.quantity }

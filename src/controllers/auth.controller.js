@@ -6,10 +6,14 @@ import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { sendVerificationEmail, sendVerificationOTP, sendPasswordResetEmail, sendWelcomeEmail } from '../services/email.service.js';
 
-// Generate JWT token
+// Generate JWT token (requires JWT_SECRET in .env)
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+  const secret = process.env.JWT_SECRET;
+  if (!secret || String(secret).trim() === '') {
+    throw new ApiError('Server configuration error: JWT_SECRET is not set. Add JWT_SECRET to your .env file.', 500);
+  }
+  return jwt.sign({ id }, secret, {
+    expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 };
 

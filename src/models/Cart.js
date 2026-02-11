@@ -4,7 +4,12 @@ const cartItemSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-    required: true
+    default: null
+  },
+  preMadeBundleId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PreMadeBundle',
+    default: null
   },
   quantity: {
     type: Number,
@@ -57,9 +62,8 @@ const cartSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt field on save
-cartSchema.pre('save', function(next) {
+cartSchema.pre('save', async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 // Indexes

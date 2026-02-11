@@ -84,8 +84,11 @@ export const getProductsValidator = [
   
   query('limit')
     .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100'),
+    .customSanitizer((val) => {
+      const n = parseInt(val, 10);
+      if (val === undefined || val === null || val === '' || Number.isNaN(n) || n < 1 || n > 100) return 20;
+      return n;
+    }),
   
   query('minPrice')
     .optional()

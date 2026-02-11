@@ -6,7 +6,8 @@ const connectDB = async () => {
       return mongoose.connection;
     }
 
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    const mongoUri = process.env.MONGODB_URI_LOCAL || 'mongodb://localhost:27017/hbs-ecommers';
+    const conn = await mongoose.connect(mongoUri);
 
     console.log(`✓ MongoDB Connected: ${conn.connection.host}`);
     console.log(`✓ Database: ${conn.connection.name}`);

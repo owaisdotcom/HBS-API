@@ -1,0 +1,337 @@
+{
+  "categories": [
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439001" },
+      "name": "Hijab",
+      "slug": "hijab",
+      "description": "Modest Islamic head coverings including khimars, niqabs, shaylas, and jersey hijabs.",
+      "parentId": null,
+      "level": 0,
+      "path": [],
+      "displayOrder": 1,
+      "status": "active",
+      "metaTitle": "Hijab Collection - Modest Islamic Headwear",
+      "metaDescription": "Shop our collection of hijabs, khimars, niqabs and modest wear."
+    },
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439002" },
+      "name": "Khimar",
+      "slug": "khimar",
+      "description": "Full-length hijab that covers the head, neck and shoulders in one piece.",
+      "parentId": { "$oid": "507f1f77bcf86cd799439001" },
+      "level": 1,
+      "path": [{ "$oid": "507f1f77bcf86cd799439001" }],
+      "displayOrder": 1,
+      "status": "active",
+      "metaTitle": "Khimar Hijabs",
+      "metaDescription": "Elegant khimar style hijabs for full coverage."
+    },
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439003" },
+      "name": "Niqab",
+      "slug": "niqab",
+      "description": "Face-covering worn with hijab for additional modesty.",
+      "parentId": { "$oid": "507f1f77bcf86cd799439001" },
+      "level": 1,
+      "path": [{ "$oid": "507f1f77bcf86cd799439001" }],
+      "displayOrder": 2,
+      "status": "active",
+      "metaTitle": "Niqabs - Face Veils",
+      "metaDescription": "Comfortable niqabs in various styles and colors."
+    },
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439004" },
+      "name": "Shayla",
+      "slug": "shayla",
+      "description": "Long rectangular scarf worn wrapped around the head and pinned.",
+      "parentId": { "$oid": "507f1f77bcf86cd799439001" },
+      "level": 1,
+      "path": [{ "$oid": "507f1f77bcf86cd799439001" }],
+      "displayOrder": 3,
+      "status": "active",
+      "metaTitle": "Shayla Scarves",
+      "metaDescription": "Lightweight shaylas in premium fabrics."
+    },
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439005" },
+      "name": "Jersey Hijab",
+      "slug": "jersey-hijab",
+      "description": "Stretch jersey fabric hijabs for everyday comfort.",
+      "parentId": { "$oid": "507f1f77bcf86cd799439001" },
+      "level": 1,
+      "path": [{ "$oid": "507f1f77bcf86cd799439001" }],
+      "displayOrder": 4,
+      "status": "active",
+      "metaTitle": "Jersey Hijabs",
+      "metaDescription": "Soft, stretchy jersey hijabs that stay in place."
+    }
+  ],
+  "products": [
+    {
+      "name": "Classic Black Khimar",
+      "slug": "classic-black-khimar",
+      "description": "A timeless full-length khimar in premium black fabric. Covers head, neck and shoulders with a flowing, elegant drape. Perfect for daily wear or special occasions.",
+      "shortDescription": "Full-length black khimar, premium fabric.",
+      "categoryId": { "$oid": "507f1f77bcf86cd799439002" },
+      "categoryPath": [{ "$oid": "507f1f77bcf86cd799439001" }, { "$oid": "507f1f77bcf86cd799439002" }],
+      "price": 24.99,
+      "originalPrice": 29.99,
+      "costPrice": 12.00,
+      "images": [
+        { "url": "/uploads/khimar-black-1.jpg", "alt": "Classic Black Khimar front", "isPrimary": true, "order": 1 },
+        { "url": "/uploads/khimar-black-2.jpg", "alt": "Classic Black Khimar side", "isPrimary": false, "order": 2 }
+      ],
+      "variants": [
+        {
+          "colorId": "black",
+          "color": "Black",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "KHM-BLK-OS", "price": 24.99, "stock": 50, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "navy",
+          "color": "Navy",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "KHM-NVY-OS", "price": 24.99, "stock": 35, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        }
+      ],
+      "stock": 85,
+      "sku": "KHM-CL-BLK",
+      "stockStatus": "in_stock",
+      "lowStockThreshold": 10,
+      "features": ["Full coverage", "Lightweight", "Easy care", "No slip"],
+      "careInstructions": ["Machine wash cold", "Tumble dry low", "Do not iron on high"],
+      "specifications": [
+        { "key": "Material", "value": "Premium Viscose Blend" },
+        { "key": "Length", "value": "Approx. 55 inches" }
+      ],
+      "weight": 0.2,
+      "tags": ["khimar", "black", "full-coverage", "modest"],
+      "status": "active",
+      "isFeatured": true,
+      "isNewArrival": false,
+      "metaTitle": "Classic Black Khimar - Hijabs by Shiza",
+      "metaDescription": "Shop the Classic Black Khimar. Full-length, premium fabric, multiple colors."
+    },
+    {
+      "name": "Bisht Style Niqab",
+      "slug": "bisht-style-niqab",
+      "description": "Comfortable two-piece niqab with adjustable nose bridge. Breathable fabric with a wide eye opening. Pairs perfectly with any khimar or hijab.",
+      "shortDescription": "Two-piece niqab with nose bridge, breathable.",
+      "categoryId": { "$oid": "507f1f77bcf86cd799439003" },
+      "categoryPath": [{ "$oid": "507f1f77bcf86cd799439001" }, { "$oid": "507f1f77bcf86cd799439003" }],
+      "price": 14.99,
+      "originalPrice": 18.99,
+      "costPrice": 6.00,
+      "images": [
+        { "url": "/uploads/niqab-bisht-1.jpg", "alt": "Bisht Style Niqab", "isPrimary": true, "order": 1 }
+      ],
+      "variants": [
+        {
+          "colorId": "black",
+          "color": "Black",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "NIQ-BIS-BLK", "price": 14.99, "stock": 60, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "burgundy",
+          "color": "Burgundy",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "NIQ-BIS-BUR", "price": 14.99, "stock": 40, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        }
+      ],
+      "stock": 100,
+      "sku": "NIQ-BIS-01",
+      "stockStatus": "in_stock",
+      "lowStockThreshold": 10,
+      "features": ["Adjustable nose bridge", "Breathable", "Wide eye opening", "Two-piece design"],
+      "careInstructions": ["Hand wash recommended", "Line dry"],
+      "specifications": [
+        { "key": "Material", "value": "Cotton Blend" },
+        { "key": "Style", "value": "Two-piece with nose piece" }
+      ],
+      "tags": ["niqab", "face-veil", "modest", "bisht"],
+      "status": "active",
+      "isFeatured": true,
+      "isNewArrival": true,
+      "metaTitle": "Bisht Style Niqab - Face Veil",
+      "metaDescription": "Comfortable two-piece niqab with adjustable nose bridge. Black and burgundy."
+    },
+    {
+      "name": "Embroidered Shayla",
+      "slug": "embroidered-shayla",
+      "description": "Elegant long shayla with subtle embroidered border. Lightweight and flowy, ideal for warm weather. Available in a range of neutral and jewel tones.",
+      "shortDescription": "Long shayla with embroidered border, lightweight.",
+      "categoryId": { "$oid": "507f1f77bcf86cd799439004" },
+      "categoryPath": [{ "$oid": "507f1f77bcf86cd799439001" }, { "$oid": "507f1f77bcf86cd799439004" }],
+      "price": 19.99,
+      "originalPrice": 24.99,
+      "costPrice": 9.00,
+      "images": [
+        { "url": "/uploads/shayla-emb-1.jpg", "alt": "Embroidered Shayla", "isPrimary": true, "order": 1 }
+      ],
+      "variants": [
+        {
+          "colorId": "dusty-rose",
+          "color": "Dusty Rose",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "SHY-EMB-ROSE", "price": 19.99, "stock": 25, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "sage",
+          "color": "Sage",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "SHY-EMB-SAGE", "price": 19.99, "stock": 30, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "charcoal",
+          "color": "Charcoal",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "SHY-EMB-CHAR", "price": 19.99, "stock": 20, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        }
+      ],
+      "stock": 75,
+      "sku": "SHY-EMB-01",
+      "stockStatus": "in_stock",
+      "lowStockThreshold": 10,
+      "features": ["Embroidered border", "Lightweight", "Breathable", "Versatile styling"],
+      "careInstructions": ["Machine wash cold", "Hang to dry", "Cool iron if needed"],
+      "specifications": [
+        { "key": "Material", "value": "Chiffon with cotton border" },
+        { "key": "Dimensions", "value": "80 x 24 inches" }
+      ],
+      "tags": ["shayla", "embroidered", "chiffon", "elegant"],
+      "status": "active",
+      "isFeatured": false,
+      "isNewArrival": true,
+      "metaTitle": "Embroidered Shayla - Hijabs by Shiza",
+      "metaDescription": "Elegant embroidered shayla in dusty rose, sage and charcoal."
+    },
+    {
+      "name": "Jersey Hijab - Everyday Collection",
+      "slug": "jersey-hijab-everyday",
+      "description": "Our best-selling jersey hijab. Stretchy, soft and stays in place all day. No pins needed. Perfect for work, school or casual wear.",
+      "shortDescription": "Stretchy jersey hijab, no pins needed.",
+      "categoryId": { "$oid": "507f1f77bcf86cd799439005" },
+      "categoryPath": [{ "$oid": "507f1f77bcf86cd799439001" }, { "$oid": "507f1f77bcf86cd799439005" }],
+      "price": 12.99,
+      "originalPrice": 15.99,
+      "costPrice": 5.00,
+      "images": [
+        { "url": "/uploads/jersey-everyday-1.jpg", "alt": "Jersey Hijab Everyday", "isPrimary": true, "order": 1 }
+      ],
+      "variants": [
+        {
+          "colorId": "black",
+          "color": "Black",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "JER-EV-BLK", "price": 12.99, "stock": 100, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "grey",
+          "color": "Grey",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "JER-EV-GRY", "price": 12.99, "stock": 80, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "burgundy",
+          "color": "Burgundy",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "JER-EV-BUR", "price": 12.99, "stock": 45, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "forest-green",
+          "color": "Forest Green",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "JER-EV-GRN", "price": 12.99, "stock": 55, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        }
+      ],
+      "stock": 280,
+      "sku": "JER-EV-01",
+      "stockStatus": "in_stock",
+      "lowStockThreshold": 10,
+      "features": ["No pins needed", "Stretch fabric", "Machine washable", "One size fits most"],
+      "careInstructions": ["Machine wash cold", "Tumble dry low", "Do not bleach"],
+      "specifications": [
+        { "key": "Material", "value": "95% Cotton, 5% Spandex Jersey" },
+        { "key": "Fit", "value": "One size - stretches to fit" }
+      ],
+      "tags": ["jersey", "hijab", "everyday", "no-pins", "comfort"],
+      "status": "active",
+      "isFeatured": true,
+      "isNewArrival": false,
+      "metaTitle": "Jersey Hijab Everyday - Hijabs by Shiza",
+      "metaDescription": "Soft stretchy jersey hijab that stays in place. Black, grey, burgundy, forest green."
+    },
+    {
+      "name": "Long Khimar with Slits",
+      "slug": "long-khimar-with-slits",
+      "description": "Elegant long khimar with side arm slits for ease of movement. Flowing silhouette in premium fabric. Ideal for prayer and daily wear.",
+      "shortDescription": "Long khimar with arm slits, flowing fit.",
+      "categoryId": { "$oid": "507f1f77bcf86cd799439002" },
+      "categoryPath": [{ "$oid": "507f1f77bcf86cd799439001" }, { "$oid": "507f1f77bcf86cd799439002" }],
+      "price": 29.99,
+      "originalPrice": 35.99,
+      "costPrice": 14.00,
+      "images": [
+        { "url": "/uploads/khimar-long-slits-1.jpg", "alt": "Long Khimar with Slits", "isPrimary": true, "order": 1 }
+      ],
+      "variants": [
+        {
+          "colorId": "black",
+          "color": "Black",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "KHM-LNG-BLK", "price": 29.99, "stock": 40, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        },
+        {
+          "colorId": "taupe",
+          "color": "Taupe",
+          "sizes": [
+            { "sizeId": "one-size", "size": "One Size", "sku": "KHM-LNG-TAU", "price": 29.99, "stock": 28, "stockStatus": "in_stock", "isActive": true }
+          ],
+          "isActive": true
+        }
+      ],
+      "stock": 68,
+      "sku": "KHM-LNG-01",
+      "stockStatus": "in_stock",
+      "lowStockThreshold": 10,
+      "features": ["Arm slits", "Extra length", "Premium drape", "Prayer-friendly"],
+      "careInstructions": ["Machine wash cold", "Hang to dry", "Low iron"],
+      "specifications": [
+        { "key": "Material", "value": "Viscose Crepe" },
+        { "key": "Length", "value": "Approx. 65 inches" }
+      ],
+      "tags": ["khimar", "long", "slits", "prayer"],
+      "status": "active",
+      "isFeatured": false,
+      "isNewArrival": true,
+      "metaTitle": "Long Khimar with Slits",
+      "metaDescription": "Long khimar with side arm slits. Black and taupe."
+    }
+  ]
+}

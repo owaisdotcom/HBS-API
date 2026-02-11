@@ -66,6 +66,7 @@ const productSchema = new mongoose.Schema({
       price: { type: Number, required: true, min: [0, 'Price cannot be negative'] },
       originalPrice: Number,
       costPrice: Number,
+      discount: { type: Number, min: [0, 'Discount cannot be negative'], default: 0 }, // Fixed Rs discount off this variant
       stock: {
         type: Number,
         min: [0, 'Stock cannot be negative'],

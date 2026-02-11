@@ -46,7 +46,13 @@ const orderSchema = new mongoose.Schema({
   items: [{
     productId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product'
+      ref: 'Product',
+      default: null
+    },
+    preMadeBundleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PreMadeBundle',
+      default: null
     },
     productName: String,
     productImage: String,

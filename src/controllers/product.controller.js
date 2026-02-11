@@ -410,44 +410,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // If a mapping of uploaded files to color variants is provided on update, apply it
-  // Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
-  if (req.body.variantImageMap) {
-    let variantImageMap = [];
-    try {
-      variantImageMap = JSON.parse(req.body.variantImageMap);
-    } catch (e) {
-      variantImageMap = [];
-    }
-
-    // Build newImagesByFileIndex map for uploadedNewImages
-    const newImagesByFileIndex = {};
-    uploadedNewImages.forEach(img => {
-      newImagesByFileIndex[img.fileIndex] = img.url;
-    });
-
-    variantImageMap.forEach(mapping => {
-      const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
-      const imagesForVariant = [];
-
-      existingUrls.forEach((url, idx) => {
-        imagesForVariant.push({ url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
-      });
-
-      fileIndexes.forEach((fi) => {
-        const url = newImagesByFileIndex[fi];
-        if (url) imagesForVariant.push({ url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
-      });
-
-      // Find color variant in product and replace its images
-      const colorVariant = product.variants.find(v => v.colorId === colorId);
-      if (colorVariant) {
-        colorVariant.images = imagesForVariant;
-      }
-    });
-  }
-
-  // Update fields
+  // Update fields (variant images applied after so they are not overwritten by request variants)
   const updateFields = { ...req.body };
 
   // Parse JSON strings if present
@@ -528,6 +491,36 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       product[key] = updateFields[key];
     }
   });
+
+  // Apply variant images after updateFields so request variants don't overwrite them
+  // Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
+  if (req.body.variantImageMap && Array.isArray(product.variants) && product.variants.length > 0) {
+    let variantImageMap = [];
+    try {
+      variantImageMap = JSON.parse(req.body.variantImageMap);
+    } catch (e) {
+      variantImageMap = [];
+    }
+    const newImagesByFileIndex = {};
+    (uploadedNewImages || []).forEach(img => {
+      newImagesByFileIndex[img.fileIndex] = img.url;
+    });
+    variantImageMap.forEach(mapping => {
+      const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
+      const imagesForVariant = [];
+      existingUrls.forEach((url, idx) => {
+        imagesForVariant.push({ url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
+      });
+      (fileIndexes || []).forEach((fi) => {
+        const url = newImagesByFileIndex[fi];
+        if (url) imagesForVariant.push({ url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
+      });
+      const colorVariant = product.variants.find(v => v.colorId === colorId);
+      if (colorVariant) {
+        colorVariant.images = imagesForVariant;
+      }
+    });
+  }
 
   // Save product
   await product.save();

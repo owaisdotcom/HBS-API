@@ -18,7 +18,8 @@ router.use(protect);
 
 router.get('/', getCart);
 router.post('/add', [
-  body('productId').isMongoId().withMessage('Invalid product ID'),
+  body('productId').optional().isMongoId().withMessage('Invalid product ID'),
+  body('preMadeBundleId').optional().isMongoId().withMessage('Invalid pre-made bundle ID'),
   body('quantity').optional().isInt({ min: 1 }).withMessage('Quantity must be at least 1')
 ], validate, addToCart);
 router.put('/update/:itemId', [
