@@ -500,12 +500,20 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order not found', 404));
   }
 
-  if (order.status === 'cancelled') {
-    return next(new ApiError('Cannot verify or reject payment for a cancelled order', 400));
-  }
-
   if (!order.paymentReceipt || !order.paymentReceipt.url) {
     return next(new ApiError('No receipt uploaded for this order', 400));
+  }
+
+  // Reject on cancelled order: allow as no-op (ensure paymentStatus = failed, already cancelled)
+  if (order.status === 'cancelled') {
+    if (isVerified) {
+      return next(new ApiError('Cannot verify payment for a cancelled order', 400));
+    }
+    order.paymentStatus = 'failed';
+    await order.save();
+    return res.json(
+      new ApiResponse(200, { order }, 'Payment already rejected for this order')
+    );
   }
 
   if (isVerified) {
