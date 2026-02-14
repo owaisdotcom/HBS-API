@@ -1,0 +1,74 @@
+{
+  "title": "Terms & Conditions",
+  "introText": "Welcome to Hijabs By Shiza (HBS), Pakistan's premier modest fashion brand and the first in the country to introduce genuine crinkle silk hijabs and niqabs. By accessing and using our website, you agree to comply with and be bound by the following terms and conditions. Please read them carefully before using our services.",
+  "lastUpdated": "2026-02-14",
+  "acceptanceText": "By using our website and services, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions.",
+  "sections": [
+    {
+      "heading": "1. General Terms",
+      "content": "By using this website, you confirm that you accept these terms and conditions and agree to comply with them. If you do not agree with any part of these terms, you must not use our website.\n\nWe reserve the right to modify these terms at any time. Your continued use of the website following any changes constitutes acceptance of those changes.",
+      "order": 0,
+      "style": "default"
+    },
+    {
+      "heading": "2. Products and Services",
+      "content": "All products and descriptions on our website are subject to availability. We make every effort to display accurate colors and images, but we cannot guarantee that your device's display will accurately reflect the actual color of the product.\n\nPrices are subject to change without notice. We reserve the right to modify or discontinue products at any time without liability.",
+      "order": 1,
+      "style": "default"
+    },
+    {
+      "heading": "The Color Disclaimer",
+      "content": "We try our best to display the colours or images of the products as accurately as possible, but cannot guarantee that what you see is an exact representation.\n\nWe do not assure an exact coloration match because of lighting effects and various platforms on which you see our products like laptops, mobiles, desktops and tablets.\n\nNote: Just because products have the same color name that does not mean they are the same exact color. Also, don't mistake the color name to be what you may think that color should be. Example, just because a color may have the name Teal, it does not mean it will necessarily look like what most people would consider being a Teal color.",
+      "order": 2,
+      "style": "highlight"
+    },
+    {
+      "heading": "3. Orders and Payment",
+      "content": "When you place an order, you are making an offer to purchase products. We reserve the right to accept or decline your order for any reason.\n\nPayment must be made in full before order processing. We accept bank transfers to our designated account. After making the payment, you are required to upload the payment receipt on our website during checkout.\n\nAll payment receipts will be manually verified within 2-4 hours. Your order will be processed only after successful verification of the payment receipt.\n\nBy providing payment information and uploading a receipt, you confirm that you have made the payment and that the receipt provided is genuine and accurate.",
+      "order": 3,
+      "style": "default"
+    },
+    {
+      "heading": "4. Shipping and Delivery",
+      "content": "We deliver across Pakistan and ship worldwide. Cash on Delivery (COD) is available specifically in Karachi. Delivery times vary based on your location and selected shipping method. We are not responsible for delays caused by customs or courier services.\n\nOrders can be placed through our website, via WhatsApp at +92 346 0336634, or through direct messages on our social media platforms. It is your responsibility to provide accurate shipping information. We are not liable for delays or non-delivery resulting from incorrect addresses.",
+      "order": 4,
+      "style": "default"
+    },
+    {
+      "heading": "5. Exchange Policy",
+      "content": "At Hijabs By Shiza, we do not offer returns. However, we do have an exchange policy under specific conditions:\n\n1. Wrong Color Sent\nIf you receive a completely different color from what you ordered (not a slight variation due to screen differences), we will exchange it at no cost to you.\n\n2. Color Variations\nPlease note that slight color differences may occur due to screen resolution and lighting. Our catalog clearly mentions that the color you select may not be 100% identical in reality. Therefore, exchanges will not be accepted for minor color variations.\n\nAlthough we try our best to capture colors as close as possible to how they appear in real life, we cannot guarantee a hundred percent match. The difference between different display screens is minimal but beyond our control; hence refunds/exchanges cannot be provided on this basis.\n\n3. Personal Preference\nIf you receive the exact shade you ordered but wish to exchange it for another color, you may do so. However, in this case:\n\nYou must cover the delivery charges (DC) for returning the item.\nWe do not arrange pickups; you must send the product via a courier service of your choice.\nWhen we send the exchanged item back to you, the delivery charges will be your responsibility.\n\n4. Product Quality Assurance\nWe thoroughly inspect all products before dispatch to ensure there are no defects or damages. Therefore, exchanges for damaged items are not applicable.\n\n5. No Returns or Exchanges for Company Mistakes\nPlease note that we do not offer returns or exchanges, even in cases where we may have made an error. This policy applies regardless of the nature of the mistake on our part.\n\nImportant: We appreciate your understanding and encourage you to check color variations on our website before placing an order.\n\nPolicy Notice: No return and no exchange in case of our mistake. This policy is final and applies to all orders.",
+      "order": 5,
+      "style": "warning"
+    },
+    {
+      "heading": "6. Intellectual Property",
+      "content": "All content on this website, including text, graphics, logos, images, and software, is the property of Hijabs By Shiza and protected by copyright and trademark laws.\n\nYou may not reproduce, distribute, or create derivative works from our content without explicit written permission.",
+      "order": 6,
+      "style": "default"
+    },
+    {
+      "heading": "7. Privacy and Data Protection",
+      "content": "We are committed to protecting your privacy. Your personal information is collected and used in accordance with our Privacy Policy. By using our website, you consent to such processing.\n\nWe implement appropriate security measures to protect your personal data from unauthorized access, alteration, or disclosure.",
+      "order": 7,
+      "style": "default"
+    },
+    {
+      "heading": "8. Limitation of Liability",
+      "content": "To the maximum extent permitted by law, Hijabs By Shiza shall not be liable for any indirect, incidental, special, or consequential damages arising out of your use of our website or products.\n\nOur total liability to you for any claim arising from your use of our services shall not exceed the amount you paid for the product in question.",
+      "order": 8,
+      "style": "default"
+    },
+    {
+      "heading": "9. Dispute Resolution",
+      "content": "Any disputes arising from these terms or your use of our website shall be resolved through negotiation in good faith. If a resolution cannot be reached, disputes shall be subject to the laws of Pakistan.",
+      "order": 9,
+      "style": "default"
+    },
+    {
+      "heading": "10. Contact Us",
+      "content": "If you have any questions about these Terms & Conditions, please contact us:\n\n📧 Email: info@hijabsbyshiza.com\n📱 WhatsApp: +92 346 0336634\n🌐 Website: www.hijabsbyshiza.com",
+      "order": 10,
+      "style": "contact"
+    }
+  ]
+}
