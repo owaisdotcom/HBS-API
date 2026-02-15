@@ -1,5 +1,5 @@
 import NavigationMenu from '../models/NavigationMenu.js';
-import HeroSlider from '../models/HeroSlider.js';
+import Hero from '../models/Hero.js';
 import HomepageSection from '../models/HomepageSection.js';
 import SiteSetting from '../models/SiteSetting.js';
 import Product from '../models/Product.js';
@@ -7,36 +7,6 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
-
-const normalizeHeroSlider = (heroSlider) => {
-  if (!heroSlider) return heroSlider;
-  const slider = heroSlider.toObject ? heroSlider.toObject() : { ...heroSlider };
-
-  if (Array.isArray(slider.slides)) {
-    slider.slides = slider.slides.map((slide) => {
-      const normalizedSlide = { ...slide };
-      const rawButtons = Array.isArray(normalizedSlide.buttons)
-        ? [...normalizedSlide.buttons]
-        : [];
-
-      if (rawButtons.length === 0 && normalizedSlide.button) {
-        rawButtons.push({
-          text: normalizedSlide.button.text,
-          link: normalizedSlide.button.link ?? normalizedSlide.button.url,
-          style: normalizedSlide.button.style,
-          isVisible: normalizedSlide.button.isVisible,
-          _id: normalizedSlide.button._id
-        });
-      }
-
-      normalizedSlide.buttons = rawButtons;
-      delete normalizedSlide.button;
-      return normalizedSlide;
-    });
-  }
-
-  return slider;
-};
 
 // @route   GET /api/homepage/settings
 // @desc    Get complete homepage configuration
@@ -49,8 +19,8 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
   }).populate('menuItems.categoryId', 'name slug')
     .populate('menuItems.megaMenuColumns.items.categoryId', 'name slug');
 
-  // Get hero slider
-  const heroSlider = normalizeHeroSlider(await HeroSlider.findOne({ isActive: true }));
+  // Get hero (single)
+  const hero = await Hero.findOne({ isActive: true });
 
   // Get homepage sections
   const homepageSections = await HomepageSection.findOne({ isActive: true })
@@ -105,7 +75,7 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
   res.json(
     new ApiResponse(200, {
       navigation,
-      heroSlider,
+      hero,
       homepageSections: sectionsWithProducts,
       siteSettings
     }, 'Homepage settings retrieved successfully')
@@ -226,137 +196,43 @@ export const updateOrCreateNavigation = asyncHandler(async (req, res) => {
   );
 });
 
-// @route   GET /api/homepage/hero-slider
-// @desc    Get hero slider
+// @route   GET /api/homepage/hero
+// @desc    Get hero (single)
 // @access  Public
-export const getHeroSlider = asyncHandler(async (req, res) => {
-  const heroSlider = normalizeHeroSlider(await HeroSlider.findOne({ isActive: true }));
-
+export const getHero = asyncHandler(async (req, res) => {
+  let hero = await Hero.findOne({ isActive: true });
+  if (!hero) {
+    hero = await Hero.create({
+      isActive: true
+    });
+  }
   res.json(
-    new ApiResponse(200, { heroSlider }, 'Hero slider retrieved successfully')
+    new ApiResponse(200, { hero: hero.toObject ? hero.toObject() : hero }, 'Hero retrieved successfully')
   );
 });
 
-// @route   PUT /api/homepage/hero-slider/:id
-// @desc    Update hero slider by ID
+// @route   PUT /api/homepage/hero
+// @desc    Update or create hero (upsert)
 // @access  Private (Admin)
-export const updateHeroSlider = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
+export const updateOrCreateHero = asyncHandler(async (req, res) => {
+  let hero = await Hero.findOne({ isActive: true });
 
-  let heroSlider = await HeroSlider.findById(id);
-
-  if (!heroSlider) {
-    return next(new ApiError('Hero slider not found', 404));
-  }
-
-  // Handle image uploads for slides
-  if (req.files && req.files.length > 0) {
-    // Process uploaded images - implementation depends on your needs
-  }
-
-  heroSlider = await HeroSlider.findByIdAndUpdate(
-    id,
-    { ...req.body, updatedBy: req.admin.id },
-    { new: true, runValidators: true }
-  );
-
-  res.json(
-    new ApiResponse(
-      200,
-      { heroSlider: normalizeHeroSlider(heroSlider) },
-      'Hero slider updated successfully'
-    )
-  );
-});
-
-// @route   PUT /api/homepage/hero-slider
-// @desc    Update or create hero slider (upsert)
-// @access  Private (Admin)
-export const updateOrCreateHeroSlider = asyncHandler(async (req, res) => {
-  let heroSlider = await HeroSlider.findOne({ isActive: true });
-
-  if (!heroSlider) {
-    // Create new hero slider
-    heroSlider = await HeroSlider.create({
+  if (!hero) {
+    hero = await Hero.create({
       ...req.body,
       updatedBy: req.admin.id,
       isActive: true
     });
   } else {
-    // Update existing hero slider
-    heroSlider = await HeroSlider.findByIdAndUpdate(
-      heroSlider._id,
+    hero = await Hero.findByIdAndUpdate(
+      hero._id,
       { ...req.body, updatedBy: req.admin.id },
       { new: true, runValidators: true }
     );
   }
 
   res.json(
-    new ApiResponse(
-      200,
-      { heroSlider: normalizeHeroSlider(heroSlider) },
-      'Hero slider updated successfully'
-    )
-  );
-});
-
-// @route   POST /api/homepage/hero-slider/:id/slides
-// @desc    Add slide to hero slider
-// @access  Private (Admin)
-export const addSlide = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  const heroSlider = await HeroSlider.findById(id);
-
-  if (!heroSlider) {
-    return next(new ApiError('Hero slider not found', 404));
-  }
-
-  // Handle image upload
-  let slideImage = {};
-  if (req.file) {
-    const imageUrl = await uploadService.uploadSingle(req.file, 'hbs-hero');
-    slideImage.desktop = imageUrl;
-    slideImage.tablet = imageUrl;
-    slideImage.mobile = imageUrl;
-  }
-
-  const newSlide = {
-    ...req.body,
-    image: slideImage,
-    displayOrder: heroSlider.slides.length
-  };
-
-  heroSlider.slides.push(newSlide);
-  heroSlider.updatedBy = req.admin.id;
-  await heroSlider.save();
-
-  res.status(201).json(
-    new ApiResponse(201, { heroSlider }, 'Slide added successfully')
-  );
-});
-
-// @route   DELETE /api/homepage/hero-slider/:id/slides/:slideId
-// @desc    Delete slide from hero slider
-// @access  Private (Admin)
-export const deleteSlide = asyncHandler(async (req, res, next) => {
-  const { id, slideId } = req.params;
-
-  const heroSlider = await HeroSlider.findById(id);
-
-  if (!heroSlider) {
-    return next(new ApiError('Hero slider not found', 404));
-  }
-
-  heroSlider.slides = heroSlider.slides.filter(
-    slide => slide._id.toString() !== slideId
-  );
-
-  heroSlider.updatedBy = req.admin.id;
-  await heroSlider.save();
-
-  res.json(
-    new ApiResponse(200, { heroSlider }, 'Slide deleted successfully')
+    new ApiResponse(200, { hero: hero.toObject ? hero.toObject() : hero }, 'Hero updated successfully')
   );
 });
 

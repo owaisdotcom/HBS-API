@@ -5,7 +5,7 @@ import connectDB from './src/config/database.js';
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 // Connect to database
 connectDB().catch((error) => {
