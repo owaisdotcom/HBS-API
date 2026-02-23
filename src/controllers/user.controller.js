@@ -12,10 +12,10 @@ export const getAllUsers = asyncHandler(async (req, res) => {
 
   const query = {};
 
-  // Search by name or email
+  // Search by fullName or email
   if (search) {
     query.$or = [
-      { name: { $regex: search, $options: 'i' } },
+      { fullName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } }
     ];
   }
@@ -40,10 +40,12 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     users.map(async (user) => {
       const orderCount = await Order.countDocuments({ userId: user._id });
       const orders = await Order.find({ userId: user._id });
-      const totalSpent = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-
+      const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+      const obj = user.toObject();
       return {
-        ...user.toObject(),
+        ...obj,
+        name: obj.fullName,
+        isBlocked: obj.status === 'blocked',
         orderCount,
         totalSpent
       };
@@ -78,12 +80,14 @@ export const getUserById = asyncHandler(async (req, res, next) => {
   // Get user statistics
   const orderCount = await Order.countDocuments({ userId: user._id });
   const orders = await Order.find({ userId: user._id });
-  const totalSpent = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-
+  const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const obj = user.toObject();
   res.json(
     new ApiResponse(200, {
       user: {
-        ...user.toObject(),
+        ...obj,
+        name: obj.fullName,
+        isBlocked: obj.status === 'blocked',
         orderCount,
         totalSpent
       }
@@ -104,7 +108,6 @@ export const toggleUserBlock = asyncHandler(async (req, res, next) => {
     return next(new ApiError('User not found', 404));
   }
 
-  user.isBlocked = isBlocked;
   user.status = isBlocked ? 'blocked' : 'active';
   await user.save();
 
@@ -112,9 +115,9 @@ export const toggleUserBlock = asyncHandler(async (req, res, next) => {
     new ApiResponse(200, {
       user: {
         _id: user._id,
-        name: user.name,
+        name: user.fullName,
         email: user.email,
-        isBlocked: user.isBlocked,
+        isBlocked: user.status === 'blocked',
         status: user.status
       }
     }, `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`)

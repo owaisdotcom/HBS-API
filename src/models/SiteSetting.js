@@ -101,6 +101,28 @@ const siteSettingSchema = new mongoose.Schema({
     message: String,
     allowedIPs: [String]
   },
+
+  // Homepage content blocks: The Art of Hijab & Niqab, Elegance in Modesty
+  contentBlocks: {
+    hijabNiqab: {
+      title: String,
+      paragraphs: [String],
+      image: String,
+      primaryButtonText: String,
+      primaryButtonUrl: String,
+      secondaryButtonText: String,
+      secondaryButtonUrl: String
+    },
+    elegance: {
+      title: String,
+      paragraphs: [String],
+      image: String,
+      primaryButtonText: String,
+      primaryButtonUrl: String,
+      secondaryButtonText: String,
+      secondaryButtonUrl: String
+    }
+  },
   
   isActive: {
     type: Boolean,

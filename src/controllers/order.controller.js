@@ -19,6 +19,65 @@ const recomputeProductStock = async (productId) => {
   await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
 };
 
+/**
+ * Get unit weight (in kg) for one order item from product or bundle.
+ */
+const getItemUnitWeight = (item, product, bundle) => {
+  if (bundle) {
+    return Number(bundle.weight) || 0;
+  }
+  if (!product) return 0;
+  if (item.variantId && Array.isArray(product.variants)) {
+    for (const v of product.variants) {
+      const sizeEntry = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+      if (sizeEntry != null && sizeEntry.weight != null) {
+        return Number(sizeEntry.weight) || 0;
+      }
+    }
+  }
+  return Number(product.weight) || 0;
+};
+
+/** Normalize ref to 24-char hex ID string (handles ObjectId, string, or populated object). */
+const toRefId = (ref) => {
+  if (ref == null) return null;
+  if (typeof ref === 'string' && /^[0-9a-fA-F]{24}$/.test(ref)) return ref;
+  if (typeof ref === 'object' && ref._id != null) return ref._id.toString();
+  try {
+    const s = ref.toString();
+    if (/^[0-9a-fA-F]{24}$/.test(s)) return s;
+  } catch (_) {}
+  return null;
+};
+
+/**
+ * Compute total weight (kg) for an order from its items.
+ * If productMap and bundleMap are provided, uses them; otherwise fetches Product/PreMadeBundle.
+ */
+const computeOrderTotalWeight = async (order, productMap = null, bundleMap = null) => {
+  if (!order?.items?.length) return 0;
+  let productMapLocal = productMap;
+  let bundleMapLocal = bundleMap;
+  if (!productMapLocal || !bundleMapLocal) {
+    const productIds = [...new Set(order.items.map(i => toRefId(i.productId)).filter(Boolean))];
+    const bundleIds = [...new Set(order.items.map(i => toRefId(i.preMadeBundleId)).filter(Boolean))];
+    const [products, bundles] = await Promise.all([
+      productIds.length ? Product.find({ _id: { $in: productIds } }).select('weight variants').lean() : [],
+      bundleIds.length ? PreMadeBundle.find({ _id: { $in: bundleIds } }).select('weight').lean() : []
+    ]);
+    productMapLocal = new Map(products.map(p => [p._id.toString(), p]));
+    bundleMapLocal = new Map(bundles.map(b => [b._id.toString(), b]));
+  }
+  let total = 0;
+  for (const item of order.items) {
+    const product = item.productId ? productMapLocal.get(toRefId(item.productId)) : null;
+    const bundle = item.preMadeBundleId ? bundleMapLocal.get(toRefId(item.preMadeBundleId)) : null;
+    const unitWeight = getItemUnitWeight(item, product, bundle);
+    total += unitWeight * (Number(item.quantity) || 0);
+  }
+  return Math.round(total * 1000) / 1000;
+};
+
 // @route   POST /api/orders
 // @desc    Create new order
 // @access  Public/Private
@@ -320,13 +379,31 @@ export const getOrders = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(Number(limit))
     .populate('userId', 'fullName email')
-    .select('-__v');
+    .select('-__v')
+    .lean();
 
   const total = await Order.countDocuments(query);
 
+  // Batch-fetch products and bundles for totalWeight computation (normalize refs in case of populated objects)
+  const allProductIds = [...new Set(orders.flatMap(o => (o.items || []).map(i => toRefId(i.productId)).filter(Boolean)))];
+  const allBundleIds = [...new Set(orders.flatMap(o => (o.items || []).map(i => toRefId(i.preMadeBundleId)).filter(Boolean)))];
+  const [products, bundles] = await Promise.all([
+    allProductIds.length ? Product.find({ _id: { $in: allProductIds } }).select('weight variants').lean() : [],
+    allBundleIds.length ? PreMadeBundle.find({ _id: { $in: allBundleIds } }).select('weight').lean() : []
+  ]);
+  const productMap = new Map(products.map(p => [p._id.toString(), p]));
+  const bundleMap = new Map(bundles.map(b => [b._id.toString(), b]));
+
+  const ordersWithWeight = await Promise.all(
+    orders.map(async (o) => {
+      const totalWeight = await computeOrderTotalWeight(o, productMap, bundleMap);
+      return { ...o, totalWeight };
+    })
+  );
+
   res.json(
     new ApiResponse(200, {
-      orders,
+      orders: ordersWithWeight,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -364,8 +441,12 @@ export const getOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Not authorized to access this order', 403));
   }
 
+  const totalWeight = await computeOrderTotalWeight(order);
+  const orderObj = order.toObject ? order.toObject() : order;
+  orderObj.totalWeight = totalWeight;
+
   res.json(
-    new ApiResponse(200, { order }, 'Order retrieved successfully')
+    new ApiResponse(200, { order: orderObj }, 'Order retrieved successfully')
   );
 });
 
@@ -399,7 +480,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   }
 
   const nextStatuses = allowedTransitions[order.status] || [];
-  if (!nextStatuses.includes(status)) {
+  const previousStatuses = [...new Set((order.statusHistory || []).map((h) => h.status).filter(Boolean))];
+  const allowed = [order.status, ...nextStatuses, ...previousStatuses];
+  if (!allowed.includes(status)) {
     return next(new ApiError(`Invalid status transition from ${order.status} to ${status}`, 400));
   }
 

@@ -11,6 +11,7 @@ import {
   getSiteSettings,
   updateSiteSettings
 } from '../controllers/homepage.controller.js';
+import { getPublishedTestimonials } from '../controllers/testimonial.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import { uploadFields } from '../middleware/upload.middleware.js';
 
@@ -22,6 +23,7 @@ router.get('/navigation', getNavigation);
 router.get('/hero', getHero);
 router.get('/sections', getHomepageSections);
 router.get('/site-settings', getSiteSettings);
+router.get('/testimonials', getPublishedTestimonials);
 
 // Admin routes - Navigation
 router.put('/navigation/:id', protectAdmin, updateNavigation);

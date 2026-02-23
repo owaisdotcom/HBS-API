@@ -197,6 +197,12 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   if (typeof productData.isNewArrival === 'string') {
     productData.isNewArrival = productData.isNewArrival === 'true';
   }
+  if (typeof productData.isOnSale === 'string') {
+    productData.isOnSale = productData.isOnSale === 'true';
+  }
+  if (productData.onSale !== undefined) {
+    productData.isOnSale = productData.onSale === true || productData.onSale === 'true';
+  }
 
   // Convert numeric strings from FormData
   const numericFields = ['price', 'originalPrice', 'costPrice', 'stock', 'lowStockThreshold', 'weight'];
@@ -457,6 +463,12 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   }
   if (typeof updateFields.isNewArrival === 'string') {
     updateFields.isNewArrival = updateFields.isNewArrival === 'true';
+  }
+  if (typeof updateFields.isOnSale === 'string') {
+    updateFields.isOnSale = updateFields.isOnSale === 'true';
+  }
+  if (updateFields.onSale !== undefined) {
+    updateFields.isOnSale = updateFields.onSale === true || updateFields.onSale === 'true';
   }
 
   // Convert numeric strings from FormData

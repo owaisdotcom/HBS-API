@@ -47,6 +47,7 @@ const receiptUpload = multer({
 export const uploadSingle = upload.single('image');
 export const uploadReceiptSingle = receiptUpload.single('receipt');
 export const uploadMultiple = upload.array('images', 10);
+export const uploadTestimonialImage = upload.single('customerImage');
 export const uploadFields = upload.fields([
   { name: 'images', maxCount: 10 },
   { name: 'receipt', maxCount: 1 }

@@ -13,6 +13,7 @@ import { adminLoginValidator, setupSuperAdminValidator, createAdminValidator, ch
 import userRoutes from './user.routes.js';
 import adminOrderRoutes from './admin-order.routes.js';
 import homepageRoutes from './homepage.routes.js';
+import testimonialRoutes from './testimonial.routes.js';
 
 const router = express.Router();
 
@@ -36,6 +37,9 @@ router.use('/orders', adminOrderRoutes);
 
 // Homepage management routes
 router.use('/homepage', homepageRoutes);
+
+// Testimonials (homepage reviews) management
+router.use('/testimonials', testimonialRoutes);
 
 export default router;
 

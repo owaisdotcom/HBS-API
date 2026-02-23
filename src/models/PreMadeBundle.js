@@ -69,6 +69,7 @@ const preMadeBundleSchema = new mongoose.Schema({
   displayOrder: { type: Number, default: 0 },
   isFeatured: { type: Boolean, default: false },
   isNewArrival: { type: Boolean, default: false },
+  isOnSale: { type: Boolean, default: false },
 
   // Stock (product-like)
   stock: { type: Number, default: 0, min: 0 },

@@ -146,6 +146,10 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isOnSale: {
+    type: Boolean,
+    default: false
+  },
   viewCount: {
     type: Number,
     default: 0

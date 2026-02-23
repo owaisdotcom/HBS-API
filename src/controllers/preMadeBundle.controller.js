@@ -96,6 +96,7 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
     status: parsed.status || 'active',
     isFeatured: parsed.isFeatured === true || parsed.featured === 'true',
     isNewArrival: parsed.isNewArrival === true || parsed.newArrival === 'true',
+    isOnSale: parsed.isOnSale === true || parsed.onSale === 'true',
     features: Array.isArray(parsed.features) ? parsed.features : [],
     careInstructions: Array.isArray(parsed.careInstructions) ? parsed.careInstructions : [],
     specifications: Array.isArray(parsed.specifications) ? parsed.specifications : [],
@@ -138,6 +139,9 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
   if (parsed.status !== undefined) bundle.status = parsed.status;
   if (parsed.isFeatured !== undefined) bundle.isFeatured = parsed.isFeatured === true || parsed.isFeatured === 'true';
   if (parsed.isNewArrival !== undefined) bundle.isNewArrival = parsed.isNewArrival === true || parsed.isNewArrival === 'true';
+  if (parsed.isOnSale !== undefined || parsed.onSale !== undefined) {
+    bundle.isOnSale = parsed.isOnSale === true || parsed.isOnSale === 'true' || parsed.onSale === true || parsed.onSale === 'true';
+  }
   if (parsed.features !== undefined) bundle.features = Array.isArray(parsed.features) ? parsed.features : [];
   if (parsed.careInstructions !== undefined) bundle.careInstructions = Array.isArray(parsed.careInstructions) ? parsed.careInstructions : [];
   if (parsed.specifications !== undefined) bundle.specifications = Array.isArray(parsed.specifications) ? parsed.specifications : [];
