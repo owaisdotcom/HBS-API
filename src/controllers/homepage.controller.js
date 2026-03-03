@@ -43,21 +43,21 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
           }).limit(section.productLimit);
         } else if (section.productSelection === 'newest') {
           const query = section.categoryId
-            ? { categoryId: section.categoryId, status: 'active' }
+            ? { $or: [{ categories: section.categoryId }, { categoryPath: section.categoryId }], status: 'active' }
             : { status: 'active' };
           products = await Product.find(query)
             .sort('-createdAt')
             .limit(section.productLimit);
         } else if (section.productSelection === 'bestselling') {
           const query = section.categoryId
-            ? { categoryId: section.categoryId, status: 'active' }
+            ? { $or: [{ categories: section.categoryId }, { categoryPath: section.categoryId }], status: 'active' }
             : { status: 'active' };
           products = await Product.find(query)
             .sort('-soldCount')
             .limit(section.productLimit);
         } else if (section.productSelection === 'featured') {
           const query = section.categoryId
-            ? { categoryId: section.categoryId, isFeatured: true, status: 'active' }
+            ? { $or: [{ categories: section.categoryId }, { categoryPath: section.categoryId }], isFeatured: true, status: 'active' }
             : { isFeatured: true, status: 'active' };
           products = await Product.find(query)
             .sort('-createdAt')

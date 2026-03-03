@@ -21,16 +21,20 @@ export const getAllCategories = asyncHandler(async (req, res) => {
   // Get product counts for all categories
   const categoryIds = categories.map(cat => cat._id);
   const productCounts = await Product.aggregate([
+    { $unwind: { path: '$categories', preserveNullAndEmptyArrays: true } },
     {
       $match: {
-        categoryId: { $in: categoryIds },
+        $or: [
+          { categories: { $in: categoryIds } },
+          { categoryPath: { $in: categoryIds } }
+        ],
         status: 'active',
         isDeleted: { $ne: true }
       }
     },
     {
       $group: {
-        _id: '$categoryId',
+        _id: '$categories',
         count: { $sum: 1 }
       }
     }
@@ -39,6 +43,8 @@ export const getAllCategories = asyncHandler(async (req, res) => {
   // Create a map of category ID to product count
   const productCountMap = {};
   productCounts.forEach(item => {
+    // Skip null/undefined grouping keys (can happen when products have no categories)
+    if (!item._id) return;
     productCountMap[item._id.toString()] = item.count;
   });
 
@@ -119,9 +125,12 @@ export const getCategory = asyncHandler(async (req, res, next) => {
     isDeleted: { $ne: true }
   }).sort('displayOrder');
 
-  // Get product count
+  // Get product count (match products that list this category or have it in their categoryPath)
   const productCount = await Product.countDocuments({
-    categoryId: category._id,
+    $or: [
+      { categories: category._id },
+      { categoryPath: category._id }
+    ],
     status: 'active',
     isDeleted: { $ne: true }
   });
@@ -168,7 +177,7 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
 
   // Build query for products in this category and subcategories
   const categoryClause = [
-    { categoryId: category._id },
+    { categories: category._id },
     { categoryPath: category._id }
   ];
 
@@ -214,7 +223,7 @@ export const getCategoryProducts = asyncHandler(async (req, res, next) => {
     .sort(sort)
     .skip(skip)
     .limit(Number(limit))
-    .populate('categoryId', 'name slug')
+    .populate('categories', 'name slug')
     .select('-__v');
 
   const total = await Product.countDocuments(query);
@@ -356,9 +365,12 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Cannot delete category with subcategories', 400));
   }
 
-  // Check if category has active products
+  // Check if category has active products (consider products linked to categories or categoryPath)
   const products = await Product.countDocuments({ 
-    categoryId: id, 
+    $or: [
+      { categories: id },
+      { categoryPath: id }
+    ],
     isDeleted: { $ne: true } 
   });
   if (products > 0) {

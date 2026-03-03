@@ -14,11 +14,11 @@ const productSchema = new mongoose.Schema({
   },
   description: String,
   shortDescription: String,
-  categoryId: {
+  // Support multiple categories per product
+  categories: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: [true, 'Category is required']
-  },
+    ref: 'Category'
+  }],
   categoryPath: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category'
@@ -197,7 +197,7 @@ productSchema.pre('save', async function() {
 // Indexes
 productSchema.index({ slug: 1 }, { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } });
 productSchema.index({ sku: 1 }, { unique: true, sparse: true, partialFilterExpression: { isDeleted: { $ne: true } } });
-productSchema.index({ categoryId: 1 });
+productSchema.index({ categories: 1 });
 productSchema.index({ categoryPath: 1 });
 productSchema.index({ status: 1 });
 productSchema.index({ price: 1 });

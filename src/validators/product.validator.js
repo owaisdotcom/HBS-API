@@ -15,11 +15,28 @@ export const createProductValidator = [
     .matches(/^[a-z0-9-]+$/)
     .withMessage('Slug can only contain lowercase letters, numbers, and hyphens'),
   
-  body('categoryId')
+  body('categories')
     .notEmpty()
     .withMessage('Category is required')
-    .isMongoId()
-    .withMessage('Invalid category ID'),
+    .bail()
+    .custom((val, { req }) => {
+      let arr = val;
+      if (typeof val === 'string') {
+        try {
+          arr = JSON.parse(val);
+          req.body.categories = arr;
+        } catch (e) {
+          throw new Error('Categories must be an array');
+        }
+      }
+      if (!Array.isArray(arr)) {
+        throw new Error('Categories must be an array');
+      }
+      if (!arr.every(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/))) {
+        throw new Error('One or more category IDs are invalid');
+      }
+      return true;
+    }),
   
   body('price')
     .notEmpty()
@@ -60,10 +77,28 @@ export const updateProductValidator = [
     .matches(/^[a-z0-9-]+$/)
     .withMessage('Slug can only contain lowercase letters, numbers, and hyphens'),
   
-  body('categoryId')
+  body('categories')
     .optional()
-    .isMongoId()
-    .withMessage('Invalid category ID'),
+    .bail()
+    .custom((val, { req }) => {
+      if (val === undefined || val === null) return true;
+      let arr = val;
+      if (typeof val === 'string') {
+        try {
+          arr = JSON.parse(val);
+          req.body.categories = arr;
+        } catch (e) {
+          throw new Error('Categories must be an array');
+        }
+      }
+      if (!Array.isArray(arr)) {
+        throw new Error('Categories must be an array');
+      }
+      if (!arr.every(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/))) {
+        throw new Error('One or more category IDs are invalid');
+      }
+      return true;
+    }),
   
   body('price')
     .optional()

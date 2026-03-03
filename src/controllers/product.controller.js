@@ -56,7 +56,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   };
 
   if (status) query.status = status;
-  if (category) query.categoryId = category;
+  if (category) query.categories = category;
   if (isFeatured !== undefined) query.isFeatured = isFeatured === 'true';
   if (isNewArrival !== undefined) query.isNewArrival = isNewArrival === 'true';
 
@@ -90,7 +90,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     .sort(sort)
     .skip(skip)
     .limit(Number(limit))
-    .populate('categoryId', 'name slug')
+    .populate('categories', 'name slug')
     .select('-__v');
 
   const total = await Product.countDocuments(query);
@@ -130,11 +130,11 @@ export const getProduct = asyncHandler(async (req, res, next) => {
   // Try to find by ID first, then by slug
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
     product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
-      .populate('categoryId', 'name slug')
+      .populate('categories', 'name slug')
       .populate('categoryPath', 'name slug');
   } else {
     product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
-      .populate('categoryId', 'name slug')
+      .populate('categories', 'name slug')
       .populate('categoryPath', 'name slug');
   }
 
@@ -212,14 +212,30 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Check if category exists and is not deleted
-  const category = await Category.findOne({ _id: productData.categoryId, isDeleted: { $ne: true } });
-  if (!category) {
-    return next(new ApiError('Category not found', 404));
+  // Normalize incoming category(s). Accept either `categories` (array) or legacy `categoryId` (single)
+  if (!productData.categories && productData.categoryId) {
+    productData.categories = [productData.categoryId];
+  }
+  if (!Array.isArray(productData.categories)) {
+    productData.categories = [];
   }
 
-  // Build category path
-  productData.categoryPath = [...category.path, category._id];
+  // Validate categories exist and are not deleted
+  if (productData.categories.length === 0) {
+    return next(new ApiError('Category is required', 404));
+  }
+  const selectedCategories = await Category.find({ _id: { $in: productData.categories }, isDeleted: { $ne: true } });
+  if (selectedCategories.length !== productData.categories.length) {
+    return next(new ApiError('One or more categories not found', 404));
+  }
+  // Build a unioned categoryPath from all selected categories
+  const categoryPathSet = new Set();
+  selectedCategories.forEach(cat => {
+    (cat.path || []).forEach(p => categoryPathSet.add(p.toString()));
+    categoryPathSet.add(cat._id.toString());
+  });
+  productData.categoryPath = Array.from(categoryPathSet).map(id => new mongoose.Types.ObjectId(id));
+  productData.categories = selectedCategories.map(c => c._id);
 
   // Handle image uploads
   // Handle image uploads (product-level and variant-level)
@@ -479,14 +495,38 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   });
 
-  // Update category path if category changed
-  if (updateFields.categoryId && updateFields.categoryId !== product.categoryId.toString()) {
-    const category = await Category.findOne({ _id: updateFields.categoryId, isDeleted: { $ne: true } });
-    if (!category) {
-      return next(new ApiError('Category not found', 404));
+  // Handle category(s) update - accept legacy categoryId or new categories array
+  if (updateFields.categoryId && !updateFields.categories) {
+    updateFields.categories = [updateFields.categoryId];
+  }
+  // Normalize categories if sent as JSON string or double-wrapped (FormData quirks)
+  if (updateFields.categories && typeof updateFields.categories === 'string') {
+    try {
+      updateFields.categories = JSON.parse(updateFields.categories);
+    } catch (e) {
+      // leave as-is; validation will catch it later
     }
-    updateFields.categoryPath = [...category.path, category._id];
-    product.categoryId = updateFields.categoryId;
+  }
+  // Handle case where categories is an array but contains a single JSON-stringified array element
+  if (Array.isArray(updateFields.categories) && updateFields.categories.length === 1 && typeof updateFields.categories[0] === 'string' && updateFields.categories[0].trim().startsWith('[')) {
+    try {
+      updateFields.categories = JSON.parse(updateFields.categories[0]);
+    } catch (e) {
+      // ignore, keep original
+    }
+  }
+  if (updateFields.categories && Array.isArray(updateFields.categories)) {
+    const selectedCategories = await Category.find({ _id: { $in: updateFields.categories }, isDeleted: { $ne: true } });
+    if (selectedCategories.length !== updateFields.categories.length) {
+      return next(new ApiError('One or more categories not found', 404));
+    }
+    const categoryPathSet = new Set();
+    selectedCategories.forEach(cat => {
+      (cat.path || []).forEach(p => categoryPathSet.add(p.toString()));
+      categoryPathSet.add(cat._id.toString());
+    });
+    updateFields.categoryPath = Array.from(categoryPathSet).map(id => new mongoose.Types.ObjectId(id));
+    product.categories = selectedCategories.map(c => c._id);
     product.categoryPath = updateFields.categoryPath;
   }
 
@@ -654,7 +694,7 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
   })
     .sort('-createdAt')
     .limit(Number(limit))
-    .populate('categoryId', 'name slug')
+    .populate('categories', 'name slug')
     .select('-__v');
 
   res.json(
@@ -676,7 +716,7 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
   })
     .sort('-publishedAt')
     .limit(Number(limit))
-    .populate('categoryId', 'name slug')
+    .populate('categories', 'name slug')
     .select('-__v');
 
   res.json(
@@ -701,14 +741,14 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
 
   const relatedProducts = await Product.find({
     _id: { $ne: id },
-    categoryId: product.categoryId,
+    categories: { $in: product.categories || [] },
     status: 'active',
     stock: { $gt: 0 },
     isDeleted: { $ne: true }
   })
     .sort('-rating -soldCount')
     .limit(Number(limit))
-    .populate('categoryId', 'name slug')
+    .populate('categories', 'name slug')
     .select('-__v');
 
   res.json(
