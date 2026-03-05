@@ -739,9 +739,20 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // Build a robust category match list (support legacy categoryId, categories array, and categoryPath)
+  const categoryIds = new Set();
+  if (Array.isArray(product.categories)) product.categories.forEach(c => c && categoryIds.add(c.toString()));
+  if (product.categoryId) categoryIds.add(product.categoryId.toString());
+  if (Array.isArray(product.categoryPath)) product.categoryPath.forEach(c => c && categoryIds.add(c.toString()));
+
+  const categoryIdArray = Array.from(categoryIds).map(id => new mongoose.Types.ObjectId(id));
+
   const relatedProducts = await Product.find({
     _id: { $ne: id },
-    categories: { $in: product.categories || [] },
+    $or: [
+      { categories: { $in: categoryIdArray } },
+      { categoryPath: { $in: categoryIdArray } }
+    ],
     status: 'active',
     stock: { $gt: 0 },
     isDeleted: { $ne: true }
