@@ -300,6 +300,33 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // If a mapping of uploaded files to size charts is provided, consume it
+  // Expect req.body.sizeChartMap = JSON.stringify([{ colorId, sizeId, fileIndex, existingUrl }])
+  if (req.body.sizeChartMap && uploadedUrls.length > 0) {
+    let sizeChartMap = [];
+    try {
+      sizeChartMap = JSON.parse(req.body.sizeChartMap);
+    } catch (e) {
+      sizeChartMap = [];
+    }
+
+    if (Array.isArray(sizeChartMap) && Array.isArray(productData.variants)) {
+      sizeChartMap.forEach(mapping => {
+        const { colorId, sizeId, fileIndex, existingUrl } = mapping || {};
+        if (!colorId || !sizeId) return;
+        const url = (fileIndex != null && uploadedUrls[fileIndex]) ? uploadedUrls[fileIndex] : existingUrl;
+        if (!url) return;
+        const colorVariant = productData.variants.find(v => v.colorId === colorId);
+        if (colorVariant && Array.isArray(colorVariant.sizes)) {
+          const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
+          if (size) {
+            size.sizeChartUrl = url;
+          }
+        }
+      });
+    }
+  }
+
   // Derive product stock from all sizes across all color variants
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.stock = productData.variants.reduce((sum, colorVariant) => {
@@ -408,7 +435,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         order: index
       }));
 
-    console.log('📸 Final images order:', allImages);
+    
     product.images = allImages;
   }
 
@@ -570,6 +597,35 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       const colorVariant = product.variants.find(v => v.colorId === colorId);
       if (colorVariant) {
         colorVariant.images = imagesForVariant;
+      }
+    });
+  }
+
+  // Handle size chart mapping for updates (req.body.sizeChartMap)
+  if (req.body.sizeChartMap && Array.isArray(product.variants) && product.variants.length > 0) {
+    let sizeChartMap = [];
+    try {
+      sizeChartMap = JSON.parse(req.body.sizeChartMap);
+    } catch (e) {
+      sizeChartMap = [];
+    }
+
+    const newImagesByFileIndex = {};
+    (uploadedNewImages || []).forEach(img => {
+      newImagesByFileIndex[img.fileIndex] = img.url;
+    });
+
+    sizeChartMap.forEach(mapping => {
+      const { colorId, sizeId, fileIndex, existingUrl } = mapping || {};
+      if (!colorId || !sizeId) return;
+      const url = (fileIndex != null && newImagesByFileIndex[fileIndex]) ? newImagesByFileIndex[fileIndex] : existingUrl;
+      if (!url) return;
+      const colorVariant = product.variants.find(v => v.colorId === colorId);
+      if (colorVariant && Array.isArray(colorVariant.sizes)) {
+        const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
+        if (size) {
+          size.sizeChartUrl = url;
+        }
       }
     });
   }

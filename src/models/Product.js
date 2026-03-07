@@ -77,6 +77,8 @@ const productSchema = new mongoose.Schema({
         enum: ['in_stock', 'out_of_stock', 'low_stock'],
         default: 'in_stock'
       },
+        // Optional per-size size chart image URL
+        sizeChartUrl: { type: String },
       weight: Number,
       isActive: { type: Boolean, default: true }
     }],
