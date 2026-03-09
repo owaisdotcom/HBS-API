@@ -14,6 +14,7 @@ console.log('Has spaces?:', process.env.EMAIL_PASSWORD?.includes(' ') ? '❌ YES
 console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
 console.log('=================================');
 
+
 // Check if password looks like a valid app password (16 chars, no spaces)
 if (process.env.EMAIL_PASSWORD) {
   const password = process.env.EMAIL_PASSWORD;
