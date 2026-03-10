@@ -1,5 +1,6 @@
 import NavigationMenu from '../models/NavigationMenu.js';
 import Hero from '../models/Hero.js';
+import HeroSlider from '../models/HeroSlider.js';
 import HomepageSection from '../models/HomepageSection.js';
 import SiteSetting from '../models/SiteSetting.js';
 import Product from '../models/Product.js';
@@ -19,8 +20,11 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
   }).populate('menuItems.categoryId', 'name slug')
     .populate('menuItems.megaMenuColumns.items.categoryId', 'name slug');
 
-  // Get hero (single)
-  const hero = await Hero.findOne({ isActive: true });
+  // Prefer hero slider (multiple slides) if present, otherwise fallback to single hero
+  let hero = await HeroSlider.findOne({ isActive: true });
+  if (!hero) {
+    hero = await Hero.findOne({ isActive: true });
+  }
 
   // Get homepage sections
   const homepageSections = await HomepageSection.findOne({ isActive: true })
@@ -200,11 +204,13 @@ export const updateOrCreateNavigation = asyncHandler(async (req, res) => {
 // @desc    Get hero (single)
 // @access  Public
 export const getHero = asyncHandler(async (req, res) => {
-  let hero = await Hero.findOne({ isActive: true });
+  // Return the hero slider if available, otherwise the single hero
+  let hero = await HeroSlider.findOne({ isActive: true });
   if (!hero) {
-    hero = await Hero.create({
-      isActive: true
-    });
+    hero = await Hero.findOne({ isActive: true });
+    if (!hero) {
+      hero = await Hero.create({ isActive: true });
+    }
   }
   res.json(
     new ApiResponse(200, { hero: hero.toObject ? hero.toObject() : hero }, 'Hero retrieved successfully')
@@ -215,18 +221,54 @@ export const getHero = asyncHandler(async (req, res) => {
 // @desc    Update or create hero (upsert)
 // @access  Private (Admin)
 export const updateOrCreateHero = asyncHandler(async (req, res) => {
-  let hero = await Hero.findOne({ isActive: true });
+  // Helper: clone and sanitize incoming payload to avoid immutable _id updates
+  const sanitizePayload = (body) => {
+    const update = JSON.parse(JSON.stringify(body || {}));
+    // Remove top-level immutable fields if present
+    delete update._id;
+    delete update.__v;
+    delete update.createdAt;
+    delete update.updatedAt;
+    return update;
+  };
 
+  // If payload contains slides, persist to HeroSlider; otherwise persist to Hero
+  if (Array.isArray(req.body.slides)) {
+    const clean = sanitizePayload(req.body);
+    let heroSlider = await HeroSlider.findOne({ isActive: true });
+    if (!heroSlider) {
+      heroSlider = await HeroSlider.create({
+        ...clean,
+        updatedBy: req.admin.id,
+        isActive: true
+      });
+    } else {
+      heroSlider = await HeroSlider.findByIdAndUpdate(
+        heroSlider._id,
+        { ...clean, updatedBy: req.admin.id },
+        { new: true, runValidators: true }
+      );
+    }
+
+    res.json(
+      new ApiResponse(200, { hero: heroSlider.toObject ? heroSlider.toObject() : heroSlider }, 'Hero slider updated successfully')
+    );
+    return;
+  }
+
+  // Legacy single-hero behavior
+  const clean = sanitizePayload(req.body);
+  let hero = await Hero.findOne({ isActive: true });
   if (!hero) {
     hero = await Hero.create({
-      ...req.body,
+      ...clean,
       updatedBy: req.admin.id,
       isActive: true
     });
   } else {
     hero = await Hero.findByIdAndUpdate(
       hero._id,
-      { ...req.body, updatedBy: req.admin.id },
+      { ...clean, updatedBy: req.admin.id },
       { new: true, runValidators: true }
     );
   }
