@@ -216,6 +216,21 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   if (!productData.categories && productData.categoryId) {
     productData.categories = [productData.categoryId];
   }
+  // Normalize categories if sent as JSON string or double-wrapped
+  if (productData.categories && typeof productData.categories === 'string') {
+    try {
+      productData.categories = JSON.parse(productData.categories);
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (Array.isArray(productData.categories) && productData.categories.length === 1 && typeof productData.categories[0] === 'string' && productData.categories[0].trim().startsWith('[')) {
+    try {
+      productData.categories = JSON.parse(productData.categories[0]);
+    } catch (e) {
+      // ignore
+    }
+  }
   if (!Array.isArray(productData.categories)) {
     productData.categories = [];
   }
@@ -251,13 +266,23 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }));
   }
 
-  // If variants are provided as JSON string, parse
+  // Parse variants if they come as string or double-wrapped
   if (productData.variants && typeof productData.variants === 'string') {
     try {
       productData.variants = JSON.parse(productData.variants);
     } catch (e) {
       productData.variants = [];
     }
+  }
+  if (Array.isArray(productData.variants) && productData.variants.length === 1 && typeof productData.variants[0] === 'string' && productData.variants[0].trim().startsWith('[')) {
+    try {
+      productData.variants = JSON.parse(productData.variants[0]);
+    } catch (e) {
+      // ignore
+    }
+  }
+  if (!Array.isArray(productData.variants)) {
+    productData.variants = [];
   }
 
   // If a mapping of uploaded files to color variants is provided, consume it
