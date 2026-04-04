@@ -1,4 +1,5 @@
 import ApiError from '../utils/ApiError.js';
+import multer from 'multer';
 
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
@@ -21,6 +22,19 @@ const errorHandler = (err, req, res, next) => {
   // Mongoose cast error
   if (err.name === 'CastError') {
     const message = 'Invalid ID format';
+    error = new ApiError(message, 400);
+  }
+
+  // Multer errors
+  if (err instanceof multer.MulterError) {
+    let message = err.message;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File size is too large. Maximum allowed size is 50MB.';
+    } else if (err.code === 'LIMIT_FIELD_SIZE') {
+      message = 'Field size is too large. Maximum allowed size is 10MB.';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Too many files uploaded or unexpected field name.';
+    }
     error = new ApiError(message, 400);
   }
 

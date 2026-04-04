@@ -335,18 +335,35 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }, 0);
   }
 
-  // If a thumbnail index is provided, use only that as product thumbnail
-  const thumbnailFileIndex = req.body.thumbnailFileIndex !== undefined
-    ? parseInt(req.body.thumbnailFileIndex, 10)
-    : null;
-  if (thumbnailFileIndex !== null && uploadedUrls[thumbnailFileIndex]) {
-    productData.images = [{
-      url: uploadedUrls[thumbnailFileIndex],
-      isPrimary: true,
-      order: 0
-    }];
+  // Use newImagesOrder if provided for multiple product images
+  if (req.body.newImagesOrder) {
+    let newImagesOrder = [];
+    try {
+      newImagesOrder = JSON.parse(req.body.newImagesOrder);
+    } catch(e) {}
+    if (newImagesOrder.length > 0) {
+      productData.images = newImagesOrder.map(orderInfo => ({
+         url: uploadedUrls[orderInfo.fileIndex],
+         isPrimary: orderInfo.order === 0,
+         order: orderInfo.order
+      })).filter(img => img.url);
+    } else {
+      productData.images = images;
+    }
   } else {
-    productData.images = images;
+    // If a thumbnail index is provided (legacy), use only that as product thumbnail
+    const thumbnailFileIndex = req.body.thumbnailFileIndex !== undefined
+      ? parseInt(req.body.thumbnailFileIndex, 10)
+      : null;
+    if (thumbnailFileIndex !== null && uploadedUrls[thumbnailFileIndex]) {
+      productData.images = [{
+        url: uploadedUrls[thumbnailFileIndex],
+        isPrimary: true,
+        order: 0
+      }];
+    } else {
+      productData.images = images;
+    }
   }
   productData.publishedAt = new Date();
   if (!productData.status) {

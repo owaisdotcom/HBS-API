@@ -32,7 +32,8 @@ const upload = multer({
   storage,
   fileFilter: imageFileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 50 * 1024 * 1024, // 50MB
+    fieldSize: 10 * 1024 * 1024 // 10MB
   }
 });
 
@@ -40,16 +41,17 @@ const receiptUpload = multer({
   storage,
   fileFilter: receiptFileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 50 * 1024 * 1024, // 50MB
+    fieldSize: 10 * 1024 * 1024 // 10MB
   }
 });
 
 export const uploadSingle = upload.single('image');
 export const uploadReceiptSingle = receiptUpload.single('receipt');
-export const uploadMultiple = upload.array('images', 10);
+export const uploadMultiple = upload.array('images', 50);
 export const uploadTestimonialImage = upload.single('customerImage');
 export const uploadFields = upload.fields([
-  { name: 'images', maxCount: 10 },
+  { name: 'images', maxCount: 50 },
   { name: 'receipt', maxCount: 1 }
 ]);
 
