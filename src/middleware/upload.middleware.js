@@ -32,7 +32,7 @@ const upload = multer({
   storage,
   fileFilter: imageFileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 10 * 1024 * 1024, // 10MB
     fieldSize: 10 * 1024 * 1024 // 10MB
   }
 });
@@ -41,7 +41,7 @@ const receiptUpload = multer({
   storage,
   fileFilter: receiptFileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 10 * 1024 * 1024, // 10MB
     fieldSize: 10 * 1024 * 1024 // 10MB
   }
 });
