@@ -902,15 +902,18 @@ export const checkProductAvailability = asyncHandler(async (req, res) => {
     skuAvailable: true
   };
 
+  // Build exclude query for edit mode (exclude the current product being edited)
   const excludeQuery = excludeId && mongoose.Types.ObjectId.isValid(excludeId)
     ? { _id: { $ne: new mongoose.Types.ObjectId(excludeId) } }
     : {};
 
+  // Check ALL documents (including soft-deleted) because the schema-level unique
+  // index on slug/sku applies to every document, not just active ones.
+  // This ensures the availability check matches what the DB will actually reject.
   if (slug) {
     const cleanSlug = slug.trim().toLowerCase();
     const existingSlug = await Product.findOne({
       slug: cleanSlug,
-      isDeleted: { $ne: true },
       ...excludeQuery
     });
     if (existingSlug) {
@@ -925,7 +928,6 @@ export const checkProductAvailability = asyncHandler(async (req, res) => {
         { sku: cleanSku },
         { 'variants.sizes.sku': cleanSku }
       ],
-      isDeleted: { $ne: true },
       ...excludeQuery
     });
     if (existingSku) {
