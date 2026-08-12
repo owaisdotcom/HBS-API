@@ -360,8 +360,20 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }, 0);
   }
 
-  // Use newImagesOrder if provided for multiple product images
-  if (req.body.newImagesOrder) {
+  // Use newImagesOrder or existingImages/images for product images
+  if (req.body.existingImages) {
+    let existingImages = [];
+    try {
+      existingImages = typeof req.body.existingImages === 'string' ? JSON.parse(req.body.existingImages) : req.body.existingImages;
+    } catch (e) {}
+    if (Array.isArray(existingImages) && existingImages.length > 0) {
+      productData.images = existingImages.map((img, index) => ({
+        url: img.url || img,
+        isPrimary: (img.order ?? index) === 0,
+        order: img.order ?? index
+      }));
+    }
+  } else if (req.body.newImagesOrder && uploadedUrls.length > 0) {
     let newImagesOrder = [];
     try {
       newImagesOrder = JSON.parse(req.body.newImagesOrder);
@@ -375,6 +387,18 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     } else {
       productData.images = images;
     }
+  } else if (req.body.images && (!req.files || req.files.length === 0)) {
+    let imgs = req.body.images;
+    if (typeof imgs === 'string') {
+      try { imgs = JSON.parse(imgs); } catch(e) {}
+    }
+    if (Array.isArray(imgs) && imgs.length > 0) {
+      productData.images = imgs.map((img, index) => ({
+        url: typeof img === 'string' ? img : img.url,
+        isPrimary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : index === 0,
+        order: typeof img === 'object' && img.order !== undefined ? img.order : index
+      }));
+    }
   } else {
     // If a thumbnail index is provided (legacy), use only that as product thumbnail
     const thumbnailFileIndex = req.body.thumbnailFileIndex !== undefined
@@ -386,8 +410,10 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         isPrimary: true,
         order: 0
       }];
-    } else {
+    } else if (req.files && req.files.length > 0) {
       productData.images = images;
+    } else if (!productData.images) {
+      productData.images = [];
     }
   }
   productData.publishedAt = new Date();
