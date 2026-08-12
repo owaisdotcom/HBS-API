@@ -891,3 +891,51 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
   );
 });
 
+// @route   GET /api/products/check-availability
+// @desc    Check slug and SKU availability
+// @access  Public
+export const checkProductAvailability = asyncHandler(async (req, res) => {
+  const { slug, sku, excludeId } = req.query;
+
+  const results = {
+    slugAvailable: true,
+    skuAvailable: true
+  };
+
+  const excludeQuery = excludeId && mongoose.Types.ObjectId.isValid(excludeId)
+    ? { _id: { $ne: new mongoose.Types.ObjectId(excludeId) } }
+    : {};
+
+  if (slug) {
+    const cleanSlug = slug.trim().toLowerCase();
+    const existingSlug = await Product.findOne({
+      slug: cleanSlug,
+      isDeleted: { $ne: true },
+      ...excludeQuery
+    });
+    if (existingSlug) {
+      results.slugAvailable = false;
+    }
+  }
+
+  if (sku) {
+    const cleanSku = sku.trim();
+    const existingSku = await Product.findOne({
+      $or: [
+        { sku: cleanSku },
+        { 'variants.sizes.sku': cleanSku }
+      ],
+      isDeleted: { $ne: true },
+      ...excludeQuery
+    });
+    if (existingSku) {
+      results.skuAvailable = false;
+    }
+  }
+
+  res.json(
+    new ApiResponse(200, results, 'Availability checked successfully')
+  );
+});
+
+

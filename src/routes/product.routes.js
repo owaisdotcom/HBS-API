@@ -8,7 +8,8 @@ import {
   deleteProductImage,
   getFeaturedProducts,
   getNewArrivals,
-  getRelatedProducts
+  getRelatedProducts,
+  checkProductAvailability
 } from '../controllers/product.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import { optionalAuth } from '../middleware/auth.middleware.js';
@@ -32,6 +33,7 @@ router.get('/search', (req, _res, next) => {
 }, getProductsValidator, validate, getAllProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/new-arrivals', getNewArrivals);
+router.get('/check-availability', checkProductAvailability);
 router.get('/:id', optionalAuth, getProduct);
 router.get('/:id/related', getRelatedProducts);
 
