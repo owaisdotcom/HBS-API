@@ -8,17 +8,17 @@ import errorHandler from './middleware/error.middleware.js';
 
 const app = express();
 
-// CORS middleware
 const allowedOrigins = new Set(
   [
     'https://hbs-qa.vercel.app',
     'https://hijabsbyshiza.com',
+    'https://www.hijabsbyshiza.com',
     'http://localhost:5173',
     'http://localhost:5174',
+    'https://hbs-api-three.vercel.app',
     process.env.FRONTEND_URL
   ].filter(Boolean)
 );
-
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.has(origin)) {
