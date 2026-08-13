@@ -152,7 +152,11 @@ const orderSchema = new mongoose.Schema({
   shippedAt: Date,
   remainUndeliveredAt: Date,
   deliveredAt: Date,
-  cancelledAt: Date
+  cancelledAt: Date,
+
+  // Stock tracking flags (prevent duplicate deductions/restorations)
+  stockDeducted: { type: Boolean, default: false }, // set true after createOrder deducts stock
+  stockRestored: { type: Boolean, default: false }  // set true after restock on cancel/reject
 }, {
   timestamps: true
 });

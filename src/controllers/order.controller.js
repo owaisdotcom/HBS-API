@@ -19,8 +19,61 @@ const recomputeProductStock = async (productId) => {
   await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
 };
 
-/** Restock variant, tie/elastic option stock, or bundle stock when an order is cancelled or payment rejected */
-const restockOrderItem = async (item) => {
+/**
+ * Deduct stock for a single order item (called once when order is created).
+ * Returns the productId string if a product was touched, null for bundles.
+ */
+const deductOrderItem = async (item) => {
+  // Pre-made bundle
+  if (item.preMadeBundleId) {
+    await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
+      $inc: { stock: -item.quantity, soldCount: item.quantity }
+    });
+    return null;
+  }
+  if (!item.productId) return null;
+
+  if (item.variantId) {
+    const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
+    if (prod && Array.isArray(prod.variants)) {
+      let colorId = null, sizeId = null;
+      for (const v of prod.variants) {
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+        if (s) { colorId = v.colorId; sizeId = s.sizeId; break; }
+      }
+      if (colorId != null && sizeId != null) {
+        const incFields = {
+          soldCount: item.quantity,
+          'variants.$[c].sizes.$[s].stock': -item.quantity
+        };
+        // Only deduct tie/elastic stock for stock-tracked customizations (not bridal)
+        if (item.selectedTieElastic === 'tie') {
+          incFields['variants.$[c].sizes.$[s].tieStock'] = -item.quantity;
+        } else if (item.selectedTieElastic === 'elastic') {
+          incFields['variants.$[c].sizes.$[s].elasticStock'] = -item.quantity;
+        }
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: incFields },
+          { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+        );
+        return item.productId.toString();
+      }
+    }
+  }
+
+  // Fallback: legacy/non-variant product
+  await Product.findByIdAndUpdate(item.productId, {
+    $inc: { stock: -item.quantity, soldCount: item.quantity }
+  });
+  return item.productId.toString();
+};
+
+/**
+ * Restore stock for a single order item (called once when order is cancelled/rejected).
+ * Mirrors deductOrderItem exactly. Returns productId string or null.
+ */
+const restoreOrderItem = async (item) => {
   if (item.preMadeBundleId) {
     await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
       $inc: { stock: item.quantity, soldCount: -item.quantity }
@@ -29,49 +82,61 @@ const restockOrderItem = async (item) => {
   }
   if (!item.productId) return null;
 
-  const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }).lean();
-  if (!product) return item.productId.toString();
-
-  if (item.variantId && Array.isArray(product.variants)) {
-    let colorId = null;
-    let sizeId = null;
-    for (const v of product.variants) {
-      const sizeEntry = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
-      if (sizeEntry != null) {
-        colorId = v.colorId;
-        sizeId = sizeEntry.sizeId;
-        break;
+  if (item.variantId) {
+    const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
+    if (prod && Array.isArray(prod.variants)) {
+      let colorId = null, sizeId = null;
+      for (const v of prod.variants) {
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+        if (s) { colorId = v.colorId; sizeId = s.sizeId; break; }
+      }
+      if (colorId != null && sizeId != null) {
+        const incFields = {
+          soldCount: -item.quantity,
+          'variants.$[c].sizes.$[s].stock': item.quantity
+        };
+        if (item.selectedTieElastic === 'tie') {
+          incFields['variants.$[c].sizes.$[s].tieStock'] = item.quantity;
+        } else if (item.selectedTieElastic === 'elastic') {
+          incFields['variants.$[c].sizes.$[s].elasticStock'] = item.quantity;
+        }
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: incFields },
+          { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+        );
+        return item.productId.toString();
       }
     }
-
-    if (colorId != null && sizeId != null) {
-      const incFields = {
-        soldCount: -item.quantity,
-        'variants.$[c].sizes.$[s].stock': item.quantity
-      };
-      if (item.selectedTieElastic === 'tie') {
-        incFields['variants.$[c].sizes.$[s].tieStock'] = item.quantity;
-      } else if (item.selectedTieElastic === 'elastic') {
-        incFields['variants.$[c].sizes.$[s].elasticStock'] = item.quantity;
-      }
-
-      await Product.updateOne(
-        { _id: item.productId },
-        { $inc: incFields },
-        { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
-      );
-    } else {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: item.quantity, soldCount: -item.quantity }
-      });
-    }
-  } else {
-    await Product.findByIdAndUpdate(item.productId, {
-      $inc: { stock: item.quantity, soldCount: -item.quantity }
-    });
   }
 
+  await Product.findByIdAndUpdate(item.productId, {
+    $inc: { stock: item.quantity, soldCount: -item.quantity }
+  });
   return item.productId.toString();
+};
+
+/**
+ * Idempotent stock restoration for a full order.
+ * Only runs if stockDeducted=true and stockRestored=false.
+ * Sets stockRestored=true after success to prevent duplicates.
+ */
+const restoreAllStock = async (order) => {
+  // Guard: only restore if stock was actually deducted and not yet restored
+  if (!order.stockDeducted || order.stockRestored) return;
+
+  const touchedProductIds = new Set();
+  for (const item of order.items) {
+    const pId = await restoreOrderItem(item);
+    if (pId) touchedProductIds.add(pId);
+  }
+  for (const productId of touchedProductIds) {
+    await recomputeProductStock(productId);
+  }
+
+  // Mark as restored (atomic update to prevent race conditions)
+  await Order.updateOne({ _id: order._id }, { $set: { stockRestored: true } });
+  order.stockRestored = true;
 };
 
 /**
@@ -369,60 +434,18 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Reduce bundle stock and increment soldCount for pre-made bundle items
-  for (const item of orderItems) {
-    if (item.preMadeBundleId) {
-      await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
-        $inc: { stock: -item.quantity, soldCount: item.quantity }
-      });
-    }
-  }
-
-  // Reduce variant stock and recompute product stock (skip pre-made bundle items)
+  // Deduct stock for all items and mark order as stock-deducted (idempotency guard)
   const touchedProductIds = new Set();
   for (const item of orderItems) {
-    if (item.productId == null) continue; // pre-made bundle item, no product stock to update
-    if (item.variantId) {
-      const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
-      if (prod && Array.isArray(prod.variants)) {
-        let colorId = null;
-        let sizeId = null;
-        for (const v of prod.variants) {
-          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
-          if (s) {
-            colorId = v.colorId;
-            sizeId = s.sizeId;
-            break;
-          }
-        }
-        if (colorId != null && sizeId != null) {
-          const incFields = {
-            soldCount: item.quantity,
-            'variants.$[c].sizes.$[s].stock': -item.quantity
-          };
-          if (item.selectedTieElastic === 'tie') {
-            incFields['variants.$[c].sizes.$[s].tieStock'] = -item.quantity;
-          } else if (item.selectedTieElastic === 'elastic') {
-            incFields['variants.$[c].sizes.$[s].elasticStock'] = -item.quantity;
-          }
-
-          await Product.updateOne(
-            { _id: item.productId },
-            { $inc: incFields },
-            { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
-          );
-        }
-      }
-    } else {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity, soldCount: item.quantity }
-      });
-    }
-    touchedProductIds.add(item.productId.toString());
+    const pId = await deductOrderItem(item);
+    if (pId) touchedProductIds.add(pId);
   }
   for (const productId of touchedProductIds) {
     await recomputeProductStock(productId);
   }
+  // Mark stock as deducted so restoreAllStock knows it needs to restore later if cancelled
+  await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
+  order.stockDeducted = true;
 
   res.status(201).json(
     new ApiResponse(201, { order }, 'Order created successfully')
@@ -592,15 +615,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
   await order.save();
 
+  // Restore stock on cancellation — guarded by stockDeducted/stockRestored flags
   if (status === 'cancelled') {
-    const touchedProductIds = new Set();
-    for (const item of order.items) {
-      const pId = await restockOrderItem(item);
-      if (pId) touchedProductIds.add(pId);
-    }
-    for (const productId of touchedProductIds) {
-      await recomputeProductStock(productId);
-    }
+    await restoreAllStock(order);
   }
 
   res.json(
@@ -705,15 +722,9 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
 
   await order.save();
 
+  // Restore stock on payment rejection — guarded by stockDeducted/stockRestored flags
   if (!isVerified && order.status === 'cancelled') {
-    const touchedProductIds = new Set();
-    for (const item of order.items) {
-      const pId = await restockOrderItem(item);
-      if (pId) touchedProductIds.add(pId);
-    }
-    for (const productId of touchedProductIds) {
-      await recomputeProductStock(productId);
-    }
+    await restoreAllStock(order);
   }
 
   res.json(
@@ -758,17 +769,8 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
 
   await order.save();
 
-  // Restore variant stock and recompute product stock
-  {
-    const touchedProductIds = new Set();
-    for (const item of order.items) {
-      const pId = await restockOrderItem(item);
-      if (pId) touchedProductIds.add(pId);
-    }
-    for (const productId of touchedProductIds) {
-      await recomputeProductStock(productId);
-    }
-  }
+  // Restore variant stock — guarded by stockDeducted/stockRestored flags
+  await restoreAllStock(order);
 
   res.json(
     new ApiResponse(200, { order }, 'Order cancelled successfully')
