@@ -8,6 +8,13 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
+import {
+  sendOrderReceivedEmail,
+  sendOrderConfirmedEmail,
+  sendOrderShippedEmail,
+  sendOrderDeliveredEmail,
+  sendOrderCancelledEmail
+} from '../services/email.service.js';
 
 const recomputeProductStock = async (productId) => {
   const product = await Product.findById(productId, 'variants').lean();
@@ -447,6 +454,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
   order.stockDeducted = true;
 
+  // Send Order Received Email (asynchronous, non-blocking)
+  sendOrderReceivedEmail(order).catch(err =>
+    console.error('Failed to send order received email:', err.message)
+  );
+
   res.status(201).json(
     new ApiResponse(201, { order }, 'Order created successfully')
   );
@@ -649,6 +661,17 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     await restoreAllStock(order);
   }
 
+  // Send email notification based on updated status (asynchronous, non-blocking)
+  if (status === 'confirmed') {
+    sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
+  } else if (status === 'shipped') {
+    sendOrderShippedEmail(order, order.trackingNumber, order.courier).catch(err => console.error('Failed to send order shipped email:', err.message));
+  } else if (status === 'delivered') {
+    sendOrderDeliveredEmail(order).catch(err => console.error('Failed to send order delivered email:', err.message));
+  } else if (status === 'cancelled') {
+    sendOrderCancelledEmail(order, note).catch(err => console.error('Failed to send order cancelled email:', err.message));
+  }
+
   res.json(
     new ApiResponse(200, { order }, 'Order status updated successfully')
   );
@@ -756,6 +779,13 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     await restoreAllStock(order);
   }
 
+  // Send email notification for payment verification / rejection (asynchronous, non-blocking)
+  if (isVerified) {
+    sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
+  } else {
+    sendOrderCancelledEmail(order, 'Payment receipt rejected').catch(err => console.error('Failed to send order cancelled email:', err.message));
+  }
+
   res.json(
     new ApiResponse(
       200,
@@ -800,6 +830,11 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
 
   // Restore variant stock — guarded by stockDeducted/stockRestored flags
   await restoreAllStock(order);
+
+  // Send order cancelled email notification (asynchronous, non-blocking)
+  sendOrderCancelledEmail(order, req.body.reason || 'Cancelled by customer').catch(err =>
+    console.error('Failed to send order cancelled email:', err.message)
+  );
 
   res.json(
     new ApiResponse(200, { order }, 'Order cancelled successfully')

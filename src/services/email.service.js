@@ -328,3 +328,353 @@ export const sendWelcomeEmail = async (email, fullName) => {
   await transporter.sendMail(mailOptions);
 };
 
+/** Helper: format items table HTML for order emails */
+const renderOrderItemsHtml = (items) => {
+  return (items || []).map(item => {
+    const customizations = [];
+    if (item.selectedColor) customizations.push(`Color: ${item.selectedColor}`);
+    if (item.selectedSize) customizations.push(`Size: ${item.selectedSize}`);
+    if (item.selectedTieElastic) customizations.push(`Option: ${item.selectedTieElastic === 'tie' ? 'Tie' : 'Elastic'}`);
+    if (item.selectedBridalLength === 'bridal') customizations.push(`Bridal Length (+Rs. ${item.bridalLengthPrice || 0})`);
+    
+    return `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+          <strong>${item.productName || 'Product'}</strong>
+          ${customizations.length ? `<br><small style="color: #666;">${customizations.join(' | ')}</small>` : ''}
+        </td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${Number(item.price * item.quantity).toLocaleString()}</td>
+      </tr>
+    `;
+  }).join('');
+};
+
+/**
+ * 1. Send Order Received Email (Order Placed)
+ */
+export const sendOrderReceivedEmail = async (order) => {
+  const customerEmail = order.customer?.email;
+  if (!customerEmail) return;
+
+  const transporter = createTransporter();
+  const orderId = order.orderId || order._id;
+  const itemsHtml = renderOrderItemsHtml(order.items);
+  const customerName = order.customer?.name || 'Valued Customer';
+  const shipping = Number(order.shipping) || 0;
+  const subtotal = Number(order.subtotal) || 0;
+  const discount = Number(order.discount) || 0;
+  const total = Number(order.total) || 0;
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+    to: customerEmail,
+    subject: `Order Received #${orderId} - Hijabs By Shiza`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
+          .order-box { background-color: white; border-radius: 8px; padding: 20px; margin: 15px 0; border: 1px solid #e5e7eb; }
+          .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          .summary-row { font-size: 14px; color: #555; }
+          .total-row { font-size: 16px; font-weight: bold; color: #AA2E48; border-top: 2px solid #AA2E48; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Order Placed Successfully!</h1>
+            <p style="margin:5px 0 0; font-size: 14px;">Order #${orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Hello ${customerName},</h2>
+            <p>Thank you for shopping with Hijabs By Shiza! We have received your order and payment receipt. Our team will verify your payment shortly.</p>
+            
+            <div class="order-box">
+              <h3 style="margin-top:0; color: #AA2E48;">Order Summary</h3>
+              <table class="table">
+                <thead>
+                  <tr style="background:#f3f4f6; text-align:left;">
+                    <th style="padding:8px;">Item</th>
+                    <th style="padding:8px; text-align:center;">Qty</th>
+                    <th style="padding:8px; text-align:right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+              <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                <div class="summary-row" style="display:flex; justify-between; padding: 3px 0;">
+                  <span>Subtotal:</span>
+                  <span style="float:right;">Rs. ${subtotal.toLocaleString()}</span>
+                </div>
+                ${discount > 0 ? `
+                <div class="summary-row" style="color:#059669; padding: 3px 0;">
+                  <span>Discount:</span>
+                  <span style="float:right;">-Rs. ${discount.toLocaleString()}</span>
+                </div>` : ''}
+                <div class="summary-row" style="padding: 3px 0;">
+                  <span>Shipping:</span>
+                  <span style="float:right;">${shipping === 0 ? 'FREE' : `Rs. ${shipping.toLocaleString()}`}</span>
+                </div>
+                <div class="total-row" style="padding-top:8px; margin-top:5px;">
+                  <span>Total Amount:</span>
+                  <span style="float:right;">Rs. ${total.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="order-box">
+              <h4 style="margin:0 0 8px; color: #333;">Delivery Address</h4>
+              <p style="margin:0; color:#555; font-size:14px;">
+                ${order.customer?.completeAddress || order.customer?.address || ''}, ${order.customer?.city || ''}<br>
+                Phone: ${order.customer?.phone || ''}
+              </p>
+            </div>
+
+            <p style="text-align:center; font-size:13px; color:#666;">We will send you another update once your payment is verified and your order is confirmed.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * 2. Send Order Confirmed Email (Payment Verified / Status Confirmed)
+ */
+export const sendOrderConfirmedEmail = async (order) => {
+  const customerEmail = order.customer?.email;
+  if (!customerEmail) return;
+
+  const transporter = createTransporter();
+  const orderId = order.orderId || order._id;
+  const customerName = order.customer?.name || 'Valued Customer';
+  const total = Number(order.total) || 0;
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+    to: customerEmail,
+    subject: `Payment Verified & Order Confirmed #${orderId} - Hijabs By Shiza`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
+          .status-box { background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Order Confirmed!</h1>
+            <p style="margin:5px 0 0;">Order #${orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Great news, ${customerName}!</h2>
+            <div class="status-box">
+              <h3 style="margin:0; color:#065f46;">✓ Payment Verified & Order Confirmed</h3>
+              <p style="margin:5px 0 0; color:#047857; font-size:14px;">Your payment for Rs. ${total.toLocaleString()} has been verified. We are preparing your order for shipment.</p>
+            </div>
+            <p>We will notify you as soon as your items are packed and handed over to the courier service.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * 3. Send Order Shipped Email
+ */
+export const sendOrderShippedEmail = async (order, trackingNumber = '', courier = '') => {
+  const customerEmail = order.customer?.email;
+  if (!customerEmail) return;
+
+  const transporter = createTransporter();
+  const orderId = order.orderId || order._id;
+  const customerName = order.customer?.name || 'Valued Customer';
+  const trackNum = trackingNumber || order.trackingNumber || 'N/A';
+  const courierName = courier || order.courier || 'Courier';
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+    to: customerEmail,
+    subject: `Your Order #${orderId} Has Been Shipped! - Hijabs By Shiza`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
+          .shipping-box { background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; border-radius: 4px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Order On Its Way!</h1>
+            <p style="margin:5px 0 0;">Order #${orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Hello ${customerName},</h2>
+            <p>Your package has been dispatched and is currently on its way to you!</p>
+            <div class="shipping-box">
+              <h3 style="margin:0; color:#0369a1;">🚚 Shipping Details</h3>
+              <p style="margin:8px 0 0; color:#075985; font-size:14px;">
+                <strong>Courier:</strong> ${courierName}<br>
+                <strong>Tracking Number:</strong> ${trackNum}<br>
+                <strong>Estimated Delivery:</strong> 3 - 5 Business Days
+              </p>
+            </div>
+            <p>Please make sure someone is available at your address to receive the delivery.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * 4. Send Order Delivered Email
+ */
+export const sendOrderDeliveredEmail = async (order) => {
+  const customerEmail = order.customer?.email;
+  if (!customerEmail) return;
+
+  const transporter = createTransporter();
+  const orderId = order.orderId || order._id;
+  const customerName = order.customer?.name || 'Valued Customer';
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+    to: customerEmail,
+    subject: `Order Delivered #${orderId} - Hijabs By Shiza`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
+          .delivered-box { background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Order Delivered!</h1>
+            <p style="margin:5px 0 0;">Order #${orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Dear ${customerName},</h2>
+            <div class="delivered-box">
+              <h3 style="margin:0; color:#065f46;">🎉 Package Delivered</h3>
+              <p style="margin:5px 0 0; color:#047857; font-size:14px;">Your order #${orderId} has been successfully delivered. We hope you love your new purchase!</p>
+            </div>
+            <p>Thank you for choosing Hijabs By Shiza. We look forward to serving you again!</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * 5. Send Order Cancelled Email
+ */
+export const sendOrderCancelledEmail = async (order, reason = '') => {
+  const customerEmail = order.customer?.email;
+  if (!customerEmail) return;
+
+  const transporter = createTransporter();
+  const orderId = order.orderId || order._id;
+  const customerName = order.customer?.name || 'Valued Customer';
+  const cancelReason = reason || 'Order request could not be processed.';
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+    to: customerEmail,
+    subject: `Order Update #${orderId} - Hijabs By Shiza`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
+          .cancel-box { background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; border-radius: 4px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Order Cancelled</h1>
+            <p style="margin:5px 0 0;">Order #${orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Dear ${customerName},</h2>
+            <div class="cancel-box">
+              <h3 style="margin:0; color:#991b1b;">Order Cancelled</h3>
+              <p style="margin:5px 0 0; color:#b91c1c; font-size:14px;"><strong>Reason:</strong> ${cancelReason}</p>
+            </div>
+            <p>If you have any questions or feel this was a mistake, please reach out to our customer support team.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
