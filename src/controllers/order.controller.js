@@ -259,7 +259,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const total = subtotal - discount + shipping;
 
   // Upload receipt to cloud
-  const receiptUrl = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+  const { url: receiptUrl } = await uploadService.uploadSingle(req.file, 'hbs-receipts');
 
   // Create order
   const order = await Order.create({
