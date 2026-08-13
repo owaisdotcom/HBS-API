@@ -16,9 +16,9 @@ async function seedNavigation() {
     await menus.deleteMany({ position: 'header' });
 
     // 2. Fetch ALL active categories
-    const allCategories = await categories.find({ 
-      isDeleted: false, 
-      status: 'active' 
+    const allCategories = await categories.find({
+      isDeleted: false,
+      status: 'active'
     }).toArray();
 
     // Helper: Recursively build the menu item structure
@@ -45,7 +45,7 @@ async function seedNavigation() {
             openInNewTab: false,
             displayOrder: cat.displayOrder,
             // Even if children is empty [], it will be included
-            children: children 
+            children: children
           };
         });
     };
@@ -66,17 +66,17 @@ async function seedNavigation() {
 
     // --- DEBUG LOG ---
     // This allows you to see the "Turkish Lawn Hijabs" -> "Large" nesting in the console
-    console.log("Structure check (Daily Wear -> Hijabs -> Lawn -> Turkish):");
+
     const dailyWear = menuItems.find(m => m.label === 'Daily Wear');
     const hijabs = dailyWear?.children.find(c => c.label === 'Hijabs');
     const lawn = hijabs?.children.find(c => c.label === 'Lawn Hijabs');
     const turkish = lawn?.children.find(c => c.label === 'Turkish Lawn Hijabs');
-    
-    console.log(`Root Items: ${menuItems.length}`);
-    console.log(`Turkish Lawn Children found: ${turkish?.children?.length || 0}`);
-    
-    console.log('Navigation menu seeded successfully.');
-    
+
+
+
+
+
+
   } catch (err) {
     console.error('Error seeding navigation:', err);
   } finally {

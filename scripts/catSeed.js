@@ -54,14 +54,14 @@ async function seedCategories() {
       { name: 'Georgette Hijabs', items: ['Basic Georgette Hijabs', 'Glitter Georgette Hijabs', 'Cross-hatch Georgette Hijabs', 'Instant Georgette Hijabs', 'Matching Georgette Hijab & Caps', 'Printed Georgette Hijabs'] },
       { name: 'Printed Hijabs', items: ['Lawn printed Hijabs', 'Georgette Printed Hijabs'] },
       { name: 'Modal Hijabs', items: ['Viscose Modal Hijabs', 'Imported Modal Hijabs'] },
-      { 
-        name: 'Lawn Hijabs', 
+      {
+        name: 'Lawn Hijabs',
         items: [
-          'Pleated Lawn Hijabs', 'Polka Dot Pleated Lawn Hijabs', 'Crumpled Lawn Hijabs', 'Printed Lawn Hijabs', 
-          'Gold Foil Lawn Hijabs', 
-          { name: 'Turkish Lawn Hijabs', children: ['Large', 'Standard'] }, 
+          'Pleated Lawn Hijabs', 'Polka Dot Pleated Lawn Hijabs', 'Crumpled Lawn Hijabs', 'Printed Lawn Hijabs',
+          'Gold Foil Lawn Hijabs',
+          { name: 'Turkish Lawn Hijabs', children: ['Large', 'Standard'] },
           'Large-Solid Lawn Hijabs', 'Sequins Lawn', 'Gold Leaf Foil Lawn Hijabs'
-        ] 
+        ]
       },
       { name: 'Winter Hijabs', items: ['Plain Jersey Hijabs', 'Ribbed Jersey Hijabs', 'Cashmere Hijabs', 'Pashmina Hijabs', 'Self viscose Jacquard Hijabs'] }
     ];
@@ -82,35 +82,35 @@ async function seedCategories() {
 
     // NIQABS
     const niqabs = await insertCategory('Niqabs', daily.id, [daily.id], daily.slug, 1, 2);
-    ['Crinkle Silk Niqabs', 'Georgette Niqabs', 'Niqab SALE offers'].forEach((n, i) => 
+    ['Crinkle Silk Niqabs', 'Georgette Niqabs', 'Niqab SALE offers'].forEach((n, i) =>
       insertCategory(n, niqabs.id, [daily.id, niqabs.id], niqabs.slug, 2, i + 1));
 
     // SETS
     const sets = await insertCategory('Hijab & Niqab Sets', daily.id, [daily.id], daily.slug, 1, 3);
-    ['Crinkle Silk Sets', 'Georgette Chiffon Sets', 'Soft Chiffon Sets'].forEach((s, i) => 
+    ['Crinkle Silk Sets', 'Georgette Chiffon Sets', 'Soft Chiffon Sets'].forEach((s, i) =>
       insertCategory(s, sets.id, [daily.id, sets.id], sets.slug, 2, i + 1));
 
     // CLOTHING
     const clothing = await insertCategory('Clothing', daily.id, [daily.id], daily.slug, 1, 4);
-    ['Abayas', 'Jilbab', 'Khimar/Triple layer khimar', 'Modest Dresses'].forEach((c, i) => 
+    ['Abayas', 'Jilbab', 'Khimar/Triple layer khimar', 'Modest Dresses'].forEach((c, i) =>
       insertCategory(c, clothing.id, [daily.id, clothing.id], clothing.slug, 2, i + 1));
 
     await insertCategory('Namaz chadar', daily.id, [daily.id], daily.slug, 1, 5);
 
     // --- 3. ESSENTIALS ---
     const ess = await insertCategory('Essentials', null, [], '', 0, 3);
-    ['Hijab Pins', 'Hijab Magnets', 'Under-caps', 'Scrunchies', 'Hijab Hangers', 'Sleeves', 'Gloves'].forEach((n, i) => 
+    ['Hijab Pins', 'Hijab Magnets', 'Under-caps', 'Scrunchies', 'Hijab Hangers', 'Sleeves', 'Gloves'].forEach((n, i) =>
       insertCategory(n, ess.id, [ess.id], ess.slug, 1, i + 1));
 
     // --- 4. JEWELRY ---
     const jew = await insertCategory('Stainless Steel Jewelry', null, [], '', 0, 4);
-    ['Lockets', 'Rings', 'Hand-chains', 'Studs', 'Sets', 'Anklets', 'Handcuffs', 'Bracelets', 'Watches'].forEach((n, i) => 
+    ['Lockets', 'Rings', 'Hand-chains', 'Studs', 'Sets', 'Anklets', 'Handcuffs', 'Bracelets', 'Watches'].forEach((n, i) =>
       insertCategory(n, jew.id, [jew.id], jew.slug, 1, i + 1));
 
     // --- 5. BUNDLES ---
-    
 
-    console.log('Categories successfully seeded without "View All" entries.');
+
+
   } finally {
     await client.close();
   }

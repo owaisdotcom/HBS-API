@@ -14,32 +14,32 @@ async function checkUsers() {
       process.exit(1);
     }
     await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB');
-    
+
+
     const users = await User.find({}).select('fullName email isEmailVerified createdAt emailVerificationOTPExpire');
-    
-    console.log('\n=================================');
-    console.log('USERS IN DATABASE:', users.length);
-    console.log('=================================\n');
-    
+
+
+
+
+
     if (users.length === 0) {
-      console.log('❌ No users found in database!');
-      console.log('You need to complete the signup first.\n');
+
+
     } else {
       users.forEach((user, index) => {
-        console.log(`User ${index + 1}:`);
-        console.log('  Name:', user.fullName);
-        console.log('  Email:', user.email);
-        console.log('  Verified:', user.isEmailVerified ? '✅ Yes' : '❌ No');
-        console.log('  Created:', user.createdAt);
-        console.log('  OTP Expires:', user.emailVerificationOTPExpire ? new Date(user.emailVerificationOTPExpire) : 'N/A');
-        console.log('  OTP Valid:', user.emailVerificationOTPExpire && user.emailVerificationOTPExpire > Date.now() ? '✅ Yes' : '❌ No');
-        console.log('---');
+
+
+
+
+
+
+
+
       });
     }
-    
-    console.log('\n=================================');
-    
+
+
+
     await mongoose.disconnect();
     process.exit(0);
   } catch (error) {

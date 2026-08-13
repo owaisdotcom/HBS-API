@@ -45,7 +45,7 @@ const seedTermsConditions = async () => {
     const doc = await TermsConditions.getDocument();
 
     if (doc.sections && doc.sections.length > 0) {
-      console.log('Terms & Conditions already have content. Skipping seed. Delete sections first to re-seed.');
+
       process.exit(0);
       return;
     }
@@ -57,7 +57,7 @@ const seedTermsConditions = async () => {
     doc.acceptanceText = seedData.acceptanceText;
 
     await doc.save();
-    console.log('✓ Terms & Conditions seeded successfully from seed-terms-conditions.json');
+
     process.exit(0);
   } catch (err) {
     console.error('✗ Seed error:', err.message);

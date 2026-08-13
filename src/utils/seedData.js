@@ -36,36 +36,36 @@ const seedData = async () => {
     const preMadeBundles = (data.preMadeBundles || []).map(convertOids);
 
     if (categories.length === 0) {
-      console.log('No categories in seed file.');
+
       process.exit(0);
       return;
     }
 
     const existingCat = await Category.countDocuments({ isDeleted: { $ne: true } });
     if (existingCat > 0) {
-      console.log('Categories already exist. Skipping category seed. Delete categories first to re-seed.');
+
     } else {
       await Category.insertMany(categories);
-      console.log(`✓ Inserted ${categories.length} categories.`);
+
     }
 
     const existingProd = await Product.countDocuments({ isDeleted: { $ne: true } });
     if (existingProd > 0) {
-      console.log('Products already exist. Skipping product seed. Delete products first to re-seed.');
+
     } else {
       await Product.insertMany(products);
-      console.log(`✓ Inserted ${products.length} products.`);
+
     }
 
     const existingBundles = await PreMadeBundle.countDocuments({ isDeleted: { $ne: true } });
     if (existingBundles > 0) {
-      console.log('Pre-made bundles already exist. Skipping pre-made bundle seed. Delete them first to re-seed.');
+
     } else if (preMadeBundles.length > 0) {
       await PreMadeBundle.insertMany(preMadeBundles);
-      console.log(`✓ Inserted ${preMadeBundles.length} pre-made bundles.`);
+
     }
 
-    console.log('✓ Seed completed.');
+
     process.exit(0);
   } catch (error) {
     console.error('✗ Seed error:', error.message);

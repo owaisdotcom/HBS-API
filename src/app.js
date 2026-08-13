@@ -50,9 +50,9 @@ if (process.env.NODE_ENV !== 'development') {
     message: 'Too many requests from this IP, please try again later'
   });
   app.use('/api', limiter);
-  console.log('Rate limiting enabled');
+
 } else {
-  console.log('Rate limiting disabled in development mode');
+
 }
 
 // Compression

@@ -149,9 +149,9 @@ const setupSuperAdmin = async () => {
     const data = await response.json();
     
     if (data.success) {
-      console.log('Super admin created!');
-      console.log('Token:', data.data.token);
-      console.log('Admin:', data.data.admin);
+
+
+
       
       // Save token for future use
       localStorage.setItem('adminToken', data.data.token);
@@ -182,11 +182,11 @@ const setupSuperAdmin = async () => {
       name: 'Super Admin'
     });
 
-    console.log('Success:', response.data);
+
     return response.data;
   } catch (error) {
     if (error.response?.status === 403) {
-      console.log('Setup already completed. Use login instead.');
+
     } else {
       console.error('Error:', error.response?.data || error.message);
     }
@@ -247,8 +247,8 @@ const setup = async () => {
       name: 'Super Admin'
     });
     
-    console.log('✓ Super admin created successfully!');
-    console.log('Token:', data.data.token);
+
+
   } catch (error) {
     console.error('✗ Error:', error.response?.data?.message || error.message);
   }

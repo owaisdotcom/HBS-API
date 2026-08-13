@@ -36,7 +36,7 @@ export const testEmailConnection = async () => {
   try {
     const transporter = createTransporter();
     await transporter.verify();
-    console.log('✅ Email server connection successful');
+
     return true;
   } catch (error) {
     console.error('❌ Email server connection failed:', error.message);
@@ -48,10 +48,10 @@ export const testEmailConnection = async () => {
  * Send email verification OTP
  */
 export const sendVerificationOTP = async (email, otp, fullName) => {
-  console.log('Preparing to send OTP email to:', email);
-  
+
+
   const transporter = createTransporter();
-  
+
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_USER || process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
     to: email,
@@ -97,13 +97,13 @@ export const sendVerificationOTP = async (email, otp, fullName) => {
       </html>
     `
   };
-  
+
   try {
-    console.log('Sending OTP email...');
+
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ OTP Email sent successfully:', info.messageId);
+
     if (getTestMessageUrl) {
-      console.log('Preview URL:', getTestMessageUrl(info));
+
     }
     return info;
   } catch (error) {
@@ -117,9 +117,9 @@ export const sendVerificationOTP = async (email, otp, fullName) => {
  */
 export const sendVerificationEmail = async (email, verificationToken) => {
   const transporter = createTransporter();
-  
+
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-  
+
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
     to: email,
@@ -161,7 +161,7 @@ export const sendVerificationEmail = async (email, verificationToken) => {
       </html>
     `
   };
-  
+
   await transporter.sendMail(mailOptions);
 };
 
@@ -170,9 +170,9 @@ export const sendVerificationEmail = async (email, verificationToken) => {
  */
 export const sendPasswordResetEmail = async (email, resetToken) => {
   const transporter = createTransporter();
-  
+
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-  
+
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
     to: email,
@@ -217,7 +217,7 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       </html>
     `
   };
-  
+
   await transporter.sendMail(mailOptions);
 };
 
@@ -280,7 +280,7 @@ export const sendWishlistRestockEmail = async (email, fullName, product) => {
  */
 export const sendWelcomeEmail = async (email, fullName) => {
   const transporter = createTransporter();
-  
+
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
     to: email,
@@ -324,7 +324,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
       </html>
     `
   };
-  
+
   await transporter.sendMail(mailOptions);
 };
 

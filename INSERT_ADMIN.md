@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
 
 const password = 'Admin@123';
 const hashedPassword = await bcrypt.hash(password, 10);
-console.log(hashedPassword);
+
 ```
 
 Run: `node hashPassword.js`
@@ -117,7 +117,7 @@ const Admin = mongoose.model('Admin', AdminSchema);
 async function addAdmin() {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+
 
     const hashedPassword = await bcrypt.hash('Admin@123', 10);
 
@@ -129,7 +129,7 @@ async function addAdmin() {
       isActive: true
     });
 
-    console.log('Admin created:', admin.email);
+
     process.exit(0);
   } catch (error) {
     console.error('Error:', error);
@@ -235,8 +235,8 @@ const passwords = [
 
 passwords.forEach(async (pwd) => {
   const hashed = await bcrypt.hash(pwd, 10);
-  console.log(`Password: ${pwd}`);
-  console.log(`Hashed: ${hashed}\n`);
+
+
 });
 ```
 

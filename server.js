@@ -15,12 +15,12 @@ connectDB().catch((error) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`┌──────────────────────────────────────┐`);
-  console.log(`│  🚀 HBS API Server Running           │`);
-  console.log(`│  📍 Port: ${PORT}                       │`);
-  console.log(`│  🌍 Mode: ${process.env.NODE_ENV}                │`);
-  console.log(`│  🔗 URL: http://localhost:${PORT}       │`);
-  console.log(`└──────────────────────────────────────┘`);
+
+
+
+
+
+
 });
 
 // Handle unhandled promise rejections
@@ -37,8 +37,8 @@ process.on('uncaughtException', (err) => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM received. Shutting down gracefully...');
+
   server.close(() => {
-    console.log('✓ Process terminated');
+
   });
 });

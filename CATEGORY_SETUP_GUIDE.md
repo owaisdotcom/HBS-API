@@ -276,7 +276,7 @@ const handleCreateCategory = async () => {
   try {
     const response = await adminService.createCategory(formData);
     toast.success('Category created successfully!');
-    console.log('Uploaded image URL:', response.data.category.coverImage);
+
   } catch (error) {
     toast.error(error.message);
   }

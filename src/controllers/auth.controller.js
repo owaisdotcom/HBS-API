@@ -26,7 +26,7 @@ export const signup = asyncHandler(async (req, res, next) => {
   // Normalize email (lowercase and trim)
   const normalizedEmail = email.toLowerCase().trim();
 
-  console.log('Signup attempt for email:', normalizedEmail);
+
 
   // Check if user already exists (case-insensitive)
   const existingUser = await User.findOne({ email: normalizedEmail });
@@ -42,18 +42,18 @@ export const signup = asyncHandler(async (req, res, next) => {
     password
   });
 
-  console.log('User created with ID:', user._id, 'and email:', user.email);
+
 
   // Generate email verification OTP
   const otp = user.generateEmailVerificationOTP();
   await user.save({ validateBeforeSave: false });
 
-  console.log('OTP generated:', otp, 'for email:', normalizedEmail);
+
 
   // Send verification OTP email
   try {
     await sendVerificationOTP(normalizedEmail, otp, fullName);
-    console.log('OTP email sent successfully to:', normalizedEmail);
+
   } catch (error) {
     console.error('Error sending verification OTP:', error);
     console.error('Error details:', error.message);
@@ -107,12 +107,12 @@ export const login = asyncHandler(async (req, res, next) => {
     const otp = user.generateEmailVerificationOTP();
     await user.save({ validateBeforeSave: false });
 
-    console.log('Login attempt for unverified user:', normalizedEmail, 'OTP sent:', otp);
+
 
     // Send verification OTP
     try {
       await sendVerificationOTP(normalizedEmail, otp, user.fullName);
-      console.log('Verification OTP sent to:', normalizedEmail);
+
     } catch (error) {
       console.error('Error sending OTP during login:', error);
       // Continue anyway - user can resend
@@ -333,7 +333,7 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Please provide email and OTP', 400));
   }
 
-  console.log('Verifying OTP for email:', email, 'OTP:', otp);
+
 
   // Hash the OTP to compare with database
   const hashedOTP = crypto
@@ -343,28 +343,28 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
 
   // Normalize email
   const normalizedEmail = email.toLowerCase().trim();
-  
-  console.log('Hashed OTP:', hashedOTP);
-  console.log('Normalized email:', normalizedEmail);
-  
+
+
+
+
   // First, check if user exists with this email
   const userExists = await User.findOne({ email: normalizedEmail });
-  console.log('User exists:', userExists ? 'Yes' : 'No');
-  
+
+
   if (userExists) {
-    console.log('User OTP:', userExists.emailVerificationOTP ? 'Set' : 'Not set');
-    console.log('User OTP expires:', userExists.emailVerificationOTPExpire ? new Date(userExists.emailVerificationOTPExpire) : 'Not set');
-    console.log('Current time:', new Date());
-    console.log('OTP expired?:', userExists.emailVerificationOTPExpire < Date.now() ? 'YES' : 'NO');
+
+
+
+
   }
-  
+
   const user = await User.findOne({
     email: normalizedEmail,
     emailVerificationOTP: hashedOTP,
     emailVerificationOTPExpire: { $gt: Date.now() }
   });
 
-  console.log('User found with matching OTP:', user ? 'Yes' : 'No');
+
 
   if (!user) {
     if (!userExists) {
@@ -420,13 +420,13 @@ export const resendOTP = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Please provide email', 400));
   }
 
-  console.log('Resending OTP for email:', email);
+
 
   // Convert email to lowercase for case-insensitive search
   const normalizedEmail = email.toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail });
 
-  console.log('User found:', user ? 'Yes' : 'No');
+
 
   if (!user) {
     return next(new ApiError('No account found with this email address. Please sign up first.', 404));
@@ -440,12 +440,12 @@ export const resendOTP = asyncHandler(async (req, res, next) => {
   const otp = user.generateEmailVerificationOTP();
   await user.save({ validateBeforeSave: false });
 
-  console.log('Resending OTP:', otp, 'to:', user.email);
+
 
   // Send OTP email
   try {
     await sendVerificationOTP(user.email, otp, user.fullName);
-    console.log('Resend OTP email sent successfully');
+
     res.json(
       new ApiResponse(200, {
         // Include OTP in development for testing

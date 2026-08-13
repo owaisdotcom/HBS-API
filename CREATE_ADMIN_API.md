@@ -146,7 +146,7 @@ const createAdmin = async (adminData, token) => {
       }
     );
     
-    console.log('Admin created:', response.data);
+
     return response.data;
   } catch (error) {
     console.error('Error creating admin:', error.response?.data);
@@ -235,7 +235,7 @@ const handleCreateAdmin = async (formData) => {
     });
     
     toast.success('Admin created successfully!');
-    console.log('New admin:', admin);
+
   } catch (error) {
     toast.error(error.message || 'Failed to create admin');
   }

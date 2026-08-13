@@ -12,7 +12,7 @@ const createDefaultAdmin = async () => {
     const existingAdmin = await Admin.findOne({ username: 'admin' });
 
     if (existingAdmin) {
-      console.log('✓ Default admin already exists');
+
       process.exit(0);
     }
 
@@ -26,10 +26,10 @@ const createDefaultAdmin = async () => {
       permissions: ['products', 'categories', 'orders', 'users', 'coupons', 'reviews', 'homepage', 'settings']
     });
 
-    console.log('✓ Default admin created successfully');
-    console.log('  Email: admin@hijabsbyshiza.com');
-    console.log('  Password: Admin@123');
-    console.log('  ⚠️  Please change this password after first login!');
+
+
+
+
 
     process.exit(0);
   } catch (error) {

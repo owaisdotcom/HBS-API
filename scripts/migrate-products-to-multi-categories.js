@@ -15,7 +15,7 @@ import Category from '../src/models/Category.js';
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/hbs';
 
 async function migrate() {
-  console.log('Connecting to', MONGO_URI);
+
   await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
   try {
@@ -51,11 +51,11 @@ async function migrate() {
       if (changed) {
         await prod.save();
         count++;
-        console.log(`Updated product ${prod._id}`);
+
       }
     }
 
-    console.log(`Migration complete. Updated ${count} products.`);
+
   } catch (err) {
     console.error('Migration failed:', err);
   } finally {
