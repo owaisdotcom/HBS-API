@@ -19,6 +19,61 @@ const recomputeProductStock = async (productId) => {
   await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
 };
 
+/** Restock variant, tie/elastic option stock, or bundle stock when an order is cancelled or payment rejected */
+const restockOrderItem = async (item) => {
+  if (item.preMadeBundleId) {
+    await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
+      $inc: { stock: item.quantity, soldCount: -item.quantity }
+    });
+    return null;
+  }
+  if (!item.productId) return null;
+
+  const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }).lean();
+  if (!product) return item.productId.toString();
+
+  if (item.variantId && Array.isArray(product.variants)) {
+    let colorId = null;
+    let sizeId = null;
+    for (const v of product.variants) {
+      const sizeEntry = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+      if (sizeEntry != null) {
+        colorId = v.colorId;
+        sizeId = sizeEntry.sizeId;
+        break;
+      }
+    }
+
+    if (colorId != null && sizeId != null) {
+      const incFields = {
+        soldCount: -item.quantity,
+        'variants.$[c].sizes.$[s].stock': item.quantity
+      };
+      if (item.selectedTieElastic === 'tie') {
+        incFields['variants.$[c].sizes.$[s].tieStock'] = item.quantity;
+      } else if (item.selectedTieElastic === 'elastic') {
+        incFields['variants.$[c].sizes.$[s].elasticStock'] = item.quantity;
+      }
+
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: incFields },
+        { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+      );
+    } else {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { stock: item.quantity, soldCount: -item.quantity }
+      });
+    }
+  } else {
+    await Product.findByIdAndUpdate(item.productId, {
+      $inc: { stock: item.quantity, soldCount: -item.quantity }
+    });
+  }
+
+  return item.productId.toString();
+};
+
 /**
  * Get unit weight (in kg) for one order item from product or bundle.
  */
@@ -540,30 +595,8 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   if (status === 'cancelled') {
     const touchedProductIds = new Set();
     for (const item of order.items) {
-      if (item.preMadeBundleId) {
-        await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
-          $inc: { stock: item.quantity, soldCount: -item.quantity }
-        });
-        continue;
-      }
-      if (item.productId == null) continue;
-      if (item.variantId) {
-        await Product.updateOne(
-          { _id: item.productId, 'variants.variantId': item.variantId },
-          {
-            $inc: {
-              soldCount: -item.quantity,
-              'variants.$[v].stock': item.quantity
-            }
-          },
-          { arrayFilters: [{ 'v.variantId': item.variantId }] }
-        );
-      } else {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { stock: item.quantity, soldCount: -item.quantity }
-        });
-      }
-      touchedProductIds.add(item.productId.toString());
+      const pId = await restockOrderItem(item);
+      if (pId) touchedProductIds.add(pId);
     }
     for (const productId of touchedProductIds) {
       await recomputeProductStock(productId);
@@ -675,30 +708,8 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
   if (!isVerified && order.status === 'cancelled') {
     const touchedProductIds = new Set();
     for (const item of order.items) {
-      if (item.preMadeBundleId) {
-        await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
-          $inc: { stock: item.quantity, soldCount: -item.quantity }
-        });
-        continue;
-      }
-      if (item.productId == null) continue;
-      if (item.variantId) {
-        await Product.updateOne(
-          { _id: item.productId, 'variants.variantId': item.variantId },
-          {
-            $inc: {
-              soldCount: -item.quantity,
-              'variants.$[v].stock': item.quantity
-            }
-          },
-          { arrayFilters: [{ 'v.variantId': item.variantId }] }
-        );
-      } else {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { stock: item.quantity, soldCount: -item.quantity }
-        });
-      }
-      touchedProductIds.add(item.productId.toString());
+      const pId = await restockOrderItem(item);
+      if (pId) touchedProductIds.add(pId);
     }
     for (const productId of touchedProductIds) {
       await recomputeProductStock(productId);
@@ -751,23 +762,8 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
   {
     const touchedProductIds = new Set();
     for (const item of order.items) {
-      if (item.variantId) {
-        await Product.updateOne(
-          { _id: item.productId, 'variants.variantId': item.variantId },
-          {
-            $inc: {
-              soldCount: -item.quantity,
-              'variants.$[v].stock': item.quantity
-            }
-          },
-          { arrayFilters: [{ 'v.variantId': item.variantId }] }
-        );
-      } else {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { stock: item.quantity, soldCount: -item.quantity }
-        });
-      }
-      touchedProductIds.add(item.productId.toString());
+      const pId = await restockOrderItem(item);
+      if (pId) touchedProductIds.add(pId);
     }
     for (const productId of touchedProductIds) {
       await recomputeProductStock(productId);
