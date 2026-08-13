@@ -36,6 +36,7 @@ const productSchema = new mongoose.Schema({
   // Images
   images: [{
     url: String,
+    publicId: String,
     alt: String,
     isPrimary: {
       type: Boolean,
@@ -54,6 +55,7 @@ const productSchema = new mongoose.Schema({
     color: { type: String, required: true }, // Color name
     images: [{
       url: String,
+      publicId: String,
       alt: String,
       isPrimary: { type: Boolean, default: false },
       order: Number

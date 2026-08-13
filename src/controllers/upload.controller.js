@@ -13,10 +13,10 @@ export const uploadSingleImage = asyncHandler(async (req, res, next) => {
 
   const folder = req.body.folder || 'hbs-uploads';
   
-  const imageUrl = await uploadService.uploadSingle(req.file, folder);
+  const { url, publicId } = await uploadService.uploadSingle(req.file, folder);
 
   res.status(200).json(
-    new ApiResponse(200, { url: imageUrl }, 'Image uploaded successfully')
+    new ApiResponse(200, { url, publicId }, 'Image uploaded successfully')
   );
 });
 

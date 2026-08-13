@@ -17,7 +17,10 @@ class UploadService {
           if (error) {
             reject(error);
           } else {
-            resolve(result.secure_url);
+            resolve({
+              url: result.secure_url,
+              publicId: result.public_id
+            });
           }
         }
       );

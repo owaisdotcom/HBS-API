@@ -369,6 +369,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     if (Array.isArray(existingImages) && existingImages.length > 0) {
       productData.images = existingImages.map((img, index) => ({
         url: img.url || img,
+        publicId: img.publicId || undefined,
         isPrimary: (img.order ?? index) === 0,
         order: img.order ?? index
       }));
@@ -395,6 +396,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     if (Array.isArray(imgs) && imgs.length > 0) {
       productData.images = imgs.map((img, index) => ({
         url: typeof img === 'string' ? img : img.url,
+        publicId: typeof img === 'object' ? img.publicId || undefined : undefined,
         isPrimary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : index === 0,
         order: typeof img === 'object' && img.order !== undefined ? img.order : index
       }));
