@@ -154,6 +154,29 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       if (variantStock < requestedQty) {
         return next(new ApiError(`Insufficient stock for ${product.name} (variant). Available: ${variantStock}, requested: ${requestedQty}`, 400));
       }
+
+      // Check Customization options requirement (Tie, Elastic, or Bridal Length)
+      const hasCustomizations = sizeV.hasTieElastic || sizeV.hasBridalLength;
+      if (hasCustomizations) {
+        const hasTieSelection = item.selectedTieElastic && ['tie', 'elastic'].includes(item.selectedTieElastic);
+        const hasBridalSelection = item.selectedBridalLength === 'bridal';
+
+        if (!hasTieSelection && !hasBridalSelection) {
+          return next(new ApiError(`Please select a customization option (Tie, Elastic, or Bridal Length) for ${product.name}`, 400));
+        }
+
+        if (item.selectedTieElastic === 'tie') {
+          const tieStock = Number(sizeV.tieStock) || 0;
+          if (tieStock < requestedQty) {
+            return next(new ApiError(`Tie option for ${product.name} is out of stock. Available: ${tieStock}, requested: ${requestedQty}`, 400));
+          }
+        } else if (item.selectedTieElastic === 'elastic') {
+          const elasticStock = Number(sizeV.elasticStock) || 0;
+          if (elasticStock < requestedQty) {
+            return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
+          }
+        }
+      }
     } else {
       const productStock = Number(product.stock) || 0;
       const requestedQty = Number(item.quantity) || 0;
@@ -162,7 +185,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       }
     }
 
-    const unitPrice = chosenVariant?.price ?? product.price;
+    const baseUnitPrice = chosenVariant?.price ?? product.price;
+    const bridalExtra = (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0;
+    const unitPrice = baseUnitPrice + bridalExtra;
     const rule = item.variantId ? await getBundleRule(item.productId, item.variantId) : null;
     const computed = computeLineWithBundle(unitPrice, item.quantity, rule);
     subtotal += computed.effectiveLineTotal;
@@ -181,12 +206,18 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         image: chosenVariant.images?.[0]?.url || null,
         color: chosenVariant.color || null,
         size: chosenVariant.size || null,
-        specs: chosenVariant.specs || null
+        specs: chosenVariant.specs || null,
+        hasTieElastic: chosenVariant.hasTieElastic || false,
+        hasBridalLength: chosenVariant.hasBridalLength || false,
+        bridalLengthPrice: chosenVariant.bridalLengthPrice || 0
       } : null,
       price: effectiveUnitPrice,
       quantity: item.quantity,
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
+      selectedTieElastic: chosenVariant?.hasTieElastic ? item.selectedTieElastic : null,
+      selectedBridalLength: chosenVariant?.hasBridalLength ? item.selectedBridalLength : null,
+      bridalLengthPrice: (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0,
       subtotal: computed.effectiveLineTotal
     });
   }
@@ -310,14 +341,19 @@ export const createOrder = asyncHandler(async (req, res, next) => {
           }
         }
         if (colorId != null && sizeId != null) {
+          const incFields = {
+            soldCount: item.quantity,
+            'variants.$[c].sizes.$[s].stock': -item.quantity
+          };
+          if (item.selectedTieElastic === 'tie') {
+            incFields['variants.$[c].sizes.$[s].tieStock'] = -item.quantity;
+          } else if (item.selectedTieElastic === 'elastic') {
+            incFields['variants.$[c].sizes.$[s].elasticStock'] = -item.quantity;
+          }
+
           await Product.updateOne(
             { _id: item.productId },
-            {
-              $inc: {
-                soldCount: item.quantity,
-                'variants.$[c].sizes.$[s].stock': -item.quantity
-              }
-            },
+            { $inc: incFields },
             { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
           );
         }

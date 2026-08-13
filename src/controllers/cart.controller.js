@@ -32,7 +32,9 @@ async function buildCartResponse(cart) {
       });
       continue;
     }
-    const unitPrice = item.price ?? item.productId?.price ?? 0;
+    const baseUnitPrice = item.price ?? item.productId?.price ?? 0;
+    const bridalExtra = (item.selectedBridalLength === 'bridal') ? (Number(item.bridalLengthPrice) || 0) : 0;
+    const unitPrice = baseUnitPrice + bridalExtra;
     const productIdForRule = item.productId && (item.productId._id ?? item.productId);
     const variantIdForRule = item.variantId != null && String(item.variantId).trim() !== '' ? item.variantId : null;
     const rule = productIdForRule && variantIdForRule
@@ -138,7 +140,7 @@ export const getCart = asyncHandler(async (req, res) => {
 // @desc    Add product or pre-made bundle to cart
 // @access  Private
 export const addToCart = asyncHandler(async (req, res, next) => {
-  const { productId, preMadeBundleId, quantity = 1, selectedColor, selectedSize, variantId } = req.body;
+  const { productId, preMadeBundleId, quantity = 1, selectedColor, selectedSize, variantId, selectedTieElastic, selectedBridalLength, bridalLengthPrice } = req.body;
 
   if (quantity < 1) {
     return next(new ApiError('Quantity must be at least 1', 400));
@@ -234,7 +236,9 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     item => item.productId.toString() === productId &&
             item.selectedColor === selectedColor &&
             item.selectedSize === selectedSize &&
-            item.variantId === (variantId || null)
+            item.variantId === (variantId || null) &&
+            (item.selectedTieElastic || null) === (selectedTieElastic || null) &&
+            (item.selectedBridalLength || null) === (selectedBridalLength || null)
   );
 
   if (existingItemIndex > -1) {
@@ -249,6 +253,9 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     cart.items[existingItemIndex].quantity = newQuantity;
     // Update price from size variant if present, else product price
     cart.items[existingItemIndex].price = chosenSize ? (chosenSize.price ?? product.price) : product.price;
+    cart.items[existingItemIndex].selectedTieElastic = selectedTieElastic || null;
+    cart.items[existingItemIndex].selectedBridalLength = selectedBridalLength || null;
+    cart.items[existingItemIndex].bridalLengthPrice = Number(bridalLengthPrice) || 0;
     cart.items[existingItemIndex].reservedUntil = reservationUntil;
   } else {
     if (quantity > availableForUser) {
@@ -261,6 +268,9 @@ export const addToCart = asyncHandler(async (req, res, next) => {
       price: chosenSize ? (chosenSize.price ?? product.price) : product.price,
       selectedColor: selectedColor || (chosenColorVariant?.color || null),
       selectedSize: selectedSize || (chosenSize?.size || null),
+      selectedTieElastic: selectedTieElastic || null,
+      selectedBridalLength: selectedBridalLength || null,
+      bridalLengthPrice: Number(bridalLengthPrice) || 0,
       addedAt: new Date(),
       reservedUntil: reservationUntil,
       variantId: variantId || null,
@@ -270,7 +280,10 @@ export const addToCart = asyncHandler(async (req, res, next) => {
         image: chosenColorVariant.images?.[0]?.url || null,
         color: chosenColorVariant.color || null,
         size: chosenSize.size || null,
-        specs: chosenColorVariant.specs || null
+        specs: chosenColorVariant.specs || null,
+        hasTieElastic: chosenSize.hasTieElastic || false,
+        hasBridalLength: chosenSize.hasBridalLength || false,
+        bridalLengthPrice: chosenSize.bridalLengthPrice || 0
       } : null
     };
 

@@ -79,6 +79,12 @@ const productSchema = new mongoose.Schema({
         enum: ['in_stock', 'out_of_stock', 'low_stock'],
         default: 'in_stock'
       },
+        // Customizations
+        hasTieElastic: { type: Boolean, default: false },
+        tieStock: { type: Number, min: [0, 'Tie stock cannot be negative'], default: 0 },
+        elasticStock: { type: Number, min: [0, 'Elastic stock cannot be negative'], default: 0 },
+        hasBridalLength: { type: Boolean, default: false },
+        bridalLengthPrice: { type: Number, min: [0, 'Bridal length price cannot be negative'], default: 0 },
         // Optional per-size size chart image URL
         sizeChartUrl: { type: String },
       weight: Number,

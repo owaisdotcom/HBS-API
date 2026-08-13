@@ -66,6 +66,9 @@ const orderSchema = new mongoose.Schema({
     quantity: Number,
     selectedColor: String,
     selectedSize: String,
+    selectedTieElastic: { type: String, enum: ['tie', 'elastic', null], default: null },
+    selectedBridalLength: { type: String, default: null },
+    bridalLengthPrice: { type: Number, default: 0 },
     subtotal: Number
   }],
   

@@ -69,7 +69,20 @@ export const createOrderValidator = [
   body('items.*.quantity')
     .isInt({ min: 1 })
     .withMessage('Quantity must be at least 1'),
-  
+
+  body('items.*.selectedTieElastic')
+    .optional({ values: 'null' })
+    .isIn(['tie', 'elastic'])
+    .withMessage('Invalid Tie/Elastic selection'),
+
+  body('items.*.selectedBridalLength')
+    .optional({ values: 'null' })
+    .isString(),
+
+  body('items.*.bridalLengthPrice')
+    .optional()
+    .isNumeric(),
+
   body('paymentMethod')
     .optional()
     .isIn(['bank_transfer', 'cod', 'card'])

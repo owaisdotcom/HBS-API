@@ -124,6 +124,23 @@ const siteSettingSchema = new mongoose.Schema({
     }
   },
   
+  // Marketing Banner Popup
+  marketingBanner: {
+    isEnabled: {
+      type: Boolean,
+      default: false
+    },
+    image: String,
+    title: String,
+    subtitle: String,
+    buttonText: String,
+    buttonUrl: String,
+    backgroundColor: {
+      type: String,
+      default: '#ffffff'
+    }
+  },
+
   isActive: {
     type: Boolean,
     default: true
