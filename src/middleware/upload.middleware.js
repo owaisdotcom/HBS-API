@@ -5,26 +5,29 @@ import ApiError from '../utils/ApiError.js';
 const storage = multer.memoryStorage();
 
 const imageFileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExts = /jpeg|jpg|png|gif|webp|heic|heif/i;
+  const extname = allowedExts.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = file.mimetype.startsWith('image/') ||
+    /jpeg|jpg|png|gif|webp|heic|heif|octet-stream/i.test(file.mimetype);
 
-  if (extname && mimetype) {
+  if (extname || mimetype) {
     cb(null, true);
   } else {
-    cb(new ApiError('Only image files are allowed (jpeg, jpg, png, gif, webp)', 400), false);
+    cb(new ApiError('Only image files are allowed (JPEG, JPG, PNG, GIF, WEBP, HEIC, HEIF)', 400), false);
   }
 };
 
 const receiptFileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExts = /jpeg|jpg|png|gif|webp|heic|heif|pdf/i;
+  const extname = allowedExts.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = file.mimetype.startsWith('image/') ||
+    file.mimetype === 'application/pdf' ||
+    /jpeg|jpg|png|gif|webp|heic|heif|pdf|octet-stream/i.test(file.mimetype);
 
-  if (extname && mimetype) {
+  if (extname || mimetype) {
     cb(null, true);
   } else {
-    cb(new ApiError('Only image or PDF files are allowed (jpeg, jpg, png, gif, webp, pdf)', 400), false);
+    cb(new ApiError('Only image or PDF files are allowed (JPEG, JPG, PNG, GIF, WEBP, HEIC, HEIF, PDF)', 400), false);
   }
 };
 
