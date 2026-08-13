@@ -56,7 +56,18 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   };
 
   if (status) query.status = status;
-  if (category) query.categories = category;
+  
+  const categoryParam = category || req.query.categories;
+  if (categoryParam) {
+    if (Array.isArray(categoryParam)) {
+      query.categories = { $in: categoryParam };
+    } else if (typeof categoryParam === 'string' && categoryParam.includes(',')) {
+      query.categories = { $in: categoryParam.split(',').map(c => c.trim()).filter(Boolean) };
+    } else {
+      query.categories = categoryParam;
+    }
+  }
+
   if (isFeatured !== undefined) query.isFeatured = isFeatured === 'true';
   if (isNewArrival !== undefined) query.isNewArrival = isNewArrival === 'true';
 
@@ -85,9 +96,14 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   const skip = (page - 1) * limit;
 
+  let sortOption = sort;
+  if (req.query.sortBy) {
+    sortOption = `${req.query.sortOrder === 'desc' ? '-' : ''}${req.query.sortBy}`;
+  }
+
   // Execute query
   const products = await Product.find(query)
-    .sort(sort)
+    .sort(sortOption)
     .skip(skip)
     .limit(Number(limit))
     .populate('categories', 'name slug')
