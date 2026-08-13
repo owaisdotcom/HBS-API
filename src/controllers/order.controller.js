@@ -372,8 +372,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     discount = couponDiscount;
   }
 
-  // Calculate shipping
-  const shipping = subtotal >= 5000 ? 0 : 250;
+  // Calculate shipping (Rs. 300 standard shipping, free over Rs. 5000)
+  const shipping = subtotal >= 5000 ? 0 : 300;
 
   // Calculate total
   const total = subtotal - discount + shipping;
@@ -452,6 +452,16 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   );
 });
 
+/** Helper: normalize shipping charge to Rs. 300 for existing/legacy orders */
+const normalizeOrderShipping = (orderObj) => {
+  if (!orderObj) return orderObj;
+  if (orderObj.shipping === 250) {
+    orderObj.shipping = 300;
+    orderObj.total = (Number(orderObj.subtotal) || 0) - (Number(orderObj.discount) || 0) + 300;
+  }
+  return orderObj;
+};
+
 // @route   GET /api/orders
 // @desc    Get all orders (Admin) or user orders
 // @access  Private
@@ -463,6 +473,19 @@ export const getOrders = asyncHandler(async (req, res) => {
     paymentStatus,
     search
   } = req.query;
+
+  // Background migration for legacy Rs. 250 shipping records
+  Order.updateMany(
+    { shipping: 250 },
+    [
+      {
+        $set: {
+          shipping: 300,
+          total: { $add: [{ $subtract: ['$subtotal', '$discount'] }, 300] }
+        }
+      }
+    ]
+  ).catch(() => {});
 
   const query = {};
 
@@ -510,8 +533,9 @@ export const getOrders = asyncHandler(async (req, res) => {
 
   const ordersWithWeight = await Promise.all(
     orders.map(async (o) => {
-      const totalWeight = await computeOrderTotalWeight(o, productMap, bundleMap);
-      return { ...o, totalWeight };
+      const normalized = normalizeOrderShipping({ ...o });
+      const totalWeight = await computeOrderTotalWeight(normalized, productMap, bundleMap);
+      return { ...normalized, totalWeight };
     })
   );
 
@@ -555,8 +579,8 @@ export const getOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Not authorized to access this order', 403));
   }
 
-  const totalWeight = await computeOrderTotalWeight(order);
-  const orderObj = order.toObject ? order.toObject() : order;
+  const orderObj = normalizeOrderShipping(order.toObject ? order.toObject() : order);
+  const totalWeight = await computeOrderTotalWeight(orderObj);
   orderObj.totalWeight = totalWeight;
 
   res.json(
