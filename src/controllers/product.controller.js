@@ -141,6 +141,12 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 export const getProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
+  // Prevent browser, CDN, proxy, or Vercel edge caching for product details
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+
   let product;
 
   // Try to find by ID first, then by slug
