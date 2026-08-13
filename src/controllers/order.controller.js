@@ -455,9 +455,14 @@ export const createOrder = asyncHandler(async (req, res, next) => {
 /** Helper: normalize shipping charge to Rs. 300 for existing/legacy orders */
 const normalizeOrderShipping = (orderObj) => {
   if (!orderObj) return orderObj;
-  if (orderObj.shipping === 250) {
+  const sub = Number(orderObj.subtotal) || 0;
+  const disc = Number(orderObj.discount) || 0;
+  if (sub >= 5000) {
+    orderObj.shipping = 0;
+    orderObj.total = Math.max(0, sub - disc);
+  } else {
     orderObj.shipping = 300;
-    orderObj.total = (Number(orderObj.subtotal) || 0) - (Number(orderObj.discount) || 0) + 300;
+    orderObj.total = Math.max(0, sub - disc + 300);
   }
   return orderObj;
 };
@@ -476,7 +481,7 @@ export const getOrders = asyncHandler(async (req, res) => {
 
   // Background migration for legacy Rs. 250 shipping records
   Order.updateMany(
-    { shipping: 250 },
+    { subtotal: { $lt: 5000 }, shipping: { $ne: 300 } },
     [
       {
         $set: {
