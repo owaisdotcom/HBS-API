@@ -400,8 +400,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     discount = couponDiscount;
   }
 
-  // Calculate shipping (Rs. 300 standard shipping, free over Rs. 5000)
-  const shipping = subtotal >= 5000 ? 0 : 300;
+  // Calculate shipping (Rs. 300 standard shipping)
+  const shipping = 300;
 
   // Calculate total
   const total = subtotal - discount + shipping;
@@ -490,13 +490,8 @@ const normalizeOrderShipping = (orderObj) => {
   if (!orderObj) return orderObj;
   const sub = Number(orderObj.subtotal) || 0;
   const disc = Number(orderObj.discount) || 0;
-  if (sub >= 5000) {
-    orderObj.shipping = 0;
-    orderObj.total = Math.max(0, sub - disc);
-  } else {
-    orderObj.shipping = 300;
-    orderObj.total = Math.max(0, sub - disc + 300);
-  }
+  orderObj.shipping = 300;
+  orderObj.total = Math.max(0, sub - disc + 300);
   return orderObj;
 };
 
@@ -512,9 +507,9 @@ export const getOrders = asyncHandler(async (req, res) => {
     search
   } = req.query;
 
-  // Background migration for legacy Rs. 250 shipping records
+  // Background migration for legacy/incorrect shipping records
   Order.updateMany(
-    { subtotal: { $lt: 5000 }, shipping: { $ne: 300 } },
+    { shipping: { $ne: 300 } },
     [
       {
         $set: {

@@ -86,7 +86,7 @@ cartSchema.index({ 'items.productId': 1 });
 // Calculate cart totals
 cartSchema.methods.calculateTotals = function() {
   const subtotal = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping = subtotal > 5000 ? 0 : 300; // Free shipping over Rs. 5000
+  const shipping = this.items.length > 0 ? 300 : 0;
   const total = subtotal + shipping;
   
   return {

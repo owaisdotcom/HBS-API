@@ -357,7 +357,7 @@
       "weight": 0.3,
       "dimensions": { "length": 30, "width": 25, "height": 5 },
       "shipping": {
-        "domestic": "Free shipping on orders over PKR 5000",
+        "domestic": "Standard shipping PKR 300 nationwide",
         "cod": "Cash on Delivery available",
         "delivery": "3-5 business days",
         "returns": "Easy returns within 7 days"
@@ -397,7 +397,7 @@
       "weight": 0.5,
       "dimensions": { "length": 35, "width": 30, "height": 8 },
       "shipping": {
-        "domestic": "Free shipping on orders over PKR 5000",
+        "domestic": "Standard shipping PKR 300 nationwide",
         "cod": "Cash on Delivery available",
         "delivery": "3-5 business days",
         "returns": "Easy returns within 7 days"
@@ -438,7 +438,7 @@
       "weight": 0.6,
       "dimensions": { "length": 40, "width": 35, "height": 10 },
       "shipping": {
-        "domestic": "Free shipping on orders over PKR 5000",
+        "domestic": "Standard shipping PKR 300 nationwide",
         "cod": "Cash on Delivery available",
         "delivery": "3-5 business days",
         "returns": "Easy returns within 7 days"
@@ -478,7 +478,7 @@
       "weight": 0.25,
       "dimensions": { "length": 28, "width": 22, "height": 4 },
       "shipping": {
-        "domestic": "Free shipping on orders over PKR 5000",
+        "domestic": "Standard shipping PKR 300 nationwide",
         "cod": "Cash on Delivery available",
         "delivery": "3-5 business days",
         "returns": "Easy returns within 7 days"
