@@ -19,10 +19,23 @@ import {
 const recomputeProductStock = async (productId) => {
   const product = await Product.findById(productId, 'variants').lean();
   if (!product) return;
-  const totalStock = (product.variants || []).reduce(
-    (sum, v) => sum + (v.sizes || []).reduce((s, sz) => s + (Number(sz.stock) || 0), 0),
-    0
-  );
+  let totalStock = 0;
+  for (const colorVariant of (product.variants || [])) {
+    for (const size of (colorVariant.sizes || [])) {
+      const tie = Number(size.tieStock) || 0;
+      const elastic = Number(size.elasticStock) || 0;
+      const bridal = Number(size.bridalStock) || 0;
+      const hasCust = size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0;
+      const sizeStock = hasCust ? (tie + elastic + bridal) : (Number(size.stock) || 0);
+      totalStock += sizeStock;
+      
+      await Product.updateOne(
+        { _id: productId },
+        { $set: { 'variants.$[c].sizes.$[s].stock': sizeStock } },
+        { arrayFilters: [{ 'c.colorId': colorVariant.colorId }, { 's.sizeId': size.sizeId }] }
+      );
+    }
+  }
   await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
 };
 
@@ -61,17 +74,7 @@ const deductOrderItem = async (item) => {
           incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
         }
         if (item.selectedBridalLength === 'bridal') {
-          // Deduct from hidden bridal stock
           incFields['variants.$[c].sizes.$[s].bridalStock'] = -qty;
-          // Also deduct from underlying tie/elastic stock if tie/elastic was not explicitly chosen
-          if (!item.selectedTieElastic) {
-            const currentTie = Number(targetSize.tieStock) || 0;
-            if (currentTie >= qty) {
-              incFields['variants.$[c].sizes.$[s].tieStock'] = -qty;
-            } else {
-              incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
-            }
-          }
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -124,9 +127,6 @@ const restoreOrderItem = async (item) => {
         }
         if (item.selectedBridalLength === 'bridal') {
           incFields['variants.$[c].sizes.$[s].bridalStock'] = qty;
-          if (!item.selectedTieElastic) {
-            incFields['variants.$[c].sizes.$[s].tieStock'] = qty;
-          }
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -324,6 +324,12 @@ export const createOrder = asyncHandler(async (req, res, next) => {
             return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
           }
         }
+        if (item.selectedBridalLength === 'bridal') {
+          const bridalStock = Number(sizeV.bridalStock) || 0;
+          if (bridalStock < requestedQty) {
+            return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
+          }
+        }
       }
     } else {
       const productStock = Number(product.stock) || 0;
@@ -517,7 +523,8 @@ export const getOrders = asyncHandler(async (req, res) => {
           total: { $add: [{ $subtract: ['$subtotal', '$discount'] }, 300] }
         }
       }
-    ]
+    ],
+    { updatePipeline: true }
   ).catch(() => {});
 
   const query = {};

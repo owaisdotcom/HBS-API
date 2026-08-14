@@ -208,8 +208,22 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     if (!chosenColorVariant || !chosenSize) {
       return next(new ApiError('Color variant not found', 404));
     }
-    if (chosenSize.stock < quantity || chosenSize.stock === 0) {
-      return next(new ApiError('Variant is out of stock or insufficient quantity', 400));
+    let optionStock = chosenSize.stock;
+    if (selectedTieElastic === 'tie') {
+      optionStock = Number(chosenSize.tieStock) || 0;
+    } else if (selectedTieElastic === 'elastic') {
+      optionStock = Number(chosenSize.elasticStock) || 0;
+    }
+    if (selectedBridalLength === 'bridal') {
+      const bStock = Number(chosenSize.bridalStock) || 0;
+      if (selectedTieElastic) {
+        optionStock = Math.min(optionStock, bStock);
+      } else {
+        optionStock = bStock;
+      }
+    }
+    if (optionStock < quantity || optionStock === 0) {
+      return next(new ApiError('Selected option is out of stock or insufficient quantity', 400));
     }
   } else {
     // Check stock for product-level (fallback)

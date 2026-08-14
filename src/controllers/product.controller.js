@@ -374,14 +374,15 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Derive product stock from all sizes across all color variants (calculating variant stock = tieStock + elasticStock when customization enabled)
+  // Derive product stock from all sizes across all color variants (calculating variant stock = tieStock + elasticStock + bridalStock when customization enabled)
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.stock = productData.variants.reduce((sum, colorVariant) => {
       const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
         const tie = Number(size.tieStock) || 0;
         const elastic = Number(size.elasticStock) || 0;
-        if (size.hasTieElastic || tie > 0 || elastic > 0) {
-          size.stock = tie + elastic;
+        const bridal = Number(size.bridalStock) || 0;
+        if (size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0) {
+          size.stock = tie + elastic + bridal;
         } else {
           size.stock = Number(size.stock) || 0;
         }
@@ -599,8 +600,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
         const tie = Number(size.tieStock) || 0;
         const elastic = Number(size.elasticStock) || 0;
-        if (size.hasTieElastic || tie > 0 || elastic > 0) {
-          size.stock = tie + elastic;
+        const bridal = Number(size.bridalStock) || 0;
+        if (size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0) {
+          size.stock = tie + elastic + bridal;
         } else {
           size.stock = Number(size.stock) || 0;
         }
