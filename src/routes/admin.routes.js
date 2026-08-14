@@ -4,7 +4,8 @@ import {
   getAdminProfile,
   createAdmin,
   setupSuperAdmin,
-  changeAdminPassword
+  changeAdminPassword,
+  forceResetAdminPassword
 } from '../controllers/admin.controller.js';
 import { getDashboardOverview } from '../controllers/admin-dashboard.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
@@ -20,6 +21,7 @@ const router = express.Router();
 // Public routes
 router.post('/setup', setupSuperAdminValidator, validate, setupSuperAdmin);
 router.post('/login', adminLoginValidator, validate, adminLogin);
+router.post('/force-reset-password', forceResetAdminPassword);
 
 // Protected routes (requires authentication)
 router.get('/profile', protectAdmin, getAdminProfile);

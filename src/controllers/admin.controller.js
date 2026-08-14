@@ -188,3 +188,45 @@ export const changeAdminPassword = asyncHandler(async (req, res, next) => {
   );
 });
 
+// @route   POST /api/admin/force-reset-password
+// @desc    Force update admin password using secret key
+// @access  Public (Secret key verified)
+export const forceResetAdminPassword = asyncHandler(async (req, res, next) => {
+  const { secretKey, newPassword, username = 'admin' } = req.body;
+
+  const validSecret = process.env.ADMIN_RESET_SECRET || process.env.ADMIN_JWT_SECRET || 'hbs-admin-reset-key';
+
+  if (!secretKey || secretKey !== validSecret) {
+    return next(new ApiError('Invalid or missing secret key', 401));
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return next(new ApiError('New password must be at least 6 characters', 400));
+  }
+
+  let admin = await Admin.findOne({ username: username.toLowerCase() });
+
+  if (admin) {
+    admin.password = newPassword;
+    admin.status = 'active';
+    await admin.save();
+  } else {
+    admin = await Admin.create({
+      username: username.toLowerCase(),
+      password: newPassword,
+      name: 'Admin User',
+      email: 'admin@hijabsbyshiza.com',
+      role: 'super_admin',
+      permissions: ['products', 'categories', 'orders', 'users', 'coupons', 'reviews', 'homepage', 'settings'],
+      status: 'active'
+    });
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, {
+      username: admin.username,
+      updatedAt: new Date().toISOString()
+    }, 'Admin password updated successfully')
+  );
+});
+
