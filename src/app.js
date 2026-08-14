@@ -42,18 +42,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 //   }
 // }));
 
-// Rate limiting - Disabled in development mode
-if (process.env.NODE_ENV !== 'development') {
-  const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-    message: 'Too many requests from this IP, please try again later'
-  });
-  app.use('/api', limiter);
-
-} else {
-
-}
+// Rate limiting - REMOVED
+// app.use('/api', limiter);
 
 // Compression
 app.use(compression());
