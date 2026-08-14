@@ -286,10 +286,12 @@ export const createCategory = asyncHandler(async (req, res, next) => {
   
   if (req.files) {
     if (req.files.thumbnail && req.files.thumbnail[0]) {
-      thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
+      const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
+      thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
     }
     if (req.files.coverImage && req.files.coverImage[0]) {
-      coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
+      const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
+      coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
     }
   }
 
@@ -327,12 +329,12 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
   // Handle image uploads
   if (req.files) {
     if (req.files.thumbnail && req.files.thumbnail[0]) {
-      const thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
-      req.body.thumbnail = thumbnail;
+      const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
+      req.body.thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
     }
     if (req.files.coverImage && req.files.coverImage[0]) {
-      const coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
-      req.body.coverImage = coverImage;
+      const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
+      req.body.coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
     }
   }
 

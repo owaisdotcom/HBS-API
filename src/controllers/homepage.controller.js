@@ -334,12 +334,12 @@ export const updateSiteSettings = asyncHandler(async (req, res, next) => {
   // Handle logo/favicon uploads
   if (req.files) {
     if (req.files.logo) {
-      const logoUrl = await uploadService.uploadSingle(req.files.logo[0], 'hbs-settings');
-      req.body.logo = logoUrl;
+      const resLogo = await uploadService.uploadSingle(req.files.logo[0], 'hbs-settings');
+      req.body.logo = typeof resLogo === 'string' ? resLogo : resLogo?.url;
     }
     if (req.files.favicon) {
-      const faviconUrl = await uploadService.uploadSingle(req.files.favicon[0], 'hbs-settings');
-      req.body.favicon = faviconUrl;
+      const resFav = await uploadService.uploadSingle(req.files.favicon[0], 'hbs-settings');
+      req.body.favicon = typeof resFav === 'string' ? resFav : resFav?.url;
     }
   }
 

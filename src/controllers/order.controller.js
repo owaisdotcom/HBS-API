@@ -43,24 +43,35 @@ const deductOrderItem = async (item) => {
   if (item.variantId) {
     const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
     if (prod && Array.isArray(prod.variants)) {
-      let colorId = null, sizeId = null;
+      let colorId = null, sizeId = null, targetSize = null;
       for (const v of prod.variants) {
         const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
-        if (s) { colorId = v.colorId; sizeId = s.sizeId; break; }
+        if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
       }
-      if (colorId != null && sizeId != null) {
+      if (colorId != null && sizeId != null && targetSize != null) {
+        const qty = Number(item.quantity) || 1;
         const incFields = {
-          soldCount: item.quantity,
-          'variants.$[c].sizes.$[s].stock': -item.quantity
+          soldCount: qty,
+          'variants.$[c].sizes.$[s].stock': -qty
         };
         // Deduct tie/elastic/bridal stock based on selected customization
         if (item.selectedTieElastic === 'tie') {
-          incFields['variants.$[c].sizes.$[s].tieStock'] = -item.quantity;
+          incFields['variants.$[c].sizes.$[s].tieStock'] = -qty;
         } else if (item.selectedTieElastic === 'elastic') {
-          incFields['variants.$[c].sizes.$[s].elasticStock'] = -item.quantity;
+          incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
         }
         if (item.selectedBridalLength === 'bridal') {
-          incFields['variants.$[c].sizes.$[s].bridalStock'] = -item.quantity;
+          // Deduct from hidden bridal stock
+          incFields['variants.$[c].sizes.$[s].bridalStock'] = -qty;
+          // Also deduct from underlying tie/elastic stock if tie/elastic was not explicitly chosen
+          if (!item.selectedTieElastic) {
+            const currentTie = Number(targetSize.tieStock) || 0;
+            if (currentTie >= qty) {
+              incFields['variants.$[c].sizes.$[s].tieStock'] = -qty;
+            } else {
+              incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
+            }
+          }
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -95,23 +106,27 @@ const restoreOrderItem = async (item) => {
   if (item.variantId) {
     const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
     if (prod && Array.isArray(prod.variants)) {
-      let colorId = null, sizeId = null;
+      let colorId = null, sizeId = null, targetSize = null;
       for (const v of prod.variants) {
         const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
-        if (s) { colorId = v.colorId; sizeId = s.sizeId; break; }
+        if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
       }
-      if (colorId != null && sizeId != null) {
+      if (colorId != null && sizeId != null && targetSize != null) {
+        const qty = Number(item.quantity) || 1;
         const incFields = {
-          soldCount: -item.quantity,
-          'variants.$[c].sizes.$[s].stock': item.quantity
+          soldCount: -qty,
+          'variants.$[c].sizes.$[s].stock': qty
         };
         if (item.selectedTieElastic === 'tie') {
-          incFields['variants.$[c].sizes.$[s].tieStock'] = item.quantity;
+          incFields['variants.$[c].sizes.$[s].tieStock'] = qty;
         } else if (item.selectedTieElastic === 'elastic') {
-          incFields['variants.$[c].sizes.$[s].elasticStock'] = item.quantity;
+          incFields['variants.$[c].sizes.$[s].elasticStock'] = qty;
         }
         if (item.selectedBridalLength === 'bridal') {
-          incFields['variants.$[c].sizes.$[s].bridalStock'] = item.quantity;
+          incFields['variants.$[c].sizes.$[s].bridalStock'] = qty;
+          if (!item.selectedTieElastic) {
+            incFields['variants.$[c].sizes.$[s].tieStock'] = qty;
+          }
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -700,10 +715,13 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
   }
 
   // Upload receipt to cloud
-  const receiptUrl = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+  const uploadRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+  const receiptUrl = typeof uploadRes === 'string' ? uploadRes : uploadRes?.url;
+  const receiptPublicId = typeof uploadRes === 'object' ? uploadRes?.publicId : undefined;
 
   order.paymentReceipt = {
     url: receiptUrl,
+    publicId: receiptPublicId,
     uploadedAt: new Date()
   };
 

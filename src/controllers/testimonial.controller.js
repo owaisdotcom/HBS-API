@@ -60,7 +60,8 @@ export const createTestimonial = asyncHandler(async (req, res, next) => {
     displayOrder: Number(displayOrder) || 0
   };
   if (req.file) {
-    payload.customerImage = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
+    const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
+    payload.customerImage = typeof resImg === 'string' ? resImg : resImg?.url;
   }
   const created = await Testimonial.create(payload);
   res.status(201).json(
@@ -81,11 +82,12 @@ export const updateTestimonial = asyncHandler(async (req, res, next) => {
   if (body.name !== undefined) testimonial.customerName = String(body.name).trim();
   if (body.rating !== undefined) testimonial.rating = Number(body.rating) || 5;
   if (body.testimonial !== undefined) testimonial.testimonial = String(body.testimonial).trim();
-  if (body.review !== undefined) testimonial.testimonial = String(body.review).trim();
+  if (body.review !== undefined) testimonial.review = String(body.review).trim();
   if (body.isPublished !== undefined) testimonial.isPublished = body.isPublished === true || body.isPublished === 'true';
   if (body.displayOrder !== undefined) testimonial.displayOrder = Number(body.displayOrder) ?? 0;
   if (req.file) {
-    testimonial.customerImage = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
+    const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
+    testimonial.customerImage = typeof resImg === 'string' ? resImg : resImg?.url;
   }
   await testimonial.save();
   res.json(

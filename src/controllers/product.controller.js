@@ -374,10 +374,19 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Derive product stock from all sizes across all color variants
+  // Derive product stock from all sizes across all color variants (calculating variant stock = tieStock + elasticStock when customization enabled)
   if (Array.isArray(productData.variants) && productData.variants.length > 0) {
     productData.stock = productData.variants.reduce((sum, colorVariant) => {
-      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => sizeSum + (Number(size.stock) || 0), 0);
+      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
+        const tie = Number(size.tieStock) || 0;
+        const elastic = Number(size.elasticStock) || 0;
+        if (size.hasTieElastic || tie > 0 || elastic > 0) {
+          size.stock = tie + elastic;
+        } else {
+          size.stock = Number(size.stock) || 0;
+        }
+        return sizeSum + size.stock;
+      }, 0);
       return sum + sizesStock;
     }, 0);
   }
@@ -587,7 +596,16 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   // Derive product stock from all sizes across all color variants
   if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
     updateFields.stock = updateFields.variants.reduce((sum, colorVariant) => {
-      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => sizeSum + (Number(size.stock) || 0), 0);
+      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
+        const tie = Number(size.tieStock) || 0;
+        const elastic = Number(size.elasticStock) || 0;
+        if (size.hasTieElastic || tie > 0 || elastic > 0) {
+          size.stock = tie + elastic;
+        } else {
+          size.stock = Number(size.stock) || 0;
+        }
+        return sizeSum + size.stock;
+      }, 0);
       return sum + sizesStock;
     }, 0);
   }

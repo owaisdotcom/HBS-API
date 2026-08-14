@@ -78,10 +78,12 @@ export const createBundleCategory = asyncHandler(async (req, res, next) => {
   let coverImage = null;
   if (req.files) {
     if (req.files.thumbnail?.[0]) {
-      thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
+      const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
+      thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
     }
     if (req.files.coverImage?.[0]) {
-      coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
+      const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
+      coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
     }
   }
   const finalSlug = (slug || name?.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')) || 'bundle-category';
@@ -108,10 +110,12 @@ export const updateBundleCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Bundle category not found', 404));
   }
   if (req.files?.thumbnail?.[0]) {
-    req.body.thumbnail = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
+    const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
+    category.thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
   }
   if (req.files?.coverImage?.[0]) {
-    req.body.coverImage = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
+    const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
+    category.coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
   }
   const { name, slug, description, displayOrder, status } = req.body;
   if (name !== undefined) category.name = name;
