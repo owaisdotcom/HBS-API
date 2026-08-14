@@ -53,11 +53,14 @@ const deductOrderItem = async (item) => {
           soldCount: item.quantity,
           'variants.$[c].sizes.$[s].stock': -item.quantity
         };
-        // Only deduct tie/elastic stock for stock-tracked customizations (not bridal)
+        // Deduct tie/elastic/bridal stock based on selected customization
         if (item.selectedTieElastic === 'tie') {
           incFields['variants.$[c].sizes.$[s].tieStock'] = -item.quantity;
         } else if (item.selectedTieElastic === 'elastic') {
           incFields['variants.$[c].sizes.$[s].elasticStock'] = -item.quantity;
+        }
+        if (item.selectedBridalLength === 'bridal') {
+          incFields['variants.$[c].sizes.$[s].bridalStock'] = -item.quantity;
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -106,6 +109,9 @@ const restoreOrderItem = async (item) => {
           incFields['variants.$[c].sizes.$[s].tieStock'] = item.quantity;
         } else if (item.selectedTieElastic === 'elastic') {
           incFields['variants.$[c].sizes.$[s].elasticStock'] = item.quantity;
+        }
+        if (item.selectedBridalLength === 'bridal') {
+          incFields['variants.$[c].sizes.$[s].bridalStock'] = item.quantity;
         }
         await Product.updateOne(
           { _id: item.productId },
@@ -301,6 +307,13 @@ export const createOrder = asyncHandler(async (req, res, next) => {
           const elasticStock = Number(sizeV.elasticStock) || 0;
           if (elasticStock < requestedQty) {
             return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
+          }
+        }
+
+        if (item.selectedBridalLength === 'bridal') {
+          const bridalStock = Number(sizeV.bridalStock) || 0;
+          if (bridalStock < requestedQty) {
+            return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
           }
         }
       }

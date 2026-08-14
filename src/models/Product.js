@@ -85,6 +85,7 @@ const productSchema = new mongoose.Schema({
         elasticStock: { type: Number, min: [0, 'Elastic stock cannot be negative'], default: 0 },
         hasBridalLength: { type: Boolean, default: false },
         bridalLengthPrice: { type: Number, min: [0, 'Bridal length price cannot be negative'], default: 0 },
+        bridalStock: { type: Number, min: [0, 'Bridal stock cannot be negative'], default: 0 },
         // Optional per-size size chart image URL
         sizeChartUrl: { type: String },
       weight: Number,
