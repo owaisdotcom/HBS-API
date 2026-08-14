@@ -97,6 +97,10 @@ app.get('/api', (req, res) => {
 
 // Import routes
 import routes from './routes/index.js';
+import { getSitemap } from './controllers/seo.controller.js';
+
+app.get('/sitemap.xml', getSitemap);
+app.get('/api/sitemap.xml', getSitemap);
 app.use('/api', routes);
 
 // 404 handler

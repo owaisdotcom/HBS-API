@@ -309,13 +309,6 @@ export const createOrder = asyncHandler(async (req, res, next) => {
             return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
           }
         }
-
-        if (item.selectedBridalLength === 'bridal') {
-          const bridalStock = Number(sizeV.bridalStock) || 0;
-          if (bridalStock < requestedQty) {
-            return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
-          }
-        }
       }
     } else {
       const productStock = Number(product.stock) || 0;
