@@ -8,6 +8,9 @@ import errorHandler from './middleware/error.middleware.js';
 
 const app = express();
 
+// Trust proxy header for Vercel deployment (resolves ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
+
 const allowedOrigins = new Set(
   [
     'https://hbs-qa.vercel.app',
@@ -33,17 +36,18 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// MongoDB sanitization - TEMPORARILY DISABLED DUE TO COMPATIBILITY ISSUE
-// TODO: Fix or replace with custom sanitization
-// app.use(mongoSanitize({
-//   replaceWith: '_',
-//   onSanitize: ({ req, key }) => {
-//     console.warn(`Sanitized key: ${key} in request`);
-//   }
-// }));
-
-// Rate limiting - REMOVED
-// app.use('/api', limiter);
+// Rate limiting with Vercel trust proxy support
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later'
+  }
+});
+app.use('/api', limiter);
 
 // Compression
 app.use(compression());
