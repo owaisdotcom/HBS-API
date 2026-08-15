@@ -1,20 +1,21 @@
 import ApiError from '../utils/ApiError.js';
 import multer from 'multer';
+import { logServerError } from '../services/errorLog.service.js';
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = async (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
   error.statusCode = err.statusCode;
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(e => e.message).join(', ');
-    error = new ApiError(message, 400);
+    const message = Object.values(err.errors || {}).map(e => e.message).join(', ');
+    error = new ApiError(message || 'Validation error', 400);
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern || err.keyValue)[0];
+    const field = Object.keys(err.keyPattern || err.keyValue || {})[0] || 'Field';
     const message = `${field} already exists`;
     error = new ApiError(message, 400);
   }
@@ -47,7 +48,22 @@ const errorHandler = (err, req, res, next) => {
     error = new ApiError('Token expired', 401);
   }
 
-  res.status(error.statusCode || 500).json({
+  const statusCode = error.statusCode || 500;
+
+  // Record server error log in MongoDB
+  // We log all 5xx server errors, unhandled exceptions, and security/auth errors (401/403)
+  if (statusCode >= 500 || statusCode === 401 || statusCode === 403 || !err.isOperational) {
+    await logServerError({
+      req,
+      err,
+      statusCode,
+      message: error.message || err.message,
+      stack: err.stack,
+      severity: statusCode >= 500 ? 'critical' : (statusCode >= 400 ? 'warning' : 'error')
+    });
+  }
+
+  res.status(statusCode).json({
     success: false,
     message: error.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
@@ -55,4 +71,3 @@ const errorHandler = (err, req, res, next) => {
 };
 
 export default errorHandler;
-

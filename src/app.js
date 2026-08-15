@@ -36,6 +36,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Request ID middleware for tracing and error logs
+app.use((req, res, next) => {
+  req.requestId = req.headers['x-request-id'] || `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  res.setHeader('x-request-id', req.requestId);
+  next();
+});
+
 // Rate limiting with Vercel trust proxy support
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,

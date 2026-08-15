@@ -11,17 +11,19 @@ import { getDashboardOverview } from '../controllers/admin-dashboard.controller.
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import validate from '../middleware/validate.middleware.js';
 import { adminLoginValidator, setupSuperAdminValidator, createAdminValidator, changePasswordValidator } from '../validators/auth.validator.js';
+import { loginLimiter, passwordResetLimiter } from '../middleware/rateLimiter.middleware.js';
 import userRoutes from './user.routes.js';
 import adminOrderRoutes from './admin-order.routes.js';
 import homepageRoutes from './homepage.routes.js';
 import testimonialRoutes from './testimonial.routes.js';
+import errorLogRoutes from './error-log.routes.js';
 
 const router = express.Router();
 
-// Public routes
-router.post('/setup', setupSuperAdminValidator, validate, setupSuperAdmin);
-router.post('/login', adminLoginValidator, validate, adminLogin);
-router.post('/force-reset-password', forceResetAdminPassword);
+// Public routes with rate limit protection
+router.post('/setup', passwordResetLimiter, setupSuperAdminValidator, validate, setupSuperAdmin);
+router.post('/login', loginLimiter, adminLoginValidator, validate, adminLogin);
+router.post('/force-reset-password', passwordResetLimiter, forceResetAdminPassword);
 
 // Protected routes (requires authentication)
 router.get('/profile', protectAdmin, getAdminProfile);
@@ -43,5 +45,7 @@ router.use('/homepage', homepageRoutes);
 // Testimonials (homepage reviews) management
 router.use('/testimonials', testimonialRoutes);
 
-export default router;
+// Error log management routes (admin-only)
+router.use('/error-logs', errorLogRoutes);
 
+export default router;
