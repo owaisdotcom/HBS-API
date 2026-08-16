@@ -633,12 +633,22 @@ export const getOrder = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin)
 export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { status, note } = req.body;
+  const { status, note, trackingNumber, courier } = req.body;
 
   const order = await Order.findById(id);
 
   if (!order) {
     return next(new ApiError('Order not found', 404));
+  }
+
+  const targetStatus = status || order.status;
+
+  // Validate tracking number when status is or is being set to shipped
+  if (targetStatus === 'shipped') {
+    const effectiveTracking = trackingNumber !== undefined ? trackingNumber?.trim() : order.trackingNumber?.trim();
+    if (!effectiveTracking) {
+      return next(new ApiError('Tracking number is required when changing order status to Shipped', 400));
+    }
   }
 
   const allowedTransitions = {
@@ -651,28 +661,40 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     cancelled: []
   };
 
-  if (order.status === status) {
+  if (order.status === targetStatus && trackingNumber === undefined && courier === undefined) {
     return res.json(
       new ApiResponse(200, { order }, 'Order is already in this status')
     );
   }
 
-  const nextStatuses = allowedTransitions[order.status] || [];
-  const previousStatuses = [...new Set((order.statusHistory || []).map((h) => h.status).filter(Boolean))];
-  const allowed = [order.status, ...nextStatuses, ...previousStatuses];
-  if (!allowed.includes(status)) {
-    return next(new ApiError(`Invalid status transition from ${order.status} to ${status}`, 400));
+  if (order.status !== targetStatus) {
+    const nextStatuses = allowedTransitions[order.status] || [];
+    const previousStatuses = [...new Set((order.statusHistory || []).map((h) => h.status).filter(Boolean))];
+    const allowed = [order.status, ...nextStatuses, ...previousStatuses];
+    if (!allowed.includes(targetStatus)) {
+      return next(new ApiError(`Invalid status transition from ${order.status} to ${targetStatus}`, 400));
+    }
+
+    // Enforce payment verification before confirmation
+    if (targetStatus === 'confirmed' && order.paymentStatus !== 'verified') {
+      return next(new ApiError('Payment must be verified before confirming the order', 400));
+    }
   }
 
-  // Enforce payment verification before confirmation
-  if (status === 'confirmed' && order.paymentStatus !== 'verified') {
-    return next(new ApiError('Payment must be verified before confirming the order', 400));
+  // Update tracking information if provided
+  if (trackingNumber !== undefined) {
+    order.trackingNumber = trackingNumber.trim();
+  }
+  if (courier !== undefined) {
+    order.courier = courier.trim();
   }
 
-  order.status = status;
+  const statusChanged = order.status !== targetStatus;
+  order.status = targetStatus;
+
   order.statusHistory.push({
-    status,
-    note,
+    status: targetStatus,
+    note: note || (trackingNumber ? `Tracking updated: ${order.trackingNumber}${order.courier ? ` (${order.courier})` : ''}` : undefined),
     updatedBy: req.admin.id,
     timestamp: new Date()
   });
@@ -680,19 +702,21 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   await order.save();
 
   // Restore stock on cancellation — guarded by stockDeducted/stockRestored flags
-  if (status === 'cancelled') {
+  if (targetStatus === 'cancelled' && statusChanged) {
     await restoreAllStock(order);
   }
 
   // Send email notification based on updated status (asynchronous, non-blocking)
-  if (status === 'confirmed') {
-    sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
-  } else if (status === 'shipped') {
-    sendOrderShippedEmail(order, order.trackingNumber, order.courier).catch(err => console.error('Failed to send order shipped email:', err.message));
-  } else if (status === 'delivered') {
-    sendOrderDeliveredEmail(order).catch(err => console.error('Failed to send order delivered email:', err.message));
-  } else if (status === 'cancelled') {
-    sendOrderCancelledEmail(order, note).catch(err => console.error('Failed to send order cancelled email:', err.message));
+  if (statusChanged || (targetStatus === 'shipped' && trackingNumber !== undefined)) {
+    if (targetStatus === 'confirmed') {
+      sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
+    } else if (targetStatus === 'shipped') {
+      sendOrderShippedEmail(order, order.trackingNumber, order.courier).catch(err => console.error('Failed to send order shipped email:', err.message));
+    } else if (targetStatus === 'delivered') {
+      sendOrderDeliveredEmail(order).catch(err => console.error('Failed to send order delivered email:', err.message));
+    } else if (targetStatus === 'cancelled') {
+      sendOrderCancelledEmail(order, note).catch(err => console.error('Failed to send order cancelled email:', err.message));
+    }
   }
 
   res.json(

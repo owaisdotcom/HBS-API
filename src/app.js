@@ -6,10 +6,15 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import errorHandler from './middleware/error.middleware.js';
 
+import { performanceLogger } from './middleware/performance-logger.middleware.js';
+
 const app = express();
 
 // Trust proxy header for Vercel deployment (resolves ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
 app.set('trust proxy', 1);
+
+// Performance logger middleware
+app.use(performanceLogger);
 
 const allowedOrigins = new Set(
   [

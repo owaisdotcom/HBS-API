@@ -210,6 +210,8 @@ orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'customer.email': 1 });
+orderSchema.index({ createdAt: -1, paymentStatus: 1 });
+orderSchema.index({ paymentStatus: 1, status: 1 });
 
 export default mongoose.model('Order', orderSchema);
 

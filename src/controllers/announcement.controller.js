@@ -2,11 +2,18 @@ import Announcement from '../models/Announcement.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
+import cacheService from '../services/cache.service.js';
 
 // @route   GET /api/announcements
 // @desc    Get all active announcements (public)
 // @access  Public
 export const getAnnouncements = asyncHandler(async (req, res) => {
+  const cacheKey = 'announcements_active';
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, { announcements: cached }, 'Announcements retrieved successfully (cached)'));
+  }
+
   const now = new Date();
   
   const announcements = await Announcement.find({
@@ -24,6 +31,8 @@ export const getAnnouncements = asyncHandler(async (req, res) => {
   })
   .sort({ displayOrder: 1, createdAt: -1 })
   .select('-updatedBy -__v');
+
+  cacheService.set(cacheKey, announcements, 300);
 
   res.json(
     new ApiResponse(200, { announcements }, 'Announcements retrieved successfully')

@@ -2,6 +2,7 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import cacheService from '../services/cache.service.js';
 
 const getRangeDates = ({ range, from, to }) => {
   const now = new Date();
@@ -78,6 +79,13 @@ const buildTimeSeries = async (match) => {
 
 export const getDashboardOverview = asyncHandler(async (req, res) => {
   const { range = 'month', from, to } = req.query;
+
+  const cacheKey = `admin_dashboard_${range}_${from || ''}_${to || ''}`;
+  const cachedData = cacheService.get(cacheKey);
+  if (cachedData) {
+    return res.json(new ApiResponse(200, cachedData, 'Dashboard overview retrieved (cached)'));
+  }
+
   const { start, end } = getRangeDates({ range, from, to });
 
   const match = {
@@ -256,40 +264,44 @@ export const getDashboardOverview = asyncHandler(async (req, res) => {
 
   const costStats = costTotals[0] || { totalSales: 0, totalCost: 0 };
 
+  const responseData = {
+    range: { start, end, preset: range },
+    kpis: {
+      totalOrders,
+      verifiedOrders,
+      grossSales: costStats.totalSales || 0,
+      netRevenue,
+      averageOrderValue: aov,
+      paymentConversionRate: conversionRate,
+      refundCount: orderStats.refundCount || 0,
+      refundAmount: orderStats.refundAmount || 0
+    },
+    paymentStatus: paymentStatusAgg,
+    orderStatus: orderStatusAgg,
+    timeSeries,
+    bestSellers,
+    costTotals: {
+      grossSales: costStats.totalSales || 0,
+      netRevenue,
+      totalCost: costStats.totalCost || 0,
+      grossProfit: (costStats.totalSales || 0) - (costStats.totalCost || 0)
+    },
+    inventory: inventoryStats[0] || {
+      totalProducts: 0,
+      inStock: 0,
+      outOfStock: 0,
+      lowStock: 0,
+      totalStockUnits: 0,
+      inventoryValueCost: 0,
+      inventoryValueRetail: 0
+    },
+    stockAlerts
+  };
+
+  cacheService.set(cacheKey, responseData, 60);
+
   res.json(
-    new ApiResponse(200, {
-      range: { start, end, preset: range },
-      kpis: {
-        totalOrders,
-        verifiedOrders,
-        grossSales: costStats.totalSales || 0,
-        netRevenue,
-        averageOrderValue: aov,
-        paymentConversionRate: conversionRate,
-        refundCount: orderStats.refundCount || 0,
-        refundAmount: orderStats.refundAmount || 0
-      },
-      paymentStatus: paymentStatusAgg,
-      orderStatus: orderStatusAgg,
-      timeSeries,
-      bestSellers,
-      costTotals: {
-        grossSales: costStats.totalSales || 0,
-        netRevenue,
-        totalCost: costStats.totalCost || 0,
-        grossProfit: (costStats.totalSales || 0) - (costStats.totalCost || 0)
-      },
-      inventory: inventoryStats[0] || {
-        totalProducts: 0,
-        inStock: 0,
-        outOfStock: 0,
-        lowStock: 0,
-        totalStockUnits: 0,
-        inventoryValueCost: 0,
-        inventoryValueRetail: 0
-      },
-      stockAlerts
-    }, 'Dashboard overview retrieved')
+    new ApiResponse(200, responseData, 'Dashboard overview retrieved')
   );
 });
 

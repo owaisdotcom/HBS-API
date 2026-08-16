@@ -8,6 +8,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import cacheService from '../services/cache.service.js';
 
 // @route   GET /api/homepage/settings
 // @desc    Get complete homepage configuration
@@ -282,9 +283,17 @@ export const updateOrCreateHero = asyncHandler(async (req, res) => {
 // @desc    Get homepage sections
 // @access  Public
 export const getHomepageSections = asyncHandler(async (req, res) => {
+  const cacheKey = 'homepage_sections';
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, { homepageSections: cached }, 'Homepage sections retrieved successfully (cached)'));
+  }
+
   const homepageSections = await HomepageSection.findOne({ isActive: true })
     .populate('sections.categoryId', 'name slug image')
     .populate('sections.productIds', 'name slug price originalPrice images rating stock');
+
+  cacheService.set(cacheKey, homepageSections, 300);
 
   res.json(
     new ApiResponse(200, { homepageSections }, 'Homepage sections retrieved successfully')
@@ -295,6 +304,7 @@ export const getHomepageSections = asyncHandler(async (req, res) => {
 // @desc    Update or create homepage sections (upsert)
 // @access  Private (Admin)
 export const updateHomepageSections = asyncHandler(async (req, res, next) => {
+  cacheService.delPattern('homepage_');
   // Upsert: Find the active homepage sections and update or create
   const homepageSections = await HomepageSection.findOneAndUpdate(
     { isActive: true },

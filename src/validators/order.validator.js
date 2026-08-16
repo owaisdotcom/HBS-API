@@ -98,6 +98,14 @@ export const updateOrderStatusValidator = [
   
   body('note')
     .optional()
+    .trim(),
+
+  body('trackingNumber')
+    .optional()
+    .trim(),
+
+  body('courier')
+    .optional()
     .trim()
 ];
 

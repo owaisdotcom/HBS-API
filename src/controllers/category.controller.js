@@ -4,12 +4,19 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import cacheService from '../services/cache.service.js';
 
 // @route   GET /api/categories
 // @desc    Get all categories (with hierarchy)
 // @access  Public
 export const getAllCategories = asyncHandler(async (req, res) => {
   const { status = 'active', includeInactive } = req.query;
+
+  const cacheKey = `categories_all_${status}_${includeInactive}`;
+  const cachedData = cacheService.get(cacheKey);
+  if (cachedData) {
+    return res.json(new ApiResponse(200, cachedData, 'Categories retrieved successfully (cached)'));
+  }
 
   const query = includeInactive ? { isDeleted: { $ne: true } } : { status, isDeleted: { $ne: true } };
 
@@ -84,11 +91,15 @@ export const getAllCategories = asyncHandler(async (req, res) => {
     }
   });
 
+  const responseData = {
+    categories: rootCategories,
+    total: categories.length
+  };
+
+  cacheService.set(cacheKey, responseData, 120);
+
   res.json(
-    new ApiResponse(200, {
-      categories: rootCategories,
-      total: categories.length
-    }, 'Categories retrieved successfully')
+    new ApiResponse(200, responseData, 'Categories retrieved successfully')
   );
 });
 
@@ -98,13 +109,22 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 export const getFlatCategories = asyncHandler(async (req, res) => {
   const { status = 'active' } = req.query;
 
+  const cacheKey = `categories_flat_${status}`;
+  const cachedData = cacheService.get(cacheKey);
+  if (cachedData) {
+    return res.json(new ApiResponse(200, cachedData, 'Categories retrieved successfully (cached)'));
+  }
+
   const categories = await Category.find({ status, isDeleted: { $ne: true } })
     .sort('level displayOrder')
     .populate('parentId', 'name slug')
     .select('-__v');
 
+  const responseData = { categories };
+  cacheService.set(cacheKey, responseData, 120);
+
   res.json(
-    new ApiResponse(200, { categories }, 'Categories retrieved successfully')
+    new ApiResponse(200, responseData, 'Categories retrieved successfully')
   );
 });
 

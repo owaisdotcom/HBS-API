@@ -8,19 +8,32 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import { sendWishlistRestockEmail } from '../services/email.service.js';
+import cacheService from '../services/cache.service.js';
+
+const LISTING_PROJECTION = '_id name slug price originalPrice images categories stock availableStock status rating reviewCount isFeatured isNewArrival createdAt publishedAt';
 
 const getReservationMap = async (productIds = []) => {
   if (productIds.length === 0) return new Map();
   const now = new Date();
   const ids = productIds.map((id) => new mongoose.Types.ObjectId(id));
   const results = await Cart.aggregate([
-    { $unwind: '$items' },
+    // Stage 1: Filter cart documents using compound index IXSCAN BEFORE unwinding
     {
       $match: {
         'items.productId': { $in: ids },
         'items.reservedUntil': { $gt: now }
       }
     },
+    // Stage 2: Unwind items array ONLY for matching cart documents
+    { $unwind: '$items' },
+    // Stage 3: Filter unwound items strictly matching product IDs and unexpired reservations
+    {
+      $match: {
+        'items.productId': { $in: ids },
+        'items.reservedUntil': { $gt: now }
+      }
+    },
+    // Stage 4: Sum reserved quantities per product ID
     {
       $group: {
         _id: '$items.productId',
@@ -49,6 +62,12 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     isNewArrival,
     inStock
   } = req.query;
+
+  const cacheKey = `products_${JSON.stringify(req.query)}`;
+  const cachedResult = cacheService.get(cacheKey);
+  if (cachedResult) {
+    return res.json(new ApiResponse(200, cachedResult, 'Products retrieved successfully (cached)'));
+  }
 
   // Build query
   const query = {
@@ -101,13 +120,13 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     sortOption = `${req.query.sortOrder === 'desc' ? '-' : ''}${req.query.sortBy}`;
   }
 
-  // Execute query
+  // Execute query with lightweight listing projection
   const products = await Product.find(query)
     .sort(sortOption)
     .skip(skip)
     .limit(Number(limit))
     .populate('categories', 'name slug')
-    .select('-__v');
+    .select(LISTING_PROJECTION);
 
   const total = await Product.countDocuments(query);
 
@@ -122,16 +141,20 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     };
   });
 
+  const responseData = {
+    products: productsWithAvailability,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / limit)
+    }
+  };
+
+  cacheService.set(cacheKey, responseData, 60);
+
   res.json(
-    new ApiResponse(200, {
-      products: productsWithAvailability,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    }, 'Products retrieved successfully')
+    new ApiResponse(200, responseData, 'Products retrieved successfully')
   );
 });
 
@@ -163,10 +186,6 @@ export const getProduct = asyncHandler(async (req, res, next) => {
   if (!product) {
     return next(new ApiError('Product not found', 404));
   }
-
-  // Increment view count
-  product.viewCount += 1;
-  await product.save({ validateBeforeSave: false });
 
   const reservationMap = await getReservationMap([product._id]);
   const reserved = reservationMap.get(product._id.toString()) || 0;
@@ -457,6 +476,9 @@ export const createProduct = asyncHandler(async (req, res, next) => {
 
   // Create product
   const product = await Product.create(productData);
+
+  // Invalidate cached product listings
+  cacheService.delPattern('products_');
 
   res.status(201).json(
     new ApiResponse(201, { product }, 'Product created successfully')
@@ -795,6 +817,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Invalidate cached product listings
+  cacheService.delPattern('products_');
+
   res.json(
     new ApiResponse(200, { product }, 'Product updated successfully')
   );
@@ -816,6 +841,9 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
   product.isDeleted = true;
   product.deletedAt = new Date();
   await product.save();
+
+  // Invalidate cached product listings
+  cacheService.delPattern('products_');
 
   res.json(
     new ApiResponse(200, null, 'Product deleted successfully')
@@ -854,6 +882,12 @@ export const deleteProductImage = asyncHandler(async (req, res, next) => {
 export const getFeaturedProducts = asyncHandler(async (req, res) => {
   const { limit = 8 } = req.query;
 
+  const cacheKey = `products_featured_${limit}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, { products: cached }, 'Featured products retrieved (cached)'));
+  }
+
   const products = await Product.find({
     isFeatured: true,
     status: 'active',
@@ -863,7 +897,9 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
     .sort('-createdAt')
     .limit(Number(limit))
     .populate('categories', 'name slug')
-    .select('-__v');
+    .select(LISTING_PROJECTION);
+
+  cacheService.set(cacheKey, products, 60);
 
   res.json(
     new ApiResponse(200, { products }, 'Featured products retrieved')
@@ -876,6 +912,12 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
 export const getNewArrivals = asyncHandler(async (req, res) => {
   const { limit = 8 } = req.query;
 
+  const cacheKey = `products_new_arrivals_${limit}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, { products: cached }, 'New arrivals retrieved (cached)'));
+  }
+
   const products = await Product.find({
     isNewArrival: true,
     status: 'active',
@@ -885,7 +927,9 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
     .sort('-publishedAt')
     .limit(Number(limit))
     .populate('categories', 'name slug')
-    .select('-__v');
+    .select(LISTING_PROJECTION);
+
+  cacheService.set(cacheKey, products, 60);
 
   res.json(
     new ApiResponse(200, { products }, 'New arrivals retrieved')
@@ -898,6 +942,12 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
 export const getRelatedProducts = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { limit = 8 } = req.query;
+
+  const cacheKey = `products_related_${id}_${limit}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, { products: cached }, 'Related products retrieved (cached)'));
+  }
 
   const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
 
@@ -928,7 +978,9 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
     .sort('-rating -soldCount')
     .limit(Number(limit))
     .populate('categories', 'name slug')
-    .select('-__v');
+    .select(LISTING_PROJECTION);
+
+  cacheService.set(cacheKey, relatedProducts, 120);
 
   res.json(
     new ApiResponse(200, { products: relatedProducts }, 'Related products retrieved')

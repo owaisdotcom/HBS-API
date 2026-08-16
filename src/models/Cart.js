@@ -82,6 +82,7 @@ cartSchema.pre('save', async function() {
 // Indexes
 cartSchema.index({ userId: 1 }, { unique: true });
 cartSchema.index({ 'items.productId': 1 });
+cartSchema.index({ 'items.productId': 1, 'items.reservedUntil': 1 });
 
 // Calculate cart totals
 cartSchema.methods.calculateTotals = function() {
