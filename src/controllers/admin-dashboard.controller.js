@@ -89,7 +89,9 @@ export const getDashboardOverview = asyncHandler(async (req, res) => {
   const { start, end } = getRangeDates({ range, from, to });
 
   const match = {
-    createdAt: { $gte: start, $lte: end }
+    createdAt: { $gte: start, $lte: end },
+    status: { $ne: 'cancelled' },
+    isDeleted: { $ne: true }
   };
 
   const [

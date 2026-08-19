@@ -156,7 +156,11 @@ const orderSchema = new mongoose.Schema({
 
   // Stock tracking flags (prevent duplicate deductions/restorations)
   stockDeducted: { type: Boolean, default: false }, // set true after createOrder deducts stock
-  stockRestored: { type: Boolean, default: false }  // set true after restock on cancel/reject
+  stockRestored: { type: Boolean, default: false }, // set true after restock on cancel/reject
+
+  // Soft deletion flags
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });
@@ -207,6 +211,7 @@ orderSchema.pre('save', async function() {
 orderSchema.index({ orderId: 1 }, { unique: true });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'customer.email': 1 });

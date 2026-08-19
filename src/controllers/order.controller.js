@@ -7,6 +7,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import cacheService from '../services/cache.service.js';
 import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
 import {
   sendOrderReceivedEmail,
@@ -527,7 +528,9 @@ export const getOrders = asyncHandler(async (req, res) => {
     { updatePipeline: true }
   ).catch(() => {});
 
-  const query = {};
+  const query = {
+    isDeleted: { $ne: true }
+  };
 
   // If not admin, filter by user
   if (!req.admin) {
@@ -895,7 +898,13 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
 // @desc    Get order statistics (Admin)
 // @access  Private (Admin)
 export const getOrderStats = asyncHandler(async (req, res) => {
+  const matchFilter = {
+    status: { $ne: 'cancelled' },
+    isDeleted: { $ne: true }
+  };
+
   const stats = await Order.aggregate([
+    { $match: matchFilter },
     {
       $group: {
         _id: '$status',
@@ -905,9 +914,9 @@ export const getOrderStats = asyncHandler(async (req, res) => {
     }
   ]);
 
-  const totalOrders = await Order.countDocuments();
+  const totalOrders = await Order.countDocuments(matchFilter);
   const totalRevenue = await Order.aggregate([
-    { $match: { paymentStatus: 'verified' } },
+    { $match: { ...matchFilter, paymentStatus: 'verified' } },
     { $group: { _id: null, total: { $sum: '$total' } } }
   ]);
 
@@ -917,6 +926,43 @@ export const getOrderStats = asyncHandler(async (req, res) => {
       totalOrders,
       totalRevenue: totalRevenue[0]?.total || 0
     }, 'Order statistics retrieved')
+  );
+});
+
+// @route   DELETE /api/admin/orders/:id
+// @desc    Soft delete a cancelled order (Admin)
+// @access  Private (Admin)
+export const softDeleteOrder = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const order = await Order.findById(id);
+
+  if (!order) {
+    return next(new ApiError('Order not found', 404));
+  }
+
+  // Prevent duplicate soft-delete requests (idempotent)
+  if (order.isDeleted) {
+    return res.json(
+      new ApiResponse(200, { orderId: order.orderId }, 'Order is already deleted')
+    );
+  }
+
+  // Only cancelled orders can be soft deleted
+  if (order.status !== 'cancelled') {
+    return next(new ApiError('Only cancelled orders can be soft deleted', 400));
+  }
+
+  order.isDeleted = true;
+  order.deletedAt = new Date();
+
+  await order.save();
+
+  // Flush admin dashboard cache so KPIs update immediately
+  cacheService.flushAll();
+
+  res.json(
+    new ApiResponse(200, { orderId: order.orderId }, 'Order soft deleted successfully')
   );
 });
 

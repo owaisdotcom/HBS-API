@@ -4,7 +4,8 @@ import {
   getOrder,
   updateOrderStatus,
   verifyPayment,
-  getOrderStats
+  getOrderStats,
+  softDeleteOrder
 } from '../controllers/order.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import validate from '../middleware/validate.middleware.js';
@@ -18,6 +19,8 @@ router.get('/', protectAdmin, getOrders);
 router.get('/:id', protectAdmin, getOrder);
 router.put('/:id/status', protectAdmin, updateOrderStatusValidator, validate, updateOrderStatus);
 router.put('/:id/verify-payment', protectAdmin, verifyPayment);
+router.delete('/:id', protectAdmin, softDeleteOrder);
+router.put('/:id/soft-delete', protectAdmin, softDeleteOrder);
 
 export default router;
 
