@@ -42,7 +42,8 @@ class UploadService {
     // Default product/general images
     return [
       { width: 1000, height: 1000, crop: 'limit' },
-      { quality: 'auto:good' }
+      { quality: 'auto:good' },
+      { fetch_format: 'auto' }
     ];
   }
 
