@@ -27,19 +27,47 @@ const allowedOrigins = new Set(
     process.env.FRONTEND_URL
   ].filter(Boolean)
 );
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.endsWith('vercel.app') || host.endsWith('hijabsbyshiza.com') || host === 'localhost') {
+      return true;
+    }
+  } catch (_) {}
+  return false;
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-request-id', 'Cache-Control', 'Pragma'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range', 'x-request-id']
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'x-request-id', 'ETag', 'etag']
 }));
-app.options('*', cors());
+
+// Preflight & CORS header middleware (dynamically allows all requested headers like if-none-match)
+app.use((req, res, next) => {
+  const requestHeaders = req.headers['access-control-request-headers'];
+  if (requestHeaders) {
+    res.setHeader('Access-Control-Allow-Headers', requestHeaders);
+  }
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin;
+    if (isAllowedOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    }
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
