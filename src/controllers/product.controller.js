@@ -293,18 +293,26 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   productData.categoryPath = Array.from(categoryPathSet).map(id => new mongoose.Types.ObjectId(id));
   productData.categories = selectedCategories.map(c => c._id);
 
-  // Handle image uploads
   // Handle image uploads (product-level and variant-level)
   let images = [];
   let uploadedUrls = [];
   if (req.files && req.files.length > 0) {
-    uploadedUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    // Default product-level images if no variant mapping provided
-    images = uploadedUrls.map((url, index) => ({
-      url,
-      isPrimary: index === 0,
-      order: index
-    }));
+    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products');
+    uploadedUrls = uploadResults.map(item => (typeof item === 'string' ? item : item.url));
+    images = uploadResults.map((item, index) => {
+      const url = typeof item === 'string' ? item : item.url;
+      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof item === 'object' ? item.key : undefined;
+      const publicId = typeof item === 'object' ? item.publicId : undefined;
+      return {
+        provider,
+        key,
+        publicId,
+        url,
+        isPrimary: index === 0,
+        order: index
+      };
+    });
   }
 
   // Parse variants if they come as string or double-wrapped
@@ -525,28 +533,48 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   let uploadedNewImages = [];
   if (req.files && req.files.length > 0) {
     shouldUpdateImages = true;
-    const imageUrls = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    uploadedNewImages = imageUrls.map((url, index) => ({
-      url,
-      fileIndex: index
-    }));
+    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products');
+    uploadedNewImages = uploadResults.map((item, index) => {
+      const url = typeof item === 'string' ? item : item.url;
+      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof item === 'object' ? item.key : undefined;
+      const publicId = typeof item === 'object' ? item.publicId : undefined;
+      return {
+        provider,
+        key,
+        publicId,
+        url,
+        fileIndex: index
+      };
+    });
   }
 
   // Only update images if FormData was sent (not plain JSON)
   if (shouldUpdateImages) {
-    // Create a map of all images with their final order
+    const previousImages = product.images || [];
     const imageMap = [];
 
     // Add existing images with their order
     existingImagesWithOrder.forEach(img => {
-      imageMap.push({ url: img.url, order: img.order, type: 'existing' });
+      const url = typeof img === 'string' ? img : img.url;
+      const provider = typeof img === 'object' && img.provider ? img.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof img === 'object' ? img.key : undefined;
+      const publicId = typeof img === 'object' ? img.publicId : undefined;
+      imageMap.push({ provider, key, publicId, url, order: img.order, type: 'existing' });
     });
 
     // Add new images with their order
     newImagesOrder.forEach(orderInfo => {
       const newImage = uploadedNewImages.find(img => img.fileIndex === orderInfo.fileIndex);
       if (newImage) {
-        imageMap.push({ url: newImage.url, order: orderInfo.order, type: 'new' });
+        imageMap.push({
+          provider: newImage.provider,
+          key: newImage.key,
+          publicId: newImage.publicId,
+          url: newImage.url,
+          order: orderInfo.order,
+          type: 'new'
+        });
       }
     });
 
@@ -554,12 +582,25 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     const allImages = imageMap
       .sort((a, b) => a.order - b.order)
       .map((img, index) => ({
+        provider: img.provider,
+        key: img.key,
+        publicId: img.publicId,
         url: img.url,
         isPrimary: index === 0,
         order: index
       }));
 
-    
+    // Delete removed images from storage provider (Cloudinary or R2)
+    const keptUrls = new Set(allImages.map(img => img.url));
+    const removedImages = previousImages.filter(prevImg => prevImg && prevImg.url && !keptUrls.has(prevImg.url));
+    for (const removed of removedImages) {
+      try {
+        await uploadService.deleteImage(removed);
+      } catch (err) {
+        console.error('[UpdateProduct] Failed to delete removed image:', err.message);
+      }
+    }
+
     product.images = allImages;
   }
 

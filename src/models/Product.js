@@ -35,6 +35,8 @@ const productSchema = new mongoose.Schema({
   
   // Images
   images: [{
+    provider: { type: String, enum: ['cloudinary', 'r2'] },
+    key: String,
     url: String,
     publicId: String,
     alt: String,
@@ -54,6 +56,8 @@ const productSchema = new mongoose.Schema({
     colorId: { type: String, required: true, index: true }, // Unique ID for this color variant
     color: { type: String, required: true }, // Color name
     images: [{
+      provider: { type: String, enum: ['cloudinary', 'r2'] },
+      key: String,
       url: String,
       publicId: String,
       alt: String,

@@ -2,6 +2,17 @@ import rateLimit from 'express-rate-limit';
 import { logServerError } from '../services/errorLog.service.js';
 
 /**
+ * Skip rate limiting for local development or when explicitly disabled
+ */
+const skipIfLocal = (req) => {
+  if (process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development') {
+    return true;
+  }
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.includes('localhost');
+};
+
+/**
  * Custom handler for rate-limit violations that records a security warning log in MongoDB
  */
 const createRateLimitHandler = (message) => async (req, res, next, options) => {
@@ -28,6 +39,7 @@ export const loginLimiter = rateLimit({
   max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX, 10) || 10, // 10 attempts
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipIfLocal,
   handler: createRateLimitHandler('Too many login attempts from this IP. Please try again after 15 minutes.')
 });
 
@@ -40,6 +52,7 @@ export const registerLimiter = rateLimit({
   max: parseInt(process.env.REGISTER_RATE_LIMIT_MAX, 10) || 5, // 5 signups
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipIfLocal,
   handler: createRateLimitHandler('Too many account creation attempts from this IP. Please try again after an hour.')
 });
 
@@ -52,6 +65,7 @@ export const passwordResetLimiter = rateLimit({
   max: parseInt(process.env.PASSWORD_RESET_MAX, 10) || 5, // 5 reset requests
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipIfLocal,
   handler: createRateLimitHandler('Too many password reset requests from this IP. Please try again after an hour.')
 });
 
@@ -64,5 +78,6 @@ export const otpLimiter = rateLimit({
   max: parseInt(process.env.OTP_RATE_LIMIT_MAX, 10) || 5, // 5 attempts
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipIfLocal,
   handler: createRateLimitHandler('Too many OTP verification requests. Please try again after 15 minutes.')
 });

@@ -78,8 +78,13 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
 
   let images = [];
   if (req.files?.length) {
-    const urls = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
-    images = urls.map((url, i) => ({ url, order: i, isPrimary: i === 0 }));
+    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
+    images = uploadResults.map((item, i) => {
+      const url = typeof item === 'string' ? item : item.url;
+      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof item === 'object' ? item.key : undefined;
+      return { provider, key, url, order: i, isPrimary: i === 0 };
+    });
   }
 
   const payload = {
@@ -155,18 +160,28 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
 
   // Images: existingImages (JSON array with url, order) + new uploads
   if (parsed.existingImages !== undefined && Array.isArray(parsed.existingImages)) {
-    bundle.images = parsed.existingImages.map((img, i) => ({
-      url: img.url,
-      alt: img.alt,
-      isPrimary: i === 0,
-      order: i
-    }));
+    bundle.images = parsed.existingImages.map((img, i) => {
+      const url = typeof img === 'string' ? img : img.url;
+      const provider = typeof img === 'object' && img.provider ? img.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof img === 'object' ? img.key : undefined;
+      return {
+        provider,
+        key,
+        url,
+        alt: typeof img === 'object' ? img.alt : undefined,
+        isPrimary: i === 0,
+        order: i
+      };
+    });
   }
   if (req.files?.length) {
-    const urls = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
+    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     const startOrder = (bundle.images || []).length;
-    urls.forEach((url, i) => {
-      bundle.images.push({ url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
+    uploadResults.forEach((item, i) => {
+      const url = typeof item === 'string' ? item : item.url;
+      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const key = typeof item === 'object' ? item.key : undefined;
+      bundle.images.push({ provider, key, url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
     });
   }
 

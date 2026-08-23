@@ -80,12 +80,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting with Vercel trust proxy support
+// Rate limiting with Vercel trust proxy support (disabled when local or in development mode)
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    if (process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development') {
+      return true;
+    }
+    const ip = req.ip || req.connection?.remoteAddress || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.includes('localhost');
+  },
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later'

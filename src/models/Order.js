@@ -110,7 +110,10 @@ const orderSchema = new mongoose.Schema({
     default: 'pending'
   },
   paymentReceipt: {
+    provider: { type: String, enum: ['cloudinary', 'r2'] },
+    key: String,
     url: String,
+    publicId: String,
     uploadedAt: Date,
     verifiedAt: Date,
     verifiedBy: {

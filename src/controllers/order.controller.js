@@ -414,7 +414,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const total = subtotal - discount + shipping;
 
   // Upload receipt to cloud
-  const { url: receiptUrl } = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+  const receiptRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+  const receiptUrl = typeof receiptRes === 'string' ? receiptRes : receiptRes?.url;
+  const receiptProvider = typeof receiptRes === 'object' ? receiptRes?.provider : (receiptUrl?.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+  const receiptKey = typeof receiptRes === 'object' ? receiptRes?.key : undefined;
+  const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
 
   // Create order
   const order = await Order.create({
@@ -445,6 +449,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     paymentMethod: paymentMethod || 'bank_transfer',
     customerNotes,
     paymentReceipt: {
+      provider: receiptProvider,
+      key: receiptKey,
+      publicId: receiptPublicId,
       url: receiptUrl,
       uploadedAt: new Date()
     },
@@ -746,11 +753,15 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
   // Upload receipt to cloud
   const uploadRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
   const receiptUrl = typeof uploadRes === 'string' ? uploadRes : uploadRes?.url;
+  const receiptProvider = typeof uploadRes === 'object' ? uploadRes?.provider : (receiptUrl?.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+  const receiptKey = typeof uploadRes === 'object' ? uploadRes?.key : undefined;
   const receiptPublicId = typeof uploadRes === 'object' ? uploadRes?.publicId : undefined;
 
   order.paymentReceipt = {
-    url: receiptUrl,
+    provider: receiptProvider,
+    key: receiptKey,
     publicId: receiptPublicId,
+    url: receiptUrl,
     uploadedAt: new Date()
   };
 
