@@ -31,7 +31,7 @@ import { migrateCloudinaryToR2Admin } from '../controllers/upload.controller.js'
 router.get('/profile', protectAdmin, getAdminProfile);
 router.put('/password', protectAdmin, changePasswordValidator, validate, changeAdminPassword);
 router.get('/dashboard/overview', protectAdmin, getDashboardOverview);
-router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
+// router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
 
 // Admin management (requires super_admin role - add middleware check if needed)
 router.post('/register', protectAdmin, createAdminValidator, validate, createAdmin);

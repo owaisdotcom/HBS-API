@@ -301,7 +301,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     uploadedUrls = uploadResults.map(item => (typeof item === 'string' ? item : item.url));
     images = uploadResults.map((item, index) => {
       const url = typeof item === 'string' ? item : item.url;
-      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       const publicId = typeof item === 'object' ? item.publicId : undefined;
       return {
@@ -536,7 +536,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products');
     uploadedNewImages = uploadResults.map((item, index) => {
       const url = typeof item === 'string' ? item : item.url;
-      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       const publicId = typeof item === 'object' ? item.publicId : undefined;
       return {
@@ -557,7 +557,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     // Add existing images with their order
     existingImagesWithOrder.forEach(img => {
       const url = typeof img === 'string' ? img : img.url;
-      const provider = typeof img === 'object' && img.provider ? img.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
       const key = typeof img === 'object' ? img.key : undefined;
       const publicId = typeof img === 'object' ? img.publicId : undefined;
       imageMap.push({ provider, key, publicId, url, order: img.order, type: 'existing' });

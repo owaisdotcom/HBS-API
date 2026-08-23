@@ -9,6 +9,6 @@ const router = express.Router();
 router.post('/image', protectAdmin, uploadSingle, uploadSingleImage);
 
 // Admin only - Trigger Cloudinary to R2 Database Migration
-router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
+// router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
 
 export default router;

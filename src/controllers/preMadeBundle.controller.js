@@ -81,7 +81,7 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     images = uploadResults.map((item, i) => {
       const url = typeof item === 'string' ? item : item.url;
-      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       return { provider, key, url, order: i, isPrimary: i === 0 };
     });
@@ -162,7 +162,7 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
   if (parsed.existingImages !== undefined && Array.isArray(parsed.existingImages)) {
     bundle.images = parsed.existingImages.map((img, i) => {
       const url = typeof img === 'string' ? img : img.url;
-      const provider = typeof img === 'object' && img.provider ? img.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
       const key = typeof img === 'object' ? img.key : undefined;
       return {
         provider,
@@ -179,7 +179,7 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
     const startOrder = (bundle.images || []).length;
     uploadResults.forEach((item, i) => {
       const url = typeof item === 'string' ? item : item.url;
-      const provider = typeof item === 'object' && item.provider ? item.provider : (url.includes('res.cloudinary.com') ? 'cloudinary' : 'r2');
+      const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       bundle.images.push({ provider, key, url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
     });

@@ -3,7 +3,7 @@ import r2Service from '../services/r2.service.js';
 import { isCloudinaryUrl, getImageUrl } from '../../../hbs-ui/src/utils/cloudinary.js';
 
 async function runStorageVerificationTests() {
-  console.log('--- Phase 1 R2 Migration Verification Tests ---');
+  console.log('--- Cloudflare R2 Migration Verification Tests ---');
 
   // Test 1: Key extraction from various URLs
   console.log('\n[Test 1] Key extraction logic:');
@@ -18,31 +18,17 @@ async function runStorageVerificationTests() {
   if (extracted2 !== 'hbs-categories/def-456.png') throw new Error('Key extraction test 2 failed');
 
   // Test 2: Provider routing in UploadService
-  console.log('\n[Test 2] Storage Provider Routing:');
-  const provider = uploadService.getStorageProvider();
-  console.log(`Default storage provider configured: '${provider}'`);
-  if (provider !== 'r2') throw new Error(`Default provider should be r2, got ${provider}`);
-
-  // Test 3: Frontend helper getImageUrl
-  console.log('\n[Test 3] Frontend getImageUrl helper:');
-  const cldUrl = 'https://res.cloudinary.com/ddnc1gkuw/image/upload/v12345/hbs-products/sample.jpg';
+  console.log('\n[Test 2] Frontend getImageUrl helper:');
   const r2Url = 'https://images.hijabsbyshiza.com/hbs-products/new-image.jpg';
-  
-  const optimizedCld = getImageUrl(cldUrl, { preset: 'card' });
   const rawR2 = getImageUrl(r2Url, { preset: 'card' });
   
-  console.log(`Cloudinary input => ${optimizedCld}`);
-  console.log(`R2 input         => ${rawR2}`);
-  
-  if (!optimizedCld.includes('w_400') || !optimizedCld.includes('q_auto')) {
-    throw new Error('Cloudinary optimization failed in getImageUrl');
-  }
+  console.log(`R2 input => ${rawR2}`);
   if (rawR2 !== r2Url) {
     throw new Error('R2 URL was modified unexpectedly by getImageUrl');
   }
 
-  // Test 4: R2 S3 Client Initialization & Credential Check
-  console.log('\n[Test 4] R2 S3 Client config check:');
+  // Test 3: R2 S3 Client Initialization & Credential Check
+  console.log('\n[Test 3] R2 S3 Client config check:');
   process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'test_account_id';
   process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || 'test_access_key';
   process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || 'test_secret_key';
