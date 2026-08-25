@@ -11,7 +11,7 @@ export const protect = asyncHandler(async (req, res, next) => {
   }
 
   if (!token) {
-    return next(new ApiError('Not authorized to access this route', 401));
+    return next(new ApiError('Please sign in to continue', 401));
   }
 
   try {
@@ -28,7 +28,7 @@ export const protect = asyncHandler(async (req, res, next) => {
 
     next();
   } catch (error) {
-    return next(new ApiError('Not authorized to access this route', 401));
+    return next(new ApiError('Your session has expired. Please sign in again.', 401));
   }
 });
 

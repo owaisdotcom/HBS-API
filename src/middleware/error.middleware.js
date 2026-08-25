@@ -26,6 +26,11 @@ const errorHandler = async (err, req, res, next) => {
     error = new ApiError(message, 400);
   }
 
+  // Mongoose version conflict error
+  if (err.name === 'VersionError') {
+    error = new ApiError('Cart update conflict. Please try again.', 409);
+  }
+
   // Multer errors
   if (err instanceof multer.MulterError) {
     let message = err.message;

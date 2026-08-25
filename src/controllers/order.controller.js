@@ -624,8 +624,13 @@ export const getOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order not found', 404));
   }
 
-  // Check authorization (user can only see their own orders)
-  if (!req.admin && order.userId && order.userId.toString() !== req.user?.id) {
+  // Check authorization (admin, owner user, or matching guest email query param)
+  const { email } = req.query;
+  const isAdmin = !!req.admin;
+  const isOwnerUser = req.user && order.userId && order.userId.toString() === req.user.id;
+  const isGuestEmailMatch = email && order.customer?.email?.toLowerCase() === email.trim().toLowerCase();
+
+  if (!isAdmin && !isOwnerUser && !isGuestEmailMatch) {
     return next(new ApiError('Not authorized to access this order', 403));
   }
 

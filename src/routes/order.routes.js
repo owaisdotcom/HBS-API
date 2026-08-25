@@ -38,7 +38,7 @@ const parseOrderBody = (req, _res, next) => {
 // Public/User routes
 router.post('/', optionalAuth, uploadReceiptSingle, parseOrderBody, createOrderValidator, validate, createOrder);
 router.get('/', protect, getOrders);
-router.get('/:id', protect, getOrder);
+router.get('/:id', optionalAuth, getOrder);
 router.post('/:id/receipt', uploadReceiptSingle, uploadReceipt);
 router.put('/:id/cancel', protect, cancelOrder);
 
