@@ -13,6 +13,26 @@ const wishlistSchema = new mongoose.Schema({
       ref: 'Product',
       required: true
     },
+    variantId: {
+      type: String,
+      default: null
+    },
+    selectedColor: {
+      type: String,
+      default: null
+    },
+    selectedSize: {
+      type: String,
+      default: null
+    },
+    selectedImage: {
+      type: String,
+      default: null
+    },
+    variantSnapshot: {
+      type: Object,
+      default: null
+    },
     addedAt: {
       type: Date,
       default: Date.now

@@ -348,17 +348,19 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     subtotal += computed.effectiveLineTotal;
     const effectiveUnitPrice = computed.effectiveLineTotal / item.quantity;
 
+    const variantImg = item.selectedImage || item.variantSnapshot?.image || chosenVariant?.images?.find(i => i.isPrimary)?.url || chosenVariant?.images?.[0]?.url || product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || '';
+
     orderItems.push({
       productId: product._id,
       preMadeBundleId: null,
       productName: product.name,
-      productImage: (chosenVariant?.images?.[0]?.url) || (product.images?.[0]?.url) || '',
+      productImage: variantImg,
       sku: chosenVariant?.sku || product.sku,
       variantId: item.variantId || null,
       variantSnapshot: chosenVariant ? {
         sku: chosenVariant.sku || null,
         price: chosenVariant.price || null,
-        image: chosenVariant.images?.[0]?.url || null,
+        image: variantImg || chosenVariant.images?.[0]?.url || null,
         color: chosenVariant.color || null,
         size: chosenVariant.size || null,
         specs: chosenVariant.specs || null,

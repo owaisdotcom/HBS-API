@@ -153,7 +153,7 @@ export const getCart = asyncHandler(async (req, res) => {
 // @desc    Add product or pre-made bundle to cart
 // @access  Private
 export const addToCart = asyncHandler(async (req, res, next) => {
-  const { productId, preMadeBundleId, quantity = 1, selectedColor, selectedSize, variantId, selectedTieElastic, selectedBridalLength, bridalLengthPrice } = req.body;
+  const { productId, preMadeBundleId, quantity = 1, selectedColor, selectedSize, variantId, selectedTieElastic, selectedBridalLength, bridalLengthPrice, selectedImage } = req.body;
 
   if (quantity < 1) {
     return next(new ApiError('Quantity must be at least 1', 400));
@@ -286,6 +286,8 @@ export const addToCart = asyncHandler(async (req, res, next) => {
                 (item.selectedBridalLength || null) === (selectedBridalLength || null)
       );
 
+      const variantImgUrl = selectedImage || chosenColorVariant?.images?.find(i => i.isPrimary)?.url || chosenColorVariant?.images?.[0]?.url || null;
+
       if (existingItemIndex > -1) {
         const newQuantity = cart.items[existingItemIndex].quantity + quantity;
         if (newQuantity > availableForUser) {
@@ -296,6 +298,12 @@ export const addToCart = asyncHandler(async (req, res, next) => {
         cart.items[existingItemIndex].selectedTieElastic = selectedTieElastic || null;
         cart.items[existingItemIndex].selectedBridalLength = selectedBridalLength || null;
         cart.items[existingItemIndex].bridalLengthPrice = Number(bridalLengthPrice) || 0;
+        if (variantImgUrl) {
+          cart.items[existingItemIndex].selectedImage = variantImgUrl;
+          if (cart.items[existingItemIndex].variantSnapshot) {
+            cart.items[existingItemIndex].variantSnapshot.image = variantImgUrl;
+          }
+        }
         cart.items[existingItemIndex].reservedUntil = reservationUntil;
       } else {
         if (quantity > availableForUser) {
@@ -307,6 +315,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
           price: chosenSize ? (chosenSize.price ?? product.price) : product.price,
           selectedColor: selectedColor || (chosenColorVariant?.color || null),
           selectedSize: selectedSize || (chosenSize?.size || null),
+          selectedImage: variantImgUrl,
           selectedTieElastic: selectedTieElastic || null,
           selectedBridalLength: selectedBridalLength || null,
           bridalLengthPrice: Number(bridalLengthPrice) || 0,
@@ -316,7 +325,7 @@ export const addToCart = asyncHandler(async (req, res, next) => {
           variantSnapshot: (chosenColorVariant && chosenSize) ? {
             sku: chosenSize.sku || null,
             price: chosenSize.price || null,
-            image: chosenColorVariant.images?.[0]?.url || null,
+            image: variantImgUrl || chosenColorVariant.images?.[0]?.url || null,
             color: chosenColorVariant.color || null,
             size: chosenSize.size || null,
             specs: chosenColorVariant.specs || null,
@@ -592,10 +601,18 @@ export const syncCart = asyncHandler(async (req, res, next) => {
                   item.variantId === (localVariantId || null)
         );
 
+        const variantImgUrl = localItem.selectedImage || colorV?.images?.find(i => i.isPrimary)?.url || colorV?.images?.[0]?.url || null;
+
         if (existingItemIndex > -1) {
           const mergedQuantity = Math.max(cart.items[existingItemIndex].quantity, localItem.quantity);
           cart.items[existingItemIndex].quantity = Math.min(mergedQuantity, availableForUser);
           cart.items[existingItemIndex].price = chosenVariant ? (chosenVariant.price ?? product.price) : product.price;
+          if (variantImgUrl) {
+            cart.items[existingItemIndex].selectedImage = variantImgUrl;
+            if (cart.items[existingItemIndex].variantSnapshot) {
+              cart.items[existingItemIndex].variantSnapshot.image = variantImgUrl;
+            }
+          }
           cart.items[existingItemIndex].reservedUntil = reservationUntil;
         } else {
           if (availableForUser <= 0) continue;
@@ -605,12 +622,13 @@ export const syncCart = asyncHandler(async (req, res, next) => {
             price: chosenVariant ? (chosenVariant.price ?? product.price) : product.price,
             selectedColor: localItem.selectedColor || colorV?.color || null,
             selectedSize: localItem.selectedSize || sizeV?.size || null,
+            selectedImage: variantImgUrl,
             reservedUntil: reservationUntil,
             variantId: localVariantId || null,
             variantSnapshot: colorV && sizeV ? {
               sku: sizeV.sku || null,
               price: sizeV.price || null,
-              image: colorV.images?.[0]?.url || null,
+              image: variantImgUrl || colorV.images?.[0]?.url || null,
               color: colorV.color || null,
               size: sizeV.size || null,
               specs: colorV.specs || null

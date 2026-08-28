@@ -35,6 +35,10 @@ const cartItemSchema = new mongoose.Schema({
   selectedSize: {
     type: String
   },
+  selectedImage: {
+    type: String,
+    default: null
+  },
   selectedTieElastic: {
     type: String,
     enum: ['tie', 'elastic', null],
