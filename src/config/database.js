@@ -11,9 +11,10 @@ const connectDB = async () => {
       ? (process.env.MONGODB_URI_LOCAL)
       : (process.env.MONGODB_URI);
     const conn = await mongoose.connect(mongoUri, {
-      // Disable retryable writes so standalone MongoDB works (no replica set required).
-      // Remove or set to true if you use a replica set (e.g. Atlas).
       retryWrites: false,
+      maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE, 10) || 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000
     });
 
 

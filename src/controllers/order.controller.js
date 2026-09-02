@@ -559,20 +559,6 @@ export const getOrders = asyncHandler(async (req, res) => {
     search
   } = req.query;
 
-  // Background migration for legacy/incorrect shipping records
-  Order.updateMany(
-    { shipping: { $ne: 300 } },
-    [
-      {
-        $set: {
-          shipping: 300,
-          total: { $add: [{ $subtract: ['$subtotal', '$discount'] }, 300] }
-        }
-      }
-    ],
-    { updatePipeline: true }
-  ).catch(() => {});
-
   const query = {
     isDeleted: { $ne: true }
   };

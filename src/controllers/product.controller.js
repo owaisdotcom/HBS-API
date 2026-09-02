@@ -16,6 +16,17 @@ const getReservationMap = async (productIds = []) => {
   if (productIds.length === 0) return new Map();
   const now = new Date();
   const ids = productIds.map((id) => new mongoose.Types.ObjectId(id));
+
+  // Fast pre-check: Skip aggregate query if no active cart reservations exist for target products
+  const hasReservations = await Cart.exists({
+    'items.productId': { $in: ids },
+    'items.reservedUntil': { $gt: now }
+  });
+
+  if (!hasReservations) {
+    return new Map();
+  }
+
   const results = await Cart.aggregate([
     // Stage 1: Filter cart documents using compound index IXSCAN BEFORE unwinding
     {
@@ -164,37 +175,42 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 export const getProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  // Prevent browser, CDN, proxy, or Vercel edge caching for product details
+  // Prevent browser caching for product details so client always receives live availability state
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.setHeader('Surrogate-Control', 'no-store');
 
-  let product;
-
-  // Try to find by ID first, then by slug
-  if (id.match(/^[0-9a-fA-F]{24}$/)) {
-    product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
-      .populate('categories', 'name slug')
-      .populate('categoryPath', 'name slug');
-  } else {
-    product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
-      .populate('categories', 'name slug')
-      .populate('categoryPath', 'name slug');
-  }
+  const cacheKey = `product_detail_${id}`;
+  let product = cacheService.get(cacheKey);
 
   if (!product) {
-    return next(new ApiError('Product not found', 404));
+    // Try to find by ID first, then by slug
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
+        .populate('categories', 'name slug')
+        .populate('categoryPath', 'name slug')
+        .lean();
+    } else {
+      product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
+        .populate('categories', 'name slug')
+        .populate('categoryPath', 'name slug')
+        .lean();
+    }
+
+    if (!product) {
+      return next(new ApiError('Product not found', 404));
+    }
+
+    cacheService.set(cacheKey, product, 120);
   }
 
   const reservationMap = await getReservationMap([product._id]);
   const reserved = reservationMap.get(product._id.toString()) || 0;
-  const availableStock = Math.max(product.stock - reserved, 0);
+  const availableStock = Math.max((product.stock || 0) - reserved, 0);
 
   res.json(
     new ApiResponse(200, {
       product: {
-        ...product.toObject(),
+        ...product,
         availableStock,
         reservedStock: reserved
       }

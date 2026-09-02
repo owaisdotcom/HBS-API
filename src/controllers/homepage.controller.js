@@ -14,6 +14,12 @@ import cacheService from '../services/cache.service.js';
 // @desc    Get complete homepage configuration
 // @access  Public
 export const getHomepageSettings = asyncHandler(async (req, res) => {
+  const cacheKey = 'homepage_settings';
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(new ApiResponse(200, cached, 'Homepage settings retrieved successfully (cached)'));
+  }
+
   // Get navigation menu
   const navigation = await NavigationMenu.findOne({
     position: 'header',
@@ -77,13 +83,17 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
     })
   );
 
+  const responseData = {
+    navigation,
+    hero,
+    homepageSections: sectionsWithProducts,
+    siteSettings
+  };
+
+  cacheService.set(cacheKey, responseData, 300);
+
   res.json(
-    new ApiResponse(200, {
-      navigation,
-      hero,
-      homepageSections: sectionsWithProducts,
-      siteSettings
-    }, 'Homepage settings retrieved successfully')
+    new ApiResponse(200, responseData, 'Homepage settings retrieved successfully')
   );
 });
 
@@ -164,6 +174,8 @@ export const updateNavigation = asyncHandler(async (req, res, next) => {
   ).populate('menuItems.categoryId', 'name slug')
    .populate('menuItems.children.categoryId', 'name slug');
 
+  cacheService.delPattern('homepage_');
+
   res.json(
     new ApiResponse(200, { navigation }, 'Navigation updated successfully')
   );
@@ -195,6 +207,8 @@ export const updateOrCreateNavigation = asyncHandler(async (req, res) => {
   // Populate categories
   await navigation.populate('menuItems.categoryId', 'name slug');
   await navigation.populate('menuItems.children.categoryId', 'name slug');
+
+  cacheService.delPattern('homepage_');
 
   res.json(
     new ApiResponse(200, { navigation }, 'Navigation updated successfully')
@@ -273,6 +287,8 @@ export const updateOrCreateHero = asyncHandler(async (req, res) => {
       { new: true, runValidators: true }
     );
   }
+
+  cacheService.delPattern('homepage_');
 
   res.json(
     new ApiResponse(200, { hero: hero.toObject ? hero.toObject() : hero }, 'Hero updated successfully')
@@ -368,6 +384,8 @@ export const updateSiteSettings = asyncHandler(async (req, res, next) => {
       setDefaultsOnInsert: true
     }
   );
+
+  cacheService.delPattern('homepage_');
 
   res.json(
     new ApiResponse(200, { siteSettings }, 'Site settings updated successfully')
