@@ -113,6 +113,68 @@ export const sendVerificationOTP = async (email, otp, fullName) => {
 };
 
 /**
+ * Send Guest Checkout Email Verification OTP
+ */
+export const sendGuestVerificationOTP = async (email, otp, fullName = 'Valued Customer') => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_USER || process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+    to: email,
+    subject: 'Confirm Your Order - Verification Code | Hijabs By Shiza',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #AA2E48 0%, #7A1C30 100%); color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 1px; }
+          .content { background-color: #ffffff; padding: 30px; border: 1px solid #eeeeee; border-radius: 0 0 8px 8px; }
+          .otp-box { background-color: #FAF5F6; border: 2px dashed #AA2E48; padding: 20px; margin: 25px 0; text-align: center; border-radius: 8px; }
+          .otp-code { font-size: 34px; font-weight: bold; color: #AA2E48; letter-spacing: 8px; font-family: 'Courier New', monospace; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #777; font-size: 12px; }
+          .notice { background-color: #fff8e6; border-left: 4px solid #f0b429; padding: 12px 15px; margin: 20px 0; font-size: 13px; color: #614700; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Hijabs By Shiza</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${fullName},</h2>
+            <p>Thank you for shopping with us! To complete your guest checkout and confirm your order, please enter the verification code below:</p>
+            <div class="otp-box">
+              <p style="margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Your One-Time Order Verification Code</p>
+              <div class="otp-code">${otp}</div>
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #888;">This code is valid for 10 minutes</p>
+            </div>
+            <div class="notice">
+              <strong>Security Notice:</strong> If you did not request this verification code, please ignore this email.
+            </div>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    return info;
+  } catch (error) {
+    console.error('❌ Failed to send Guest OTP email:', error);
+    throw error;
+  }
+};
+
+
+/**
  * Send email verification email
  */
 export const sendVerificationEmail = async (email, verificationToken) => {

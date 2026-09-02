@@ -3,6 +3,7 @@ import Product from '../models/Product.js';
 import PreMadeBundle from '../models/PreMadeBundle.js';
 import Coupon from '../models/Coupon.js';
 import User from '../models/User.js';
+import GuestVerification from '../models/GuestVerification.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -236,11 +237,38 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     items,
     couponCode,
     paymentMethod,
-    customerNotes
+    customerNotes,
+    guestVerificationToken
   } = req.body;
 
   if (!req.file) {
     return next(new ApiError('Payment receipt is required', 400));
+  }
+
+  // Guest checkout email verification check
+  let guestVerificationDoc = null;
+  if (!req.user) {
+    if (!customer?.email) {
+      return next(new ApiError('Customer email is required', 400));
+    }
+
+    const normalizedGuestEmail = customer.email.toLowerCase().trim();
+
+    if (!guestVerificationToken) {
+      return next(new ApiError('Email verification required for guest checkout. Please verify your email before placing the order.', 400));
+    }
+
+    guestVerificationDoc = await GuestVerification.findOne({
+      email: normalizedGuestEmail,
+      verificationToken: guestVerificationToken,
+      isVerified: true,
+      isUsed: false,
+      verificationTokenExpire: { $gt: new Date() }
+    });
+
+    if (!guestVerificationDoc) {
+      return next(new ApiError('Invalid or expired email verification code. Please verify your email again.', 400));
+    }
   }
 
   // Validate and calculate totals
@@ -491,6 +519,14 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
   order.stockDeducted = true;
 
+  // Mark guest verification token as used to prevent duplicate order placement
+  if (guestVerificationDoc) {
+    await GuestVerification.updateOne(
+      { _id: guestVerificationDoc._id },
+      { $set: { isUsed: true } }
+    );
+  }
+
   // Send Order Received Email (asynchronous, non-blocking)
   sendOrderReceivedEmail(order).catch(err =>
     console.error('Failed to send order received email:', err.message)
@@ -553,11 +589,31 @@ export const getOrders = asyncHandler(async (req, res) => {
   if (status) query.status = status;
   if (paymentStatus) query.paymentStatus = paymentStatus;
 
-  // Search by order ID or customer email
-  if (search) {
+  // Search by order ID, customer name, email, phone, city, tracking number, or user full name
+  if (search && typeof search === 'string' && search.trim()) {
+    const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const searchRegex = new RegExp(escapedSearch, 'i');
+
+    // Find registered user IDs whose fullName or email matches the search term
+    const matchingUsers = await User.find({
+      $or: [
+        { fullName: searchRegex },
+        { email: searchRegex }
+      ]
+    }).select('_id').lean();
+
+    const userIds = matchingUsers.map(u => u._id);
+
     query.$or = [
-      { orderId: new RegExp(search, 'i') },
-      { 'customer.email': new RegExp(search, 'i') }
+      { orderId: searchRegex },
+      { 'customer.name': searchRegex },
+      { 'customer.email': searchRegex },
+      { 'customer.phone': searchRegex },
+      { 'customer.alternatePhone': searchRegex },
+      { 'customer.city': searchRegex },
+      { trackingNumber: searchRegex },
+      { courier: searchRegex },
+      ...(userIds.length > 0 ? [{ userId: { $in: userIds } }] : [])
     ];
   }
 

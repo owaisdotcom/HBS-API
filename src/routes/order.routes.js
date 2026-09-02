@@ -29,6 +29,9 @@ const parseOrderBody = (req, _res, next) => {
     if (typeof req.body.items === 'string') {
       req.body.items = JSON.parse(req.body.items);
     }
+    if (!req.body.guestVerificationToken && req.headers['x-guest-verification-token']) {
+      req.body.guestVerificationToken = req.headers['x-guest-verification-token'];
+    }
   } catch (error) {
     // Let validator handle invalid payload
   }

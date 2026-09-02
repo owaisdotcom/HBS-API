@@ -15,6 +15,7 @@ import {
   forgotPassword,
   resetPassword
 } from '../controllers/auth.controller.js';
+import { sendGuestOTP, verifyGuestOTP } from '../controllers/guestVerification.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import validate from '../middleware/validate.middleware.js';
 import {
@@ -38,6 +39,8 @@ router.post('/signup', registerLimiter, signupValidator, validate, signup);
 router.post('/login', loginLimiter, loginValidator, validate, login);
 router.post('/verify-otp', otpLimiter, verifyOTP);
 router.post('/resend-otp', otpLimiter, resendOTP);
+router.post('/guest-send-otp', otpLimiter, sendGuestOTP);
+router.post('/guest-verify-otp', otpLimiter, verifyGuestOTP);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/reset-password/:token', passwordResetLimiter, resetPassword);
