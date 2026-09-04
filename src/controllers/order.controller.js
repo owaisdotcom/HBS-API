@@ -295,6 +295,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         productImage: bundle.images?.[0]?.url || '',
         sku: null,
         variantId: null,
+        variantName: null,
+        variantImage: null,
+        variantImages: [],
+        orderedVariantImage: null,
+        orderedVariantImages: [],
         variantSnapshot: null,
         price: bundle.price,
         quantity: qty,
@@ -310,22 +315,60 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       return next(new ApiError(`Product ${item.productId} not found`, 404));
     }
 
-    let chosenVariant = null;
-    if (item.variantId && Array.isArray(product.variants)) {
-      let colorV = null;
-      let sizeV = null;
-      for (const v of product.variants) {
-        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
-        if (s) {
-          colorV = v;
-          sizeV = s;
-          break;
+    let colorV = null;
+    let sizeV = null;
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      // 1. Try finding by variantId (matches `${v.colorId}-${sz.sizeId}` or `sz.sizeId`)
+      if (item.variantId) {
+        for (const v of product.variants) {
+          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
+          if (s) {
+            colorV = v;
+            sizeV = s;
+            break;
+          }
+        }
+        // If not found in sizes, check if variantId matches colorId
+        if (!colorV) {
+          colorV = product.variants.find(v => v.colorId === item.variantId || v.color === item.variantId);
+          if (colorV) {
+            sizeV = (colorV.sizes || []).find(sz => sz.size === item.selectedSize || sz.sizeId === item.selectedSize) || colorV.sizes?.[0] || null;
+          }
         }
       }
-      chosenVariant = sizeV ? { ...sizeV, images: colorV.images, color: colorV.color, size: sizeV.size } : null;
-      if (!chosenVariant) {
-        return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
+
+      // 2. If not found by variantId, try finding by selectedColor
+      if (!colorV && item.selectedColor) {
+        colorV = product.variants.find(v => 
+          v.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
+          v.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
+        );
+        if (colorV) {
+          if (item.selectedSize) {
+            sizeV = (colorV.sizes || []).find(sz => 
+              sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
+              sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
+            );
+          }
+          if (!sizeV) {
+            sizeV = colorV.sizes?.[0] || null;
+          }
+        }
       }
+    }
+
+    if (item.variantId && !colorV && !sizeV) {
+      return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
+    }
+
+    let chosenVariant = null;
+    if (sizeV && colorV) {
+      chosenVariant = { ...sizeV, images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: sizeV.size };
+    } else if (colorV) {
+      chosenVariant = { images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: item.selectedSize || null };
+    }
+
+    if (sizeV) {
       const variantStock = Number(sizeV.stock) || 0;
       const requestedQty = Number(item.quantity) || 0;
       if (variantStock < requestedQty) {
@@ -376,30 +419,72 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     subtotal += computed.effectiveLineTotal;
     const effectiveUnitPrice = computed.effectiveLineTotal / item.quantity;
 
-    const variantImg = item.selectedImage || item.variantSnapshot?.image || chosenVariant?.images?.find(i => i.isPrimary)?.url || chosenVariant?.images?.[0]?.url || product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || '';
+    // Collect all image URLs for this variant
+    const rawVariantImages = colorV?.images || chosenVariant?.images || [];
+    const variantImagesList = (Array.isArray(rawVariantImages) ? rawVariantImages : [])
+      .map(img => (typeof img === 'string' ? img : img?.url))
+      .filter(Boolean);
+
+    const primaryVariantImg = (Array.isArray(rawVariantImages) ? rawVariantImages : []).find(i => i?.isPrimary)?.url ||
+      variantImagesList[0] ||
+      null;
+
+    // Resolve exact variant image (prioritizing customer selected/snapshot image, then primary variant image)
+    const resolvedVariantImg = item.selectedImage ||
+      item.variantSnapshot?.image ||
+      primaryVariantImg ||
+      null;
+
+    const finalVariantImages = [];
+    if (resolvedVariantImg) {
+      finalVariantImages.push(resolvedVariantImg);
+    }
+    for (const url of variantImagesList) {
+      if (!finalVariantImages.includes(url)) {
+        finalVariantImages.push(url);
+      }
+    }
+
+    // Default/main product image
+    const productMainImage = product.images?.find(i => i?.isPrimary)?.url ||
+      product.images?.[0]?.url ||
+      product.image ||
+      '';
+
+    // Readable variant name (e.g. "Dark Grey" or "Dark Grey / Standard")
+    const variantName = [item.selectedColor || colorV?.color, item.selectedSize || sizeV?.size]
+      .filter(Boolean)
+      .join(' / ') || item.selectedColor || colorV?.color || null;
 
     orderItems.push({
       productId: product._id,
       preMadeBundleId: null,
       productName: product.name,
-      productImage: variantImg,
+      productImage: productMainImage || resolvedVariantImg || '',
       sku: chosenVariant?.sku || product.sku,
-      variantId: item.variantId || null,
-      variantSnapshot: chosenVariant ? {
-        sku: chosenVariant.sku || null,
-        price: chosenVariant.price || null,
-        image: variantImg || chosenVariant.images?.[0]?.url || null,
-        color: chosenVariant.color || null,
-        size: chosenVariant.size || null,
-        specs: chosenVariant.specs || null,
-        hasTieElastic: chosenVariant.hasTieElastic || false,
-        hasBridalLength: chosenVariant.hasBridalLength || false,
-        bridalLengthPrice: chosenVariant.bridalLengthPrice || 0
+      variantId: item.variantId || (colorV && sizeV ? `${colorV.colorId}-${sizeV.sizeId}` : (colorV?.colorId || null)),
+      variantName,
+      variantImage: resolvedVariantImg,
+      variantImages: finalVariantImages,
+      orderedVariantImage: resolvedVariantImg,
+      orderedVariantImages: finalVariantImages,
+      variantSnapshot: (chosenVariant || resolvedVariantImg) ? {
+        sku: chosenVariant?.sku || product.sku || null,
+        price: chosenVariant?.price || effectiveUnitPrice,
+        name: variantName,
+        image: resolvedVariantImg,
+        images: finalVariantImages,
+        color: chosenVariant?.color || item.selectedColor || null,
+        size: chosenVariant?.size || item.selectedSize || null,
+        specs: chosenVariant?.specs || colorV?.specs || null,
+        hasTieElastic: chosenVariant?.hasTieElastic || false,
+        hasBridalLength: chosenVariant?.hasBridalLength || false,
+        bridalLengthPrice: chosenVariant?.bridalLengthPrice || 0
       } : null,
       price: effectiveUnitPrice,
       quantity: item.quantity,
-      selectedColor: item.selectedColor,
-      selectedSize: item.selectedSize,
+      selectedColor: item.selectedColor || chosenVariant?.color || null,
+      selectedSize: item.selectedSize || chosenVariant?.size || null,
       selectedTieElastic: chosenVariant?.hasTieElastic ? item.selectedTieElastic : null,
       selectedBridalLength: chosenVariant?.hasBridalLength ? item.selectedBridalLength : null,
       bridalLengthPrice: (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0,

@@ -58,6 +58,11 @@ const orderSchema = new mongoose.Schema({
     productImage: String,
     sku: String,
     variantId: String,
+    variantName: String,
+    variantImage: String,
+    variantImages: [String],
+    orderedVariantImage: String,
+    orderedVariantImages: [String],
     variantSnapshot: {
       type: Object,
       default: null
