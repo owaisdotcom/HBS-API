@@ -8,6 +8,9 @@ import {
   addAddress,
   updateAddress,
   deleteAddress,
+  getSavedCheckoutDetails,
+  saveSavedCheckoutDetails,
+  deleteSavedCheckoutDetails,
   verifyEmail,
   verifyOTP,
   resendOTP,
@@ -23,7 +26,8 @@ import {
   loginValidator,
   updateProfileValidator,
   changePasswordValidator,
-  addressValidator
+  addressValidator,
+  savedCheckoutDetailsValidator
 } from '../validators/auth.validator.js';
 import {
   loginLimiter,
@@ -55,5 +59,10 @@ router.put('/password', protect, changePasswordValidator, validate, changePasswo
 router.post('/address', protect, addressValidator, validate, addAddress);
 router.put('/address/:addressId', protect, addressValidator, validate, updateAddress);
 router.delete('/address/:addressId', protect, deleteAddress);
+
+// Saved checkout details management
+router.get('/checkout-details', protect, getSavedCheckoutDetails);
+router.put('/checkout-details', protect, savedCheckoutDetailsValidator, validate, saveSavedCheckoutDetails);
+router.delete('/checkout-details', protect, deleteSavedCheckoutDetails);
 
 export default router;

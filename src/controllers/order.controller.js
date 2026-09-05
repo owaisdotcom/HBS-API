@@ -8,6 +8,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { syncCheckoutDetailsWithUser } from './auth.controller.js';
 import cacheService from '../services/cache.service.js';
 import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
 import {
@@ -610,6 +611,20 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       { _id: guestVerificationDoc._id },
       { $set: { isUsed: true } }
     );
+  }
+
+  // If registered user opted to save/update checkout details, persist them
+  if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {
+    try {
+      const userToUpdate = await User.findById(req.user.id || req.user._id);
+      if (userToUpdate) {
+        syncCheckoutDetailsWithUser(userToUpdate, customer);
+        await userToUpdate.save();
+      }
+    } catch (saveErr) {
+      console.error('Failed to auto-save checkout details on order creation:', saveErr);
+      // Non-fatal, do not break order creation
+    }
   }
 
   // Send Order Received Email (asynchronous, non-blocking)

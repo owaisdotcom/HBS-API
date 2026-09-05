@@ -100,6 +100,32 @@ export const addressValidator = [
     .trim()
 ];
 
+export const savedCheckoutDetailsValidator = [
+  body('name')
+    .optional()
+    .trim(),
+  body('phone')
+    .optional()
+    .trim(),
+  body('alternatePhone')
+    .optional()
+    .trim(),
+  body('completeAddress')
+    .trim()
+    .notEmpty()
+    .withMessage('Complete address is required'),
+  body('city')
+    .trim()
+    .notEmpty()
+    .withMessage('City is required'),
+  body('province')
+    .optional()
+    .trim(),
+  body('postalCode')
+    .optional()
+    .trim()
+];
+
 export const adminLoginValidator = [
   body('email')
     .trim()

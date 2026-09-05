@@ -26,15 +26,49 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   addresses: [{
-    label: String,
+    label: {
+      type: String,
+      default: 'Home'
+    },
+    fullName: String,
+    phone: String,
+    alternatePhone: String,
+    houseNumber: String,
+    streetNumber: String,
+    nearestLandmark: String,
+    completeAddress: String,
     fullAddress: String,
+    tehsil: String,
+    district: String,
     city: String,
+    province: String,
+    country: {
+      type: String,
+      default: 'Pakistan'
+    },
     postalCode: String,
     isDefault: {
       type: Boolean,
       default: false
     }
   }],
+  savedCheckoutDetails: {
+    name: { type: String, trim: true, default: '' },
+    phone: { type: String, trim: true, default: '' },
+    alternatePhone: { type: String, trim: true, default: '' },
+    houseNumber: { type: String, trim: true, default: '' },
+    streetNumber: { type: String, trim: true, default: '' },
+    nearestLandmark: { type: String, trim: true, default: '' },
+    completeAddress: { type: String, trim: true, default: '' },
+    tehsil: { type: String, trim: true, default: '' },
+    district: { type: String, trim: true, default: '' },
+    city: { type: String, trim: true, default: '' },
+    province: { type: String, trim: true, default: '' },
+    country: { type: String, default: 'Pakistan' },
+    postalCode: { type: String, trim: true, default: '' },
+    hasSavedDetails: { type: Boolean, default: false },
+    updatedAt: Date
+  },
   status: {
     type: String,
     enum: ['active', 'blocked'],

@@ -149,6 +149,8 @@ export const login = asyncHandler(async (req, res, next) => {
         phone: user.phone,
         status: user.status,
         isEmailVerified: user.isEmailVerified,
+        savedCheckoutDetails: user.savedCheckoutDetails || null,
+        addresses: user.addresses || [],
         createdAt: user.createdAt
       },
       token
@@ -170,6 +172,7 @@ export const getMe = asyncHandler(async (req, res) => {
         email: user.email,
         phone: user.phone,
         addresses: user.addresses,
+        savedCheckoutDetails: user.savedCheckoutDetails || null,
         status: user.status,
         createdAt: user.createdAt
       }
@@ -323,6 +326,170 @@ export const deleteAddress = asyncHandler(async (req, res, next) => {
   );
 });
 
+/**
+ * Synchronize checkout details with user document and default address
+ */
+export const syncCheckoutDetailsWithUser = (user, details = {}) => {
+  const completeAddress = details.completeAddress || details.fullAddress || details.address || '';
+  const city = details.city || '';
+  const postalCode = details.postalCode || '';
+  const province = details.province || '';
+  const houseNumber = details.houseNumber || '';
+  const streetNumber = details.streetNumber || '';
+  const nearestLandmark = details.nearestLandmark || '';
+  const tehsil = details.tehsil || '';
+  const district = details.district || '';
+  const phone = details.phone || '';
+  const alternatePhone = details.alternatePhone || '';
+  const country = details.country || 'Pakistan';
+  const name = details.name || user.fullName || '';
+
+  user.savedCheckoutDetails = {
+    name,
+    phone,
+    alternatePhone,
+    houseNumber,
+    streetNumber,
+    nearestLandmark,
+    completeAddress,
+    tehsil,
+    district,
+    city,
+    province,
+    country,
+    postalCode,
+    hasSavedDetails: true,
+    updatedAt: new Date()
+  };
+
+  // Keep primary phone updated if user doesn't have one set yet
+  if (phone && !user.phone) {
+    user.phone = phone;
+  }
+
+  // Also synchronize default address in addresses array without duplicating
+  if (completeAddress && city) {
+    if (!user.addresses) user.addresses = [];
+    let defaultAddr = user.addresses.find(a => a.isDefault);
+    if (!defaultAddr && user.addresses.length > 0) {
+      defaultAddr = user.addresses[0];
+    }
+
+    if (defaultAddr) {
+      defaultAddr.label = defaultAddr.label || 'Home';
+      defaultAddr.fullName = name || defaultAddr.fullName;
+      defaultAddr.phone = phone || defaultAddr.phone;
+      defaultAddr.alternatePhone = alternatePhone || defaultAddr.alternatePhone;
+      defaultAddr.houseNumber = houseNumber || defaultAddr.houseNumber;
+      defaultAddr.streetNumber = streetNumber || defaultAddr.streetNumber;
+      defaultAddr.nearestLandmark = nearestLandmark || defaultAddr.nearestLandmark;
+      defaultAddr.completeAddress = completeAddress;
+      defaultAddr.fullAddress = completeAddress;
+      defaultAddr.tehsil = tehsil || defaultAddr.tehsil;
+      defaultAddr.district = district || defaultAddr.district;
+      defaultAddr.city = city;
+      defaultAddr.province = province || defaultAddr.province;
+      defaultAddr.country = country;
+      defaultAddr.postalCode = postalCode || defaultAddr.postalCode;
+      defaultAddr.isDefault = true;
+    } else {
+      user.addresses.push({
+        label: 'Home',
+        fullName: name,
+        phone,
+        alternatePhone,
+        houseNumber,
+        streetNumber,
+        nearestLandmark,
+        completeAddress,
+        fullAddress: completeAddress,
+        tehsil,
+        district,
+        city,
+        province,
+        country,
+        postalCode,
+        isDefault: true
+      });
+    }
+  }
+};
+
+// @route   GET /api/auth/checkout-details
+// @desc    Get saved checkout details
+// @access  Private
+export const getSavedCheckoutDetails = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return next(new ApiError('User not found', 404));
+  }
+
+  res.json(
+    new ApiResponse(200, {
+      savedCheckoutDetails: user.savedCheckoutDetails || { hasSavedDetails: false }
+    }, 'Saved checkout details retrieved successfully')
+  );
+});
+
+// @route   PUT /api/auth/checkout-details
+// @desc    Save or update checkout details
+// @access  Private
+export const saveSavedCheckoutDetails = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return next(new ApiError('User not found', 404));
+  }
+
+  syncCheckoutDetailsWithUser(user, req.body);
+  await user.save();
+
+  res.json(
+    new ApiResponse(200, {
+      savedCheckoutDetails: user.savedCheckoutDetails,
+      addresses: user.addresses
+    }, 'Checkout details saved successfully')
+  );
+});
+
+// @route   DELETE /api/auth/checkout-details
+// @desc    Delete/clear saved checkout details
+// @access  Private
+export const deleteSavedCheckoutDetails = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return next(new ApiError('User not found', 404));
+  }
+
+  user.savedCheckoutDetails = {
+    name: '',
+    phone: '',
+    alternatePhone: '',
+    houseNumber: '',
+    streetNumber: '',
+    nearestLandmark: '',
+    completeAddress: '',
+    tehsil: '',
+    district: '',
+    city: '',
+    province: '',
+    country: 'Pakistan',
+    postalCode: '',
+    hasSavedDetails: false,
+    updatedAt: new Date()
+  };
+
+  await user.save();
+
+  res.json(
+    new ApiResponse(200, {
+      savedCheckoutDetails: user.savedCheckoutDetails
+    }, 'Saved checkout details cleared successfully')
+  );
+});
+
 // @route   POST /api/auth/verify-otp
 // @desc    Verify email with OTP
 // @access  Public
@@ -403,7 +570,9 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         status: user.status,
-        isEmailVerified: user.isEmailVerified
+        isEmailVerified: user.isEmailVerified,
+        savedCheckoutDetails: user.savedCheckoutDetails || null,
+        addresses: user.addresses || []
       },
       token
     }, 'Email verified successfully')
