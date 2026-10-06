@@ -2,8 +2,8 @@ import pkg from 'nodemailer';
 const { createTransport } = pkg;
 
 const SENDER_NAME = 'Hijabs by Shiza';
-const getSenderEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'hijabsbyshiza@gmail.com').trim();
-const getReplyToEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'hijabsbyshiza@gmail.com').trim();
+const getSenderEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
+const getReplyToEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
 const getFrontendUrl = () => (process.env.FRONTEND_URL || 'https://www.hijabsbyshiza.com').replace(/\/+$/, '');
 
 /**
@@ -20,18 +20,23 @@ const getTransporter = () => {
   const port = parseInt(process.env.EMAIL_PORT, 10) || 587;
   const isSecure = port === 465;
 
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const cleanPassword = (process.env.EMAIL_PASSWORD || '').replace(/\s+/g, '').trim();
+
   cachedTransporter = createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port,
     secure: isSecure,
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 100,
-    rateDelta: 1000,
-    rateLimit: 3,
+    pool: !isServerless,
+    ...(!isServerless && {
+      maxConnections: 3,
+      maxMessages: 100,
+      rateDelta: 1000,
+      rateLimit: 3
+    }),
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD
+      user: getSenderEmail(),
+      pass: cleanPassword
     },
     requireTLS: !isSecure,
     tls: {
