@@ -2,8 +2,8 @@ import pkg from 'nodemailer';
 const { createTransport } = pkg;
 
 const SENDER_NAME = 'Hijabs by Shiza';
-const getSenderEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
-const getReplyToEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
+const getSenderEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'hijabsbyshiza@gmail.com').trim();
+const getReplyToEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'hijabsbyshiza@gmail.com').trim();
 const getFrontendUrl = () => (process.env.FRONTEND_URL || 'https://www.hijabsbyshiza.com').replace(/\/+$/, '');
 
 /**
