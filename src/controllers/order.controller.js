@@ -840,6 +840,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     }
   }
 
+  const previousTrackingNumber = order.trackingNumber || '';
+  const trackingNumberChanged = trackingNumber !== undefined && trackingNumber.trim() !== previousTrackingNumber;
+
   // Update tracking information if provided
   if (trackingNumber !== undefined) {
     order.trackingNumber = trackingNumber.trim();
@@ -865,15 +868,15 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     await restoreAllStock(order);
   }
 
-  // Send email notification based on updated status (asynchronous, non-blocking)
-  if (statusChanged || (targetStatus === 'shipped' && trackingNumber !== undefined)) {
-    if (targetStatus === 'confirmed') {
+  // Send email notification based on updated status (asynchronous, non-blocking, duplicate guarded)
+  if (statusChanged || (targetStatus === 'shipped' && trackingNumberChanged)) {
+    if (statusChanged && targetStatus === 'confirmed') {
       sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
     } else if (targetStatus === 'shipped') {
       sendOrderShippedEmail(order, order.trackingNumber, order.courier).catch(err => console.error('Failed to send order shipped email:', err.message));
-    } else if (targetStatus === 'delivered') {
+    } else if (statusChanged && targetStatus === 'delivered') {
       sendOrderDeliveredEmail(order).catch(err => console.error('Failed to send order delivered email:', err.message));
-    } else if (targetStatus === 'cancelled') {
+    } else if (statusChanged && targetStatus === 'cancelled') {
       sendOrderCancelledEmail(order, note).catch(err => console.error('Failed to send order cancelled email:', err.message));
     }
   }
@@ -950,6 +953,9 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     );
   }
 
+  const previousPaymentStatus = order.paymentStatus;
+  const previousOrderStatus = order.status;
+
   if (isVerified) {
     order.paymentStatus = 'verified';
     order.paymentReceipt.verifiedAt = new Date();
@@ -992,10 +998,10 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     await restoreAllStock(order);
   }
 
-  // Send email notification for payment verification / rejection (asynchronous, non-blocking)
-  if (isVerified) {
+  // Send email notification only if state changed to prevent duplicate customer emails
+  if (isVerified && previousPaymentStatus !== 'verified') {
     sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
-  } else {
+  } else if (!isVerified && previousOrderStatus !== 'cancelled') {
     sendOrderCancelledEmail(order, 'Payment receipt rejected').catch(err => console.error('Failed to send order cancelled email:', err.message));
   }
 

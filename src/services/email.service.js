@@ -1,742 +1,803 @@
 import pkg from 'nodemailer';
-const { createTransport, getTestMessageUrl } = pkg;
+const { createTransport } = pkg;
 
-// Create reusable transporter
-const createTransporter = () => {
-  const config = {
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
+const SENDER_NAME = 'Hijabs by Shiza';
+const getSenderEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
+const getReplyToEmail = () => (process.env.EMAIL_USER || process.env.EMAIL_FROM || 'query.hbs@gmail.com').trim();
+const getFrontendUrl = () => (process.env.FRONTEND_URL || 'https://www.hijabsbyshiza.com').replace(/\/+$/, '');
+
+/**
+ * Singleton pooled nodemailer transporter
+ * Using connection pooling reduces socket handshake overhead and helps prevent Gmail rate spikes
+ */
+let cachedTransporter = null;
+
+const getTransporter = () => {
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
+  const port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+  const isSecure = port === 465;
+
+  cachedTransporter = createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port,
+    secure: isSecure,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: 3,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
+    },
+    requireTLS: !isSecure,
+    tls: {
+      rejectUnauthorized: true
     }
-  };
-
-  // For Gmail and other services using port 587 with TLS
-  if (config.port === 587) {
-    config.requireTLS = true;
-  }
-
-  console.log('Email config:', {
-    host: config.host,
-    port: config.port,
-    user: config.auth.user,
-    secure: config.secure,
-    requireTLS: config.requireTLS
   });
 
-  return createTransport(config);
+  return cachedTransporter;
 };
 
 /**
- * Test email connection
+ * Safe logging helper that masks PII and never exposes OTPs, passwords, or tokens
+ */
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string') return 'unknown';
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
+  return `${maskedName}@${domain}`;
+};
+
+const logEmailEvent = (type, recipient, status, metadata = {}) => {
+  const timestamp = new Date().toISOString();
+  const maskedRecipient = maskEmail(recipient);
+  const metaStr = Object.keys(metadata).length ? ` | Details: ${JSON.stringify(metadata)}` : '';
+  console.log(`[Email Service] [${timestamp}] [${status}] Type: ${type} | To: ${maskedRecipient}${metaStr}`);
+};
+
+/**
+ * Send email with transient retry handling
+ */
+const sendMailWithRetry = async (mailOptions, { emailType = 'transactional', maxRetries = 1 } = {}) => {
+  const transporter = getTransporter();
+  let attempt = 0;
+
+  // Enforce consistent, legitimate Gmail headers
+  const senderEmail = getSenderEmail();
+  const replyToEmail = getReplyToEmail();
+
+  const finalMailOptions = {
+    ...mailOptions,
+    from: `"${SENDER_NAME}" <${senderEmail}>`,
+    replyTo: `"${SENDER_NAME}" <${replyToEmail}>`,
+    headers: {
+      'X-Entity-Ref-ID': `hbs-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      ...(mailOptions.headers || {})
+    }
+  };
+
+  while (attempt <= maxRetries) {
+    try {
+      attempt++;
+      const info = await transporter.sendMail(finalMailOptions);
+      logEmailEvent(emailType, mailOptions.to, 'SUCCESS', { messageId: info.messageId });
+      return info;
+    } catch (error) {
+      const isTransient = error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.responseCode === 421 || error.responseCode === 450;
+      
+      logEmailEvent(emailType, mailOptions.to, attempt <= maxRetries && isTransient ? 'RETRYING' : 'FAILED', {
+        attempt,
+        error: error.message,
+        code: error.code || error.responseCode
+      });
+
+      if (attempt <= maxRetries && isTransient) {
+        await new Promise(res => setTimeout(res, 1200));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+};
+
+/**
+ * Reusable clean HTML email wrapper
+ * Clean, lightweight table-based layout compatible with Gmail, Outlook, Yahoo, and mobile clients
+ */
+const wrapHtmlEmail = ({ title, preheader = '', contentHtml }) => {
+  const year = new Date().getFullYear();
+  const supportEmail = getSenderEmail();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f6f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.6; color: #2d3748;">
+  ${preheader ? `<span style="display: none !important; visibility: hidden; mso-hide: all; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden;">${preheader}</span>` : ''}
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f6f6f7; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color: #AA2E48; padding: 24px 20px;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">${SENDER_NAME}</h1>
+            </td>
+          </tr>
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px 28px; background-color: #ffffff;">
+              ${contentHtml}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px; background-color: #f8fafc; border-top: 1px solid #edf2f7; text-align: center; font-size: 12px; color: #718096; line-height: 1.5;">
+              <p style="margin: 0 0 6px 0;"><strong>${SENDER_NAME}</strong></p>
+              <p style="margin: 0 0 8px 0;">Customer Support: <a href="mailto:${supportEmail}" style="color: #AA2E48; text-decoration: none;">${supportEmail}</a></p>
+              <p style="margin: 0; font-size: 11px; color: #a0aec0;">&copy; ${year} ${SENDER_NAME}. This is a transactional notification regarding your account or order.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
+/**
+ * 1. Test email server connection
  */
 export const testEmailConnection = async () => {
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
     await transporter.verify();
-
     return true;
   } catch (error) {
-    console.error('❌ Email server connection failed:', error.message);
+    console.error('[Email Service] Connection verification failed:', error.message);
     return false;
   }
 };
 
 /**
- * Send email verification OTP
+ * 2. Send email verification OTP
  */
-export const sendVerificationOTP = async (email, otp, fullName) => {
+export const sendVerificationOTP = async (email, otp, fullName = 'Valued Customer') => {
+  const subject = 'Your Verification Code - Hijabs by Shiza';
+  const cleanName = fullName || 'there';
 
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${cleanName},</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">Thank you for registering with ${SENDER_NAME}. Please enter the verification code below to verify your email address:</p>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center" style="background-color: #fdf2f4; border: 2px dashed #AA2E48; border-radius: 8px; padding: 20px;">
+          <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #718096; margin-bottom: 6px;">One-Time Verification Code</div>
+          <div style="font-size: 32px; font-weight: 700; color: #AA2E48; letter-spacing: 8px; font-family: 'Courier New', Courier, monospace;">${otp}</div>
+          <div style="font-size: 12px; color: #a0aec0; margin-top: 6px;">Valid for 10 minutes</div>
+        </td>
+      </tr>
+    </table>
 
-  const transporter = createTransporter();
+    <p style="margin: 0 0 12px 0; color: #4a5568; font-size: 13px;">For your security, do not share this verification code with anyone. Our support team will never ask for your code.</p>
+    <p style="margin: 0; color: #718096; font-size: 12px;">If you did not request this code, you can safely ignore this email.</p>
+  `;
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_USER || process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+  const text = `Hello ${cleanName},
+
+Thank you for registering with ${SENDER_NAME}.
+
+Your verification code is: ${otp}
+
+This code is valid for 10 minutes. Please do not share this code with anyone.
+
+If you did not request this code, you can safely ignore this email.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: 'Verify Your Email - Hijabs By Shiza',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .otp-box { background-color: white; border: 2px dashed #AA2E48; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px; }
-          .otp-code { font-size: 32px; font-weight: bold; color: #AA2E48; letter-spacing: 8px; font-family: 'Courier New', monospace; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          .warning { background-color: #fff3cd; border-left: 4px solid #856404; padding: 15px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Welcome to Hijabs By Shiza!</h1>
-          </div>
-          <div class="content">
-            <h2>Hello ${fullName},</h2>
-            <p>Thank you for signing up! To complete your registration, please verify your email address using the OTP below:</p>
-            <div class="otp-box">
-              <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code</p>
-              <div class="otp-code">${otp}</div>
-              <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">This code will expire in 10 minutes</p>
-            </div>
-            <p><strong>Important:</strong> Do not share this code with anyone. Our team will never ask for your verification code.</p>
-            <div class="warning">
-              <strong>Security Notice:</strong> If you didn't create an account with us, please ignore this email.
-            </div>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  try {
-
-    const info = await transporter.sendMail(mailOptions);
-
-    if (getTestMessageUrl) {
-
-    }
-    return info;
-  } catch (error) {
-    console.error('❌ Failed to send OTP email:', error);
-    throw error;
-  }
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Your verification code is ${otp}`,
+      contentHtml
+    })
+  }, { emailType: 'verification-otp' });
 };
 
 /**
- * Send Guest Checkout Email Verification OTP
+ * 3. Send Guest Checkout Email Verification OTP
  */
 export const sendGuestVerificationOTP = async (email, otp, fullName = 'Valued Customer') => {
-  const transporter = createTransporter();
+  const subject = 'Order Verification Code - Hijabs by Shiza';
+  const cleanName = fullName || 'Valued Customer';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_USER || process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${cleanName},</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">Thank you for shopping with ${SENDER_NAME}. To confirm your order and complete guest checkout, please use the verification code below:</p>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center" style="background-color: #fdf2f4; border: 2px dashed #AA2E48; border-radius: 8px; padding: 20px;">
+          <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #718096; margin-bottom: 6px;">Order Verification Code</div>
+          <div style="font-size: 32px; font-weight: 700; color: #AA2E48; letter-spacing: 8px; font-family: 'Courier New', Courier, monospace;">${otp}</div>
+          <div style="font-size: 12px; color: #a0aec0; margin-top: 6px;">Valid for 10 minutes</div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px 0; color: #4a5568; font-size: 13px;">This verification code confirms your order details and delivery information.</p>
+    <p style="margin: 0; color: #718096; font-size: 12px;">If you did not place an order on our website, please ignore this email.</p>
+  `;
+
+  const text = `Hello ${cleanName},
+
+Thank you for shopping with ${SENDER_NAME}.
+
+Your order verification code is: ${otp}
+
+This code is valid for 10 minutes.
+
+If you did not place an order, you can safely ignore this email.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: 'Confirm Your Order - Verification Code | Hijabs By Shiza',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #AA2E48 0%, #7A1C30 100%); color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
-          .header h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 1px; }
-          .content { background-color: #ffffff; padding: 30px; border: 1px solid #eeeeee; border-radius: 0 0 8px 8px; }
-          .otp-box { background-color: #FAF5F6; border: 2px dashed #AA2E48; padding: 20px; margin: 25px 0; text-align: center; border-radius: 8px; }
-          .otp-code { font-size: 34px; font-weight: bold; color: #AA2E48; letter-spacing: 8px; font-family: 'Courier New', monospace; margin: 10px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #777; font-size: 12px; }
-          .notice { background-color: #fff8e6; border-left: 4px solid #f0b429; padding: 12px 15px; margin: 20px 0; font-size: 13px; color: #614700; border-radius: 4px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Hijabs By Shiza</h1>
-          </div>
-          <div class="content">
-            <h2>Hello ${fullName},</h2>
-            <p>Thank you for shopping with us! To complete your guest checkout and confirm your order, please enter the verification code below:</p>
-            <div class="otp-box">
-              <p style="margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Your One-Time Order Verification Code</p>
-              <div class="otp-code">${otp}</div>
-              <p style="margin: 8px 0 0 0; font-size: 12px; color: #888;">This code is valid for 10 minutes</p>
-            </div>
-            <div class="notice">
-              <strong>Security Notice:</strong> If you did not request this verification code, please ignore this email.
-            </div>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    return info;
-  } catch (error) {
-    console.error('❌ Failed to send Guest OTP email:', error);
-    throw error;
-  }
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Your order verification code is ${otp}`,
+      contentHtml
+    })
+  }, { emailType: 'guest-otp' });
 };
 
-
 /**
- * Send email verification email
+ * 4. Send email verification link
  */
 export const sendVerificationEmail = async (email, verificationToken) => {
-  const transporter = createTransporter();
+  const subject = 'Verify Your Email Address - Hijabs by Shiza';
+  const verificationUrl = `${getFrontendUrl()}/verify-email?token=${verificationToken}`;
 
-  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Welcome to ${SENDER_NAME}</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">Please confirm your email address by clicking the button below:</p>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <a href="${verificationUrl}" target="_blank" style="display: inline-block; background-color: #AA2E48; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 15px;">Verify Email Address</a>
+        </td>
+      </tr>
+    </table>
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+    <p style="margin: 0 0 12px 0; color: #718096; font-size: 13px;">If the button does not work, copy and paste this link into your browser:</p>
+    <p style="margin: 0 0 20px 0; color: #AA2E48; font-size: 12px; word-break: break-all;">${verificationUrl}</p>
+    <p style="margin: 0; color: #718096; font-size: 12px;">This link will expire in 24 hours. If you did not create an account, you can disregard this email.</p>
+  `;
+
+  const text = `Welcome to ${SENDER_NAME}
+
+Please verify your email address by visiting the following link:
+${verificationUrl}
+
+This link will expire in 24 hours.
+
+If you did not create an account, please ignore this email.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: 'Verify Your Email - Hijabs By Shiza',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; padding: 12px 30px; background-color: #AA2E48; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Welcome to Hijabs By Shiza!</h1>
-          </div>
-          <div class="content">
-            <h2>Verify Your Email Address</h2>
-            <p>Thank you for signing up! Please click the button below to verify your email address:</p>
-            <div style="text-align: center;">
-              <a href="${verificationUrl}" class="button">Verify Email</a>
-            </div>
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #AA2E48;">${verificationUrl}</p>
-            <p><strong>This link will expire in 24 hours.</strong></p>
-            <p>If you didn't create an account with us, please ignore this email.</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: 'Please verify your email address for Hijabs by Shiza',
+      contentHtml
+    })
+  }, { emailType: 'verification-link' });
 };
 
 /**
- * Send password reset email
+ * 5. Send password reset email
  */
 export const sendPasswordResetEmail = async (email, resetToken) => {
-  const transporter = createTransporter();
+  const subject = 'Password Reset Request - Hijabs by Shiza';
+  const resetUrl = `${getFrontendUrl()}/reset-password?token=${resetToken}`;
 
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Password Reset Request</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">We received a request to reset the password for your ${SENDER_NAME} account. Click the button below to choose a new password:</p>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #AA2E48; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 15px;">Reset Password</a>
+        </td>
+      </tr>
+    </table>
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+    <p style="margin: 0 0 8px 0; color: #718096; font-size: 13px;">Or copy and paste this link into your browser:</p>
+    <p style="margin: 0 0 20px 0; color: #AA2E48; font-size: 12px; word-break: break-all;">${resetUrl}</p>
+    <p style="margin: 0 0 12px 0; color: #4a5568; font-size: 13px;">This link will expire in 1 hour.</p>
+    <p style="margin: 0; color: #718096; font-size: 12px;">If you did not request this password reset, your account is safe and no changes were made. You can safely ignore this email.</p>
+  `;
+
+  const text = `Password Reset Request - ${SENDER_NAME}
+
+We received a request to reset your password. You can reset it using the link below:
+${resetUrl}
+
+This link is valid for 1 hour.
+
+If you did not request this reset, please ignore this email. Your password will remain unchanged.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: 'Password Reset Request - Hijabs By Shiza',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; padding: 12px 30px; background-color: #AA2E48; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          .warning { background-color: #fff3cd; border-left: 4px solid: #856404; padding: 15px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Password Reset Request</h1>
-          </div>
-          <div class="content">
-            <h2>Reset Your Password</h2>
-            <p>You requested to reset your password. Click the button below to proceed:</p>
-            <div style="text-align: center;">
-              <a href="${resetUrl}" class="button">Reset Password</a>
-            </div>
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #AA2E48;">${resetUrl}</p>
-            <p><strong>This link will expire in 1 hour.</strong></p>
-            <div class="warning">
-              <strong>Security Notice:</strong> If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
-            </div>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: 'Reset your password for Hijabs by Shiza',
+      contentHtml
+    })
+  }, { emailType: 'password-reset' });
 };
 
 /**
- * Send wishlist restock notification email
+ * 6. Send wishlist restock notification email
  */
 export const sendWishlistRestockEmail = async (email, fullName, product) => {
-  const transporter = createTransporter();
-  const productUrl = `${process.env.FRONTEND_URL}/product/${product.slug || product._id}`;
-  const imageUrl = product.images?.[0]?.url || `${process.env.FRONTEND_URL}/brand1.jpg`;
+  const productName = product?.name || 'An item from your wishlist';
+  const subject = `${productName} is back in stock - Hijabs by Shiza`;
+  const productUrl = `${getFrontendUrl()}/product/${product?.slug || product?._id || ''}`;
+  const priceFormatted = product?.price ? `Rs. ${Number(product.price).toLocaleString()}` : '';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Good news, ${fullName || 'there'}!</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">An item from your wishlist is now back in stock:</p>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <tr>
+        <td>
+          <h3 style="margin: 0 0 8px 0; color: #1a202c; font-size: 16px;">${productName}</h3>
+          ${priceFormatted ? `<p style="margin: 0 0 12px 0; color: #AA2E48; font-weight: 700; font-size: 16px;">${priceFormatted}</p>` : ''}
+          <a href="${productUrl}" target="_blank" style="display: inline-block; background-color: #AA2E48; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-size: 14px; font-weight: 600;">View Product</a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const text = `Hello ${fullName || 'there'},
+
+Good news! An item from your wishlist is back in stock:
+${productName} ${priceFormatted ? `(${priceFormatted})` : ''}
+
+View it online at: ${productUrl}
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: `${product.name} is back in stock`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .product-card { background-color: #fff; border-radius: 8px; padding: 16px; border: 1px solid #eee; }
-          .product-image { width: 100%; border-radius: 6px; margin-bottom: 12px; }
-          .button { display: inline-block; padding: 12px 24px; background-color: #AA2E48; color: white; text-decoration: none; border-radius: 5px; margin-top: 16px; }
-          .footer { text-align: center; margin-top: 24px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Back in Stock</h1>
-          </div>
-          <div class="content">
-            <p>Hi ${fullName || 'there'},</p>
-            <p>The item you liked is available again. Grab it before it sells out!</p>
-            <div class="product-card">
-              <img class="product-image" src="${imageUrl}" alt="${product.name}" />
-              <h3 style="margin: 0 0 6px;">${product.name}</h3>
-              <p style="margin: 0; color: #555;">Rs. ${Number(product.price || 0).toLocaleString()}</p>
-              <a style="color: #f9f9f9;" href="${productUrl}" class="button">View Product</a>
-            </div>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `${productName} is back in stock at Hijabs by Shiza`,
+      contentHtml
+    })
+  }, { emailType: 'wishlist-restock' });
 };
 
 /**
- * Send welcome email after verification
+ * 7. Send welcome email after verification
  */
 export const sendWelcomeEmail = async (email, fullName) => {
-  const transporter = createTransporter();
+  const subject = 'Welcome to Hijabs by Shiza';
+  const cleanName = fullName || 'there';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || 'noreply@hijabsbyshiza.com'}>`,
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Welcome, ${cleanName}!</h2>
+    <p style="margin: 0 0 16px 0; color: #4a5568;">Your account has been verified. You can now:</p>
+    <ul style="margin: 0 0 24px 0; padding-left: 20px; color: #4a5568; line-height: 1.8;">
+      <li>Track your orders and order history</li>
+      <li>Save your delivery address for faster checkout</li>
+      <li>Save your favorite products to your wishlist</li>
+    </ul>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+      <tr>
+        <td align="center">
+          <a href="${getFrontendUrl()}" target="_blank" style="display: inline-block; background-color: #AA2E48; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 15px;">Explore Collection</a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const text = `Welcome, ${cleanName}!
+
+Your ${SENDER_NAME} account has been verified.
+
+You can now track your orders, save delivery details, and shop our full collection online:
+${getFrontendUrl()}
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: email,
-    subject: 'Welcome to Hijabs By Shiza!',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; padding: 12px 30px; background-color: #AA2E48; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Welcome, ${fullName}!</h1>
-          </div>
-          <div class="content">
-            <h2>Your Account is Ready!</h2>
-            <p>Thank you for verifying your email. You can now enjoy all the benefits of being a member:</p>
-            <ul>
-              <li>Track your orders</li>
-              <li>Save your favorite items</li>
-              <li>Faster checkout process</li>
-              <li>Exclusive offers and discounts</li>
-            </ul>
-            <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}" class="button">Start Shopping</a>
-            </div>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: 'Your account is ready at Hijabs by Shiza',
+      contentHtml
+    })
+  }, { emailType: 'welcome' });
 };
 
-/** Helper: format items table HTML for order emails */
-const renderOrderItemsHtml = (items) => {
-  return (items || []).map(item => {
+/**
+ * Helper to render order items in table format
+ */
+const renderOrderItemsHtml = (items = []) => {
+  return items.map(item => {
     const customizations = [];
     if (item.selectedColor) customizations.push(`Color: ${item.selectedColor}`);
     if (item.selectedSize) customizations.push(`Size: ${item.selectedSize}`);
     if (item.selectedTieElastic) customizations.push(`Option: ${item.selectedTieElastic === 'tie' ? 'Tie' : 'Elastic'}`);
     if (item.selectedBridalLength === 'bridal') customizations.push(`Bridal Length (+Rs. ${item.bridalLengthPrice || 0})`);
-    
+
+    const qty = Number(item.quantity) || 1;
+    const totalItemPrice = Number(item.price || 0) * qty;
+
     return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <td style="padding: 10px 8px; border-bottom: 1px solid #edf2f7; font-size: 14px; color: #2d3748;">
           <strong>${item.productName || 'Product'}</strong>
-          ${customizations.length ? `<br><small style="color: #666;">${customizations.join(' | ')}</small>` : ''}
+          ${customizations.length ? `<br><span style="font-size: 12px; color: #718096;">${customizations.join(' | ')}</span>` : ''}
         </td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">Rs. ${Number(item.price * item.quantity).toLocaleString()}</td>
+        <td align="center" style="padding: 10px 8px; border-bottom: 1px solid #edf2f7; font-size: 14px; color: #4a5568;">${qty}</td>
+        <td align="right" style="padding: 10px 8px; border-bottom: 1px solid #edf2f7; font-size: 14px; color: #2d3748;">Rs. ${totalItemPrice.toLocaleString()}</td>
       </tr>
     `;
   }).join('');
 };
 
+const renderOrderItemsText = (items = []) => {
+  return items.map(item => {
+    const qty = Number(item.quantity) || 1;
+    const totalItemPrice = Number(item.price || 0) * qty;
+    return `- ${item.productName || 'Product'} (Qty: ${qty}) - Rs. ${totalItemPrice.toLocaleString()}`;
+  }).join('\n');
+};
+
 /**
- * 1. Send Order Received Email (Order Placed)
+ * 8. Send Order Received Email (Order Placed)
  */
 export const sendOrderReceivedEmail = async (order) => {
   const customerEmail = order.customer?.email;
   if (!customerEmail) return;
 
-  const transporter = createTransporter();
   const orderId = order.orderId || order._id;
-  const itemsHtml = renderOrderItemsHtml(order.items);
   const customerName = order.customer?.name || 'Valued Customer';
   const shipping = Number(order.shipping) || 0;
   const subtotal = Number(order.subtotal) || 0;
   const discount = Number(order.discount) || 0;
   const total = Number(order.total) || 0;
+  const address = order.customer?.completeAddress || order.customer?.address || '';
+  const city = order.customer?.city || '';
+  const phone = order.customer?.phone || '';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+  const subject = `Order Confirmation #${orderId} - Hijabs by Shiza`;
+
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${customerName},</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">Thank you for your order! We have received your order <strong>#${orderId}</strong> and are reviewing your payment details.</p>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+      <thead>
+        <tr style="background-color: #f7fafc;">
+          <th align="left" style="padding: 10px 8px; font-size: 12px; color: #4a5568; text-transform: uppercase;">Item</th>
+          <th align="center" style="padding: 10px 8px; font-size: 12px; color: #4a5568; text-transform: uppercase;">Qty</th>
+          <th align="right" style="padding: 10px 8px; font-size: 12px; color: #4a5568; text-transform: uppercase;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${renderOrderItemsHtml(order.items)}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" align="right" style="padding: 8px; font-size: 13px; color: #718096; border-top: 1px solid #e2e8f0;">Subtotal:</td>
+          <td align="right" style="padding: 8px; font-size: 13px; color: #2d3748; border-top: 1px solid #e2e8f0;">Rs. ${subtotal.toLocaleString()}</td>
+        </tr>
+        ${discount > 0 ? `
+        <tr>
+          <td colspan="2" align="right" style="padding: 8px; font-size: 13px; color: #38a169;">Discount:</td>
+          <td align="right" style="padding: 8px; font-size: 13px; color: #38a169;">-Rs. ${discount.toLocaleString()}</td>
+        </tr>` : ''}
+        <tr>
+          <td colspan="2" align="right" style="padding: 8px; font-size: 13px; color: #718096;">Shipping:</td>
+          <td align="right" style="padding: 8px; font-size: 13px; color: #2d3748;">${shipping === 0 ? 'Free' : `Rs. ${shipping.toLocaleString()}`}</td>
+        </tr>
+        <tr>
+          <td colspan="2" align="right" style="padding: 10px 8px; font-size: 15px; font-weight: 700; color: #AA2E48; border-top: 2px solid #AA2E48;">Total Amount:</td>
+          <td align="right" style="padding: 10px 8px; font-size: 15px; font-weight: 700; color: #AA2E48; border-top: 2px solid #AA2E48;">Rs. ${total.toLocaleString()}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin-bottom: 20px;">
+      <tr>
+        <td style="font-size: 13px; color: #4a5568;">
+          <strong style="color: #2d3748;">Delivery Address:</strong><br>
+          ${address ? `${address}, ` : ''}${city}<br>
+          ${phone ? `Contact: ${phone}` : ''}
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; color: #718096; font-size: 13px;">We will notify you by email as soon as your payment is verified and your package is dispatched.</p>
+  `;
+
+  const text = `Hello ${customerName},
+
+Thank you for your order #${orderId} with ${SENDER_NAME}.
+
+Order Summary:
+${renderOrderItemsText(order.items)}
+
+Subtotal: Rs. ${subtotal.toLocaleString()}
+${discount > 0 ? `Discount: -Rs. ${discount.toLocaleString()}\n` : ''}Shipping: ${shipping === 0 ? 'Free' : `Rs. ${shipping.toLocaleString()}`}
+Total Amount: Rs. ${total.toLocaleString()}
+
+Delivery Address:
+${address ? `${address}, ` : ''}${city}
+Contact: ${phone}
+
+We will notify you once your payment is verified and your package is on its way.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: customerEmail,
-    subject: `Order Received #${orderId} - Hijabs By Shiza`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
-          .order-box { background-color: white; border-radius: 8px; padding: 20px; margin: 15px 0; border: 1px solid #e5e7eb; }
-          .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          .summary-row { font-size: 14px; color: #555; }
-          .total-row { font-size: 16px; font-weight: bold; color: #AA2E48; border-top: 2px solid #AA2E48; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0;">Order Placed Successfully!</h1>
-            <p style="margin:5px 0 0; font-size: 14px;">Order #${orderId}</p>
-          </div>
-          <div class="content">
-            <h2>Hello ${customerName},</h2>
-            <p>Thank you for shopping with Hijabs By Shiza! We have received your order and payment receipt. Our team will verify your payment shortly.</p>
-            
-            <div class="order-box">
-              <h3 style="margin-top:0; color: #AA2E48;">Order Summary</h3>
-              <table class="table">
-                <thead>
-                  <tr style="background:#f3f4f6; text-align:left;">
-                    <th style="padding:8px;">Item</th>
-                    <th style="padding:8px; text-align:center;">Qty</th>
-                    <th style="padding:8px; text-align:right;">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${itemsHtml}
-                </tbody>
-              </table>
-              <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <div class="summary-row" style="display:flex; justify-between; padding: 3px 0;">
-                  <span>Subtotal:</span>
-                  <span style="float:right;">Rs. ${subtotal.toLocaleString()}</span>
-                </div>
-                ${discount > 0 ? `
-                <div class="summary-row" style="color:#059669; padding: 3px 0;">
-                  <span>Discount:</span>
-                  <span style="float:right;">-Rs. ${discount.toLocaleString()}</span>
-                </div>` : ''}
-                <div class="summary-row" style="padding: 3px 0;">
-                  <span>Shipping:</span>
-                  <span style="float:right;">${shipping === 0 ? 'FREE' : `Rs. ${shipping.toLocaleString()}`}</span>
-                </div>
-                <div class="total-row" style="padding-top:8px; margin-top:5px;">
-                  <span>Total Amount:</span>
-                  <span style="float:right;">Rs. ${total.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-box">
-              <h4 style="margin:0 0 8px; color: #333;">Delivery Address</h4>
-              <p style="margin:0; color:#555; font-size:14px;">
-                ${order.customer?.completeAddress || order.customer?.address || ''}, ${order.customer?.city || ''}<br>
-                Phone: ${order.customer?.phone || ''}
-              </p>
-            </div>
-
-            <p style="text-align:center; font-size:13px; color:#666;">We will send you another update once your payment is verified and your order is confirmed.</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  return transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Thank you for order #${orderId}. Total: Rs. ${total.toLocaleString()}`,
+      contentHtml
+    })
+  }, { emailType: 'order-received' });
 };
 
 /**
- * 2. Send Order Confirmed Email (Payment Verified / Status Confirmed)
+ * 9. Send Order Confirmed Email (Payment Verified)
  */
 export const sendOrderConfirmedEmail = async (order) => {
   const customerEmail = order.customer?.email;
   if (!customerEmail) return;
 
-  const transporter = createTransporter();
   const orderId = order.orderId || order._id;
   const customerName = order.customer?.name || 'Valued Customer';
   const total = Number(order.total) || 0;
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
-    to: customerEmail,
-    subject: `Payment Verified & Order Confirmed #${orderId} - Hijabs By Shiza`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
-          .status-box { background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0;">Order Confirmed!</h1>
-            <p style="margin:5px 0 0;">Order #${orderId}</p>
-          </div>
-          <div class="content">
-            <h2>Great news, ${customerName}!</h2>
-            <div class="status-box">
-              <h3 style="margin:0; color:#065f46;">✓ Payment Verified & Order Confirmed</h3>
-              <p style="margin:5px 0 0; color:#047857; font-size:14px;">Your payment for Rs. ${total.toLocaleString()} has been verified. We are preparing your order for shipment.</p>
-            </div>
-            <p>We will notify you as soon as your items are packed and handed over to the courier service.</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
+  const subject = `Order Confirmed #${orderId} - Hijabs by Shiza`;
 
-  return transporter.sendMail(mailOptions);
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${customerName},</h2>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 4px; padding: 16px; margin: 20px 0;">
+      <tr>
+        <td style="color: #166534; font-size: 14px;">
+          <strong style="font-size: 15px;">Payment Verified & Order Confirmed</strong><br>
+          Your payment for <strong>Rs. ${total.toLocaleString()}</strong> has been verified. Our team is now preparing your order <strong>#${orderId}</strong> for shipment.
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; color: #4a5568; font-size: 14px;">You will receive another update with courier tracking details as soon as your parcel is dispatched.</p>
+  `;
+
+  const text = `Hello ${customerName},
+
+Great news! Your payment for order #${orderId} (Rs. ${total.toLocaleString()}) has been verified and your order is confirmed.
+
+We are now preparing your items for delivery and will send tracking information once dispatched.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
+    to: customerEmail,
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Payment verified and order #${orderId} confirmed`,
+      contentHtml
+    })
+  }, { emailType: 'order-confirmed' });
 };
 
 /**
- * 3. Send Order Shipped Email
+ * 10. Send Order Shipped Email
  */
 export const sendOrderShippedEmail = async (order, trackingNumber = '', courier = '') => {
   const customerEmail = order.customer?.email;
   if (!customerEmail) return;
 
-  const transporter = createTransporter();
   const orderId = order.orderId || order._id;
   const customerName = order.customer?.name || 'Valued Customer';
-  const trackNum = trackingNumber || order.trackingNumber || 'N/A';
-  const courierName = courier || order.courier || 'Courier';
+  const trackNum = trackingNumber || order.trackingNumber || 'Available shortly';
+  const courierName = courier || order.courier || 'Standard Courier';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+  const subject = `Your Order #${orderId} has shipped - Hijabs by Shiza`;
+
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${customerName},</h2>
+    <p style="margin: 0 0 20px 0; color: #4a5568;">Your package for order <strong>#${orderId}</strong> has been dispatched and is on its way to you.</p>
+
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px; padding: 16px; margin: 20px 0;">
+      <tr>
+        <td style="color: #0c4a6e; font-size: 14px; line-height: 1.6;">
+          <strong style="font-size: 15px;">Shipping Details</strong><br>
+          Courier Service: <strong>${courierName}</strong><br>
+          Tracking Number: <strong>${trackNum}</strong><br>
+          Estimated Delivery: 3 to 5 business days
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; color: #718096; font-size: 13px;">Please ensure someone is available at your delivery address to receive the parcel.</p>
+  `;
+
+  const text = `Hello ${customerName},
+
+Your order #${orderId} has been shipped!
+
+Shipping Details:
+Courier: ${courierName}
+Tracking Number: ${trackNum}
+Estimated Delivery: 3 to 5 business days
+
+Please ensure someone is available at your delivery address to receive the parcel.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: customerEmail,
-    subject: `Your Order #${orderId} Has Been Shipped! - Hijabs By Shiza`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
-          .shipping-box { background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; border-radius: 4px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0;">Order On Its Way!</h1>
-            <p style="margin:5px 0 0;">Order #${orderId}</p>
-          </div>
-          <div class="content">
-            <h2>Hello ${customerName},</h2>
-            <p>Your package has been dispatched and is currently on its way to you!</p>
-            <div class="shipping-box">
-              <h3 style="margin:0; color:#0369a1;">🚚 Shipping Details</h3>
-              <p style="margin:8px 0 0; color:#075985; font-size:14px;">
-                <strong>Courier:</strong> ${courierName}<br>
-                <strong>Tracking Number:</strong> ${trackNum}<br>
-                <strong>Estimated Delivery:</strong> 3 - 5 Business Days
-              </p>
-            </div>
-            <p>Please make sure someone is available at your address to receive the delivery.</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  return transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Your order #${orderId} has shipped with ${courierName}`,
+      contentHtml
+    })
+  }, { emailType: 'order-shipped' });
 };
 
 /**
- * 4. Send Order Delivered Email
+ * 11. Send Order Delivered Email
  */
 export const sendOrderDeliveredEmail = async (order) => {
   const customerEmail = order.customer?.email;
   if (!customerEmail) return;
 
-  const transporter = createTransporter();
   const orderId = order.orderId || order._id;
   const customerName = order.customer?.name || 'Valued Customer';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
-    to: customerEmail,
-    subject: `Order Delivered #${orderId} - Hijabs By Shiza`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #AA2E48; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
-          .delivered-box { background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0;">Order Delivered!</h1>
-            <p style="margin:5px 0 0;">Order #${orderId}</p>
-          </div>
-          <div class="content">
-            <h2>Dear ${customerName},</h2>
-            <div class="delivered-box">
-              <h3 style="margin:0; color:#065f46;">🎉 Package Delivered</h3>
-              <p style="margin:5px 0 0; color:#047857; font-size:14px;">Your order #${orderId} has been successfully delivered. We hope you love your new purchase!</p>
-            </div>
-            <p>Thank you for choosing Hijabs By Shiza. We look forward to serving you again!</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
+  const subject = `Order Delivered #${orderId} - Hijabs by Shiza`;
 
-  return transporter.sendMail(mailOptions);
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${customerName},</h2>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; padding: 16px; margin: 20px 0;">
+      <tr>
+        <td style="color: #14532d; font-size: 14px;">
+          <strong style="font-size: 15px;">Package Delivered</strong><br>
+          Your order <strong>#${orderId}</strong> has been marked as delivered. We hope you love your new pieces!
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px 0; color: #4a5568; font-size: 14px;">Thank you for choosing ${SENDER_NAME}. If you have any feedback or queries about your order, our team is always here to assist.</p>
+  `;
+
+  const text = `Hello ${customerName},
+
+Your order #${orderId} has been successfully delivered.
+
+Thank you for choosing ${SENDER_NAME}. If you have any questions or feedback, please reach out to our team.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
+    to: customerEmail,
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Your order #${orderId} has been delivered`,
+      contentHtml
+    })
+  }, { emailType: 'order-delivered' });
 };
 
 /**
- * 5. Send Order Cancelled Email
+ * 12. Send Order Cancelled Email
  */
 export const sendOrderCancelledEmail = async (order, reason = '') => {
   const customerEmail = order.customer?.email;
   if (!customerEmail) return;
 
-  const transporter = createTransporter();
   const orderId = order.orderId || order._id;
   const customerName = order.customer?.name || 'Valued Customer';
-  const cancelReason = reason || 'Order request could not be processed.';
+  const cancelReason = reason || 'Order request could not be completed.';
 
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'Hijabs By Shiza'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@hijabsbyshiza.com'}>`,
+  const subject = `Order Update #${orderId} - Hijabs by Shiza`;
+
+  const contentHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #1a202c; font-size: 18px; font-weight: 600;">Hello ${customerName},</h2>
+    
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 4px; padding: 16px; margin: 20px 0;">
+      <tr>
+        <td style="color: #991b1b; font-size: 14px;">
+          <strong style="font-size: 15px;">Order Cancelled</strong><br>
+          Your order <strong>#${orderId}</strong> has been cancelled.<br>
+          Reason: ${cancelReason}
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; color: #4a5568; font-size: 14px;">If you have any questions or feel this was done in error, please contact our support team at <a href="mailto:${getSenderEmail()}" style="color: #AA2E48;">${getSenderEmail()}</a>.</p>
+  `;
+
+  const text = `Hello ${customerName},
+
+Your order #${orderId} has been cancelled.
+Reason: ${cancelReason}
+
+If you have any questions, please contact our support team at ${getSenderEmail()}.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
     to: customerEmail,
-    subject: `Order Update #${orderId} - Hijabs By Shiza`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 25px; border-radius: 0 0 8px 8px; }
-          .cancel-box { background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; border-radius: 4px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0;">Order Cancelled</h1>
-            <p style="margin:5px 0 0;">Order #${orderId}</p>
-          </div>
-          <div class="content">
-            <h2>Dear ${customerName},</h2>
-            <div class="cancel-box">
-              <h3 style="margin:0; color:#991b1b;">Order Cancelled</h3>
-              <p style="margin:5px 0 0; color:#b91c1c; font-size:14px;"><strong>Reason:</strong> ${cancelReason}</p>
-            </div>
-            <p>If you have any questions or feel this was a mistake, please reach out to our customer support team.</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Hijabs By Shiza. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
-
-  return transporter.sendMail(mailOptions);
+    subject,
+    text,
+    html: wrapHtmlEmail({
+      title: subject,
+      preheader: `Order update for #${orderId}`,
+      contentHtml
+    })
+  }, { emailType: 'order-cancelled' });
 };
-

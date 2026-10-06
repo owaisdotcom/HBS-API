@@ -71,7 +71,7 @@ export const signup = asyncHandler(async (req, res, next) => {
       requiresVerification: true,
       // Include OTP in development for testing
       ...(process.env.NODE_ENV === 'development' && { otp })
-    }, 'Account created successfully. Please check your email for the verification code.')
+    }, 'Account created successfully. Please check your email for the verification code. Please check your inbox or spam folder.')
   );
 });
 
@@ -129,7 +129,7 @@ export const login = asyncHandler(async (req, res, next) => {
         requiresVerification: true,
         // Include OTP in development for testing
         ...(process.env.NODE_ENV === 'development' && { otp })
-      }, 'Please verify your email first. A verification code has been sent to your email.')
+      }, 'Please verify your email first. A verification code has been sent to your email. Please check your inbox or spam folder.')
     );
   }
 
@@ -605,6 +605,15 @@ export const resendOTP = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Email already verified', 400));
   }
 
+  // 60-second cooldown protection to prevent duplicate email triggers and protect Gmail reputation
+  if (user.emailVerificationOTPExpire) {
+    const timeUntilExpiry = new Date(user.emailVerificationOTPExpire).getTime() - Date.now();
+    if (timeUntilExpiry > 9 * 60 * 1000) {
+      const remainingSeconds = Math.ceil((timeUntilExpiry - 9 * 60 * 1000) / 1000);
+      return next(new ApiError(`Please wait ${remainingSeconds} seconds before requesting a new verification code`, 429));
+    }
+  }
+
   // Generate new OTP
   const otp = user.generateEmailVerificationOTP();
   await user.save({ validateBeforeSave: false });
@@ -619,7 +628,7 @@ export const resendOTP = asyncHandler(async (req, res, next) => {
       new ApiResponse(200, {
         // Include OTP in development for testing
         ...(process.env.NODE_ENV === 'development' && { otp })
-      }, 'Verification code sent to your email')
+      }, 'Verification code sent to your email. Please check your inbox or spam folder.')
     );
   } catch (error) {
     console.error('Error sending OTP email:', error);
@@ -692,7 +701,7 @@ export const resendVerification = asyncHandler(async (req, res, next) => {
   try {
     await sendVerificationEmail(user.email, verificationToken);
     res.json(
-      new ApiResponse(200, null, 'Verification email sent successfully')
+      new ApiResponse(200, null, 'Verification email sent successfully. Please check your inbox or spam folder.')
     );
   } catch (error) {
     user.emailVerificationToken = undefined;
@@ -717,8 +726,18 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   if (!user) {
     // Don't reveal if user exists for security
     return res.json(
-      new ApiResponse(200, null, 'If an account with that email exists, a password reset link has been sent.')
+      new ApiResponse(200, null, 'If an account with that email exists, a password reset link has been sent. Please check your inbox or spam folder.')
     );
+  }
+
+  // 60-second cooldown protection to prevent duplicate email triggers
+  if (user.resetPasswordExpire) {
+    const timeUntilExpiry = new Date(user.resetPasswordExpire).getTime() - Date.now();
+    if (timeUntilExpiry > 59 * 60 * 1000) {
+      return res.json(
+        new ApiResponse(200, null, 'If an account with that email exists, a password reset link has been sent. Please check your inbox or spam folder.')
+      );
+    }
   }
 
   // Generate reset token
@@ -729,7 +748,7 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
   try {
     await sendPasswordResetEmail(user.email, resetToken);
     res.json(
-      new ApiResponse(200, null, 'Password reset link sent to your email')
+      new ApiResponse(200, null, 'Password reset link sent to your email. Please check your inbox or spam folder.')
     );
   } catch (error) {
     user.resetPasswordToken = undefined;

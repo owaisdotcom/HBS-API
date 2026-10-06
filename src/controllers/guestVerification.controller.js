@@ -76,7 +76,7 @@ export const sendGuestOTP = asyncHandler(async (req, res, next) => {
       email: normalizedEmail,
       cooldownSeconds: 60,
       ...(process.env.NODE_ENV === 'development' && { otp })
-    }, 'Verification code sent to your email address')
+    }, 'Verification code sent to your email address. Please check your inbox or spam folder.')
   );
 });
 
