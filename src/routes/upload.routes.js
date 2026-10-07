@@ -1,9 +1,12 @@
 import express from 'express';
-import { uploadSingleImage, migrateCloudinaryToR2Admin } from '../controllers/upload.controller.js';
+import { uploadSingleImage, migrateCloudinaryToR2Admin, proxyImage } from '../controllers/upload.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import { uploadSingle } from '../middleware/upload.middleware.js';
 
 const router = express.Router();
+
+// Proxy remote image with CORS headers for canvas cropping
+router.get('/proxy-image', proxyImage);
 
 // Admin only - Upload single image
 router.post('/image', protectAdmin, uploadSingle, uploadSingleImage);

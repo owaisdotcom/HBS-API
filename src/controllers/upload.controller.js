@@ -33,3 +33,40 @@ export const migrateCloudinaryToR2Admin = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, 'Cloudinary to Cloudflare R2 migration completed successfully')
   );
 });
+
+// @route   GET /api/upload/proxy-image?url=...
+// @desc    Proxy remote image with CORS headers for frontend canvas cropping
+// @access  Public
+export const proxyImage = asyncHandler(async (req, res, next) => {
+  const { url } = req.query;
+  if (!url) {
+    return next(new ApiError('URL parameter is required', 400));
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return next(new ApiError('Invalid URL protocol', 400));
+    }
+  } catch {
+    return next(new ApiError('Invalid URL format', 400));
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return next(new ApiError('Failed to fetch remote image', response.status));
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const arrayBuffer = await response.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    return next(new ApiError(`Error proxying image: ${err.message}`, 500));
+  }
+});

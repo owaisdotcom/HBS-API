@@ -1,13 +1,14 @@
 /**
  * In-Memory TTL Cache Service
  * 
- * Provides opportunistic in-memory caching for warm Vercel serverless function instances.
- * Automatically handles TTL expiration and key pattern invalidation when admin updates occur.
+ * Disabled by default (unless ENABLE_IN_MEMORY_CACHE=true) so that all storefront GET requests
+ * query the database directly and immediately reflect admin updates with fresh 200 OK responses.
  */
 
 class CacheService {
   constructor() {
     this.cache = new Map();
+    this.enabled = process.env.ENABLE_IN_MEMORY_CACHE === 'true';
   }
 
   /**
@@ -16,6 +17,8 @@ class CacheService {
    * @returns {any|null}
    */
   get(key) {
+    if (!this.enabled) return null;
+
     const item = this.cache.get(key);
     if (!item) return null;
 
@@ -34,6 +37,7 @@ class CacheService {
    * @param {number} ttlSeconds - Default 60 seconds
    */
   set(key, data, ttlSeconds = 60) {
+    if (!this.enabled) return;
     const expiresAt = Date.now() + ttlSeconds * 1000;
     this.cache.set(key, { data, expiresAt });
   }

@@ -17,9 +17,14 @@ import testEmailRoutes from './test-email.routes.js';
 import bundleCategoryRoutes from './bundleCategory.routes.js';
 import preMadeBundleRoutes from './preMadeBundle.routes.js';
 
+import { uploadSingleImage, proxyImage } from '../controllers/upload.controller.js';
 import { noCache, staticCache } from '../middleware/cache.middleware.js';
 
 const router = express.Router();
+
+// Public Image Proxy (CORS-friendly image fetching for canvas cropper)
+router.get('/proxy-image', proxyImage);
+router.get('/upload/proxy-image', proxyImage);
 
 // Stock-sensitive routes (Always get fresh data, no stale stock cache)
 router.use('/products', noCache, productRoutes);
@@ -27,6 +32,7 @@ router.use('/cart', noCache, cartRoutes);
 router.use('/orders', noCache, orderRoutes);
 router.use('/admin', noCache, adminRoutes);
 router.use('/admin/upload', noCache, uploadRoutes);
+router.use('/upload', noCache, uploadRoutes);
 router.use('/wishlist', noCache, wishlistRoutes);
 router.use('/pre-made-bundles', noCache, preMadeBundleRoutes);
 
@@ -36,12 +42,12 @@ router.use('/coupons', noCache, couponRoutes);
 router.use('/reviews', noCache, reviewRoutes);
 router.use('/contact', noCache, contactRoutes);
 
-// Static / Low-change routes (Safe caching enabled for performance)
-router.use('/categories', staticCache(120), categoryRoutes);
-router.use('/homepage', staticCache(300), homepageRoutes);
-router.use('/announcements', staticCache(300), announcementRoutes);
-router.use('/terms-conditions', staticCache(600), termsConditionsRoutes);
-router.use('/bundle-categories', staticCache(120), bundleCategoryRoutes);
+// All storefront and administrative routes use noCache to prevent 304 Not Modified
+router.use('/categories', noCache, categoryRoutes);
+router.use('/homepage', noCache, homepageRoutes);
+router.use('/announcements', noCache, announcementRoutes);
+router.use('/terms-conditions', noCache, termsConditionsRoutes);
+router.use('/bundle-categories', noCache, bundleCategoryRoutes);
 
 // Test routes (only in development)
 if (process.env.NODE_ENV === 'development') {

@@ -13,6 +13,9 @@ const app = express();
 // Trust proxy header for Vercel deployment (resolves ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
 app.set('trust proxy', 1);
 
+// Disable ETag generation to prevent 304 Not Modified responses across all storefront APIs
+app.disable('etag');
+
 // Performance logger middleware
 app.use(performanceLogger);
 
@@ -48,8 +51,23 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range', 'x-request-id', 'ETag', 'etag']
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'x-request-id']
 }));
+
+// Global anti-caching middleware for all /api GET and HEAD endpoints:
+// Prevents conditional request caching (304 Not Modified) and enforces 200 OK with fresh data
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    delete req.headers['if-none-match'];
+    delete req.headers['if-modified-since'];
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  }
+  next();
+});
 
 // Preflight & CORS header middleware (dynamically allows all requested headers like if-none-match)
 app.use((req, res, next) => {

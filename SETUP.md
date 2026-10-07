@@ -58,9 +58,9 @@ CLOUDINARY_API_SECRET=your-api-secret
 # Email Settings - Optional (for order confirmations)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
+EMAIL_USER=hbs.queries@gmail.com
 EMAIL_PASSWORD=your-app-password
-EMAIL_FROM=noreply@hijabsbyshiza.com
+EMAIL_FROM=hbs.queries@gmail.com
 
 # WhatsApp
 WHATSAPP_NUMBER=+923460336634
