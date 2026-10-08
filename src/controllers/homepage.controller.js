@@ -14,10 +14,20 @@ import cacheService from '../services/cache.service.js';
 // @desc    Get complete homepage configuration
 // @access  Public
 export const getHomepageSettings = asyncHandler(async (req, res) => {
+  const isBypassCache = Boolean(
+    req.query._t ||
+    req.query.fresh === 'true' ||
+    req.headers['cache-control']?.includes('no-cache') ||
+    req.headers['cache-control']?.includes('no-store') ||
+    req.headers['pragma']?.includes('no-cache')
+  );
+
   const cacheKey = 'homepage_settings';
-  const cached = cacheService.get(cacheKey);
-  if (cached) {
-    return res.json(new ApiResponse(200, cached, 'Homepage settings retrieved successfully (cached)'));
+  if (!isBypassCache) {
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, cached, 'Homepage settings retrieved successfully (cached)'));
+    }
   }
 
   // Get navigation menu
@@ -90,7 +100,13 @@ export const getHomepageSettings = asyncHandler(async (req, res) => {
     siteSettings
   };
 
-  cacheService.set(cacheKey, responseData, 300);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (!isBypassCache) {
+    cacheService.set(cacheKey, responseData, 300);
+  }
 
   res.json(
     new ApiResponse(200, responseData, 'Homepage settings retrieved successfully')
@@ -299,17 +315,33 @@ export const updateOrCreateHero = asyncHandler(async (req, res) => {
 // @desc    Get homepage sections
 // @access  Public
 export const getHomepageSections = asyncHandler(async (req, res) => {
+  const isBypassCache = Boolean(
+    req.query._t ||
+    req.query.fresh === 'true' ||
+    req.headers['cache-control']?.includes('no-cache') ||
+    req.headers['cache-control']?.includes('no-store') ||
+    req.headers['pragma']?.includes('no-cache')
+  );
+
   const cacheKey = 'homepage_sections';
-  const cached = cacheService.get(cacheKey);
-  if (cached) {
-    return res.json(new ApiResponse(200, { homepageSections: cached }, 'Homepage sections retrieved successfully (cached)'));
+  if (!isBypassCache) {
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, { homepageSections: cached }, 'Homepage sections retrieved successfully (cached)'));
+    }
   }
 
   const homepageSections = await HomepageSection.findOne({ isActive: true })
     .populate('sections.categoryId', 'name slug image')
     .populate('sections.productIds', 'name slug price originalPrice images rating stock');
 
-  cacheService.set(cacheKey, homepageSections, 300);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (!isBypassCache) {
+    cacheService.set(cacheKey, homepageSections, 300);
+  }
 
   res.json(
     new ApiResponse(200, { homepageSections }, 'Homepage sections retrieved successfully')
@@ -321,6 +353,7 @@ export const getHomepageSections = asyncHandler(async (req, res) => {
 // @access  Private (Admin)
 export const updateHomepageSections = asyncHandler(async (req, res, next) => {
   cacheService.delPattern('homepage_');
+  cacheService.delPattern('products_');
   // Upsert: Find the active homepage sections and update or create
   const homepageSections = await HomepageSection.findOneAndUpdate(
     { isActive: true },

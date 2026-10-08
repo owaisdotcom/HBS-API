@@ -10,7 +10,16 @@ import uploadService from '../services/upload.service.js';
 import { sendWishlistRestockEmail } from '../services/email.service.js';
 import cacheService from '../services/cache.service.js';
 
-const LISTING_PROJECTION = '_id name slug price originalPrice images categories stock availableStock status rating reviewCount isFeatured isNewArrival createdAt publishedAt';
+const LISTING_PROJECTION = '_id name slug price originalPrice images categories stock availableStock status rating reviewCount isFeatured isNewArrival createdAt publishedAt variants';
+
+export const calculateVariantCount = (variants) => {
+  if (!Array.isArray(variants) || variants.length === 0) return 0;
+  // Backward compatibility for old flat format without colorId:
+  if (variants[0]?.variantId && !variants[0]?.colorId) {
+    return new Set(variants.map((v) => v.color || 'Default')).size;
+  }
+  return variants.length;
+};
 
 const getReservationMap = async (productIds = []) => {
   if (productIds.length === 0) return new Map();
@@ -71,13 +80,29 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     status = 'active',
     isFeatured,
     isNewArrival,
-    inStock
+    inStock,
+    ids
   } = req.query;
 
-  const cacheKey = `products_${JSON.stringify(req.query)}`;
-  const cachedResult = cacheService.get(cacheKey);
-  if (cachedResult) {
-    return res.json(new ApiResponse(200, cachedResult, 'Products retrieved successfully (cached)'));
+  const isBypassCache = Boolean(
+    req.query._t ||
+    req.query.fresh === 'true' ||
+    req.headers['cache-control']?.includes('no-cache') ||
+    req.headers['cache-control']?.includes('no-store') ||
+    req.headers['pragma']?.includes('no-cache')
+  );
+
+  const cleanQuery = { ...req.query };
+  delete cleanQuery._t;
+  delete cleanQuery._fresh;
+  delete cleanQuery.fresh;
+
+  const cacheKey = `products_${JSON.stringify(cleanQuery)}`;
+  if (!isBypassCache) {
+    const cachedResult = cacheService.get(cacheKey);
+    if (cachedResult) {
+      return res.json(new ApiResponse(200, cachedResult, 'Products retrieved successfully (cached)'));
+    }
   }
 
   // Build query
@@ -86,6 +111,16 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   };
 
   if (status) query.status = status;
+
+  if (ids) {
+    const idArray = (Array.isArray(ids) ? ids : ids.split(','))
+      .map(id => id.trim())
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+    if (idArray.length > 0) {
+      query._id = { $in: idArray };
+    }
+  }
   
   const categoryParam = category || req.query.categories;
   if (categoryParam) {
@@ -145,10 +180,12 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   const productsWithAvailability = products.map((product) => {
     const reserved = reservationMap.get(product._id.toString()) || 0;
     const availableStock = Math.max(product.stock - reserved, 0);
+    const prodObj = product.toObject ? product.toObject() : product;
     return {
-      ...product.toObject(),
+      ...prodObj,
       availableStock,
-      reservedStock: reserved
+      reservedStock: reserved,
+      variantCount: calculateVariantCount(prodObj.variants)
     };
   });
 
@@ -162,7 +199,13 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     }
   };
 
-  cacheService.set(cacheKey, responseData, 60);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (!isBypassCache) {
+    cacheService.set(cacheKey, responseData, 60);
+  }
 
   res.json(
     new ApiResponse(200, responseData, 'Products retrieved successfully')
@@ -501,8 +544,9 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   // Create product
   const product = await Product.create(productData);
 
-  // Invalidate cached product listings
+  // Invalidate cached product listings and homepage sections
   cacheService.delPattern('products_');
+  cacheService.delPattern('homepage_');
 
   res.status(201).json(
     new ApiResponse(201, { product }, 'Product created successfully')
@@ -874,8 +918,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Invalidate cached product listings
+  // Invalidate cached product listings and homepage sections
   cacheService.delPattern('products_');
+  cacheService.delPattern('homepage_');
 
   res.json(
     new ApiResponse(200, { product }, 'Product updated successfully')
@@ -899,8 +944,9 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
   product.deletedAt = new Date();
   await product.save();
 
-  // Invalidate cached product listings
+  // Invalidate cached product listings and homepage sections
   cacheService.delPattern('products_');
+  cacheService.delPattern('homepage_');
 
   res.json(
     new ApiResponse(200, null, 'Product deleted successfully')
@@ -928,6 +974,9 @@ export const deleteProductImage = asyncHandler(async (req, res, next) => {
   product.images.splice(imageIndex, 1);
   await product.save();
 
+  cacheService.delPattern('products_');
+  cacheService.delPattern('homepage_');
+
   res.json(
     new ApiResponse(200, { product }, 'Image deleted successfully')
   );
@@ -939,10 +988,20 @@ export const deleteProductImage = asyncHandler(async (req, res, next) => {
 export const getFeaturedProducts = asyncHandler(async (req, res) => {
   const { limit = 8 } = req.query;
 
+  const isBypassCache = Boolean(
+    req.query._t ||
+    req.query.fresh === 'true' ||
+    req.headers['cache-control']?.includes('no-cache') ||
+    req.headers['cache-control']?.includes('no-store') ||
+    req.headers['pragma']?.includes('no-cache')
+  );
+
   const cacheKey = `products_featured_${limit}`;
-  const cached = cacheService.get(cacheKey);
-  if (cached) {
-    return res.json(new ApiResponse(200, { products: cached }, 'Featured products retrieved (cached)'));
+  if (!isBypassCache) {
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, { products: cached }, 'Featured products retrieved (cached)'));
+    }
   }
 
   const products = await Product.find({
@@ -956,7 +1015,13 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
-  cacheService.set(cacheKey, products, 60);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (!isBypassCache) {
+    cacheService.set(cacheKey, products, 60);
+  }
 
   res.json(
     new ApiResponse(200, { products }, 'Featured products retrieved')
@@ -969,10 +1034,20 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
 export const getNewArrivals = asyncHandler(async (req, res) => {
   const { limit = 8 } = req.query;
 
+  const isBypassCache = Boolean(
+    req.query._t ||
+    req.query.fresh === 'true' ||
+    req.headers['cache-control']?.includes('no-cache') ||
+    req.headers['cache-control']?.includes('no-store') ||
+    req.headers['pragma']?.includes('no-cache')
+  );
+
   const cacheKey = `products_new_arrivals_${limit}`;
-  const cached = cacheService.get(cacheKey);
-  if (cached) {
-    return res.json(new ApiResponse(200, { products: cached }, 'New arrivals retrieved (cached)'));
+  if (!isBypassCache) {
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return res.json(new ApiResponse(200, { products: cached }, 'New arrivals retrieved (cached)'));
+    }
   }
 
   const products = await Product.find({
@@ -986,7 +1061,13 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
-  cacheService.set(cacheKey, products, 60);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (!isBypassCache) {
+    cacheService.set(cacheKey, products, 60);
+  }
 
   res.json(
     new ApiResponse(200, { products }, 'New arrivals retrieved')
