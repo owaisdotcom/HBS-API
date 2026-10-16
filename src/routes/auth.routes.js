@@ -29,25 +29,19 @@ import {
   addressValidator,
   savedCheckoutDetailsValidator
 } from '../validators/auth.validator.js';
-import {
-  loginLimiter,
-  registerLimiter,
-  passwordResetLimiter,
-  otpLimiter
-} from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
-// Public routes with rate limit protection
-router.post('/signup', registerLimiter, signupValidator, validate, signup);
-router.post('/login', loginLimiter, loginValidator, validate, login);
-router.post('/verify-otp', otpLimiter, verifyOTP);
-router.post('/resend-otp', otpLimiter, resendOTP);
-router.post('/guest-send-otp', otpLimiter, sendGuestOTP);
-router.post('/guest-verify-otp', otpLimiter, verifyGuestOTP);
+// Public routes
+router.post('/signup', signupValidator, validate, signup);
+router.post('/login', loginValidator, validate, login);
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
+router.post('/guest-send-otp', sendGuestOTP);
+router.post('/guest-verify-otp', verifyGuestOTP);
 router.get('/verify-email/:token', verifyEmail);
-router.post('/forgot-password', passwordResetLimiter, forgotPassword);
-router.post('/reset-password/:token', passwordResetLimiter, resetPassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
 router.get('/me', protect, getMe);

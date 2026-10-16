@@ -566,6 +566,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   }
 
   const previousStock = product.stock;
+  const previousImages = (product.images || []).map(img => (
+    typeof img === 'string' ? { url: img } : { url: img?.url, key: img?.key, publicId: img?.publicId }
+  ));
 
   // Handle existing images (images to keep) with order
   let existingImagesWithOrder = [];
@@ -575,7 +578,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (req.body.existingImages) {
     shouldUpdateImages = true;
     try {
-      existingImagesWithOrder = JSON.parse(req.body.existingImages);
+      existingImagesWithOrder = typeof req.body.existingImages === 'string'
+        ? JSON.parse(req.body.existingImages)
+        : (Array.isArray(req.body.existingImages) ? req.body.existingImages : []);
     } catch (e) {
       existingImagesWithOrder = [];
     }
@@ -583,7 +588,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 
   if (req.body.newImagesOrder) {
     try {
-      newImagesOrder = JSON.parse(req.body.newImagesOrder);
+      newImagesOrder = typeof req.body.newImagesOrder === 'string'
+        ? JSON.parse(req.body.newImagesOrder)
+        : (Array.isArray(req.body.newImagesOrder) ? req.body.newImagesOrder : []);
     } catch (e) {
       newImagesOrder = [];
     }
@@ -593,7 +600,10 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   let uploadedNewImages = [];
   if (req.files && req.files.length > 0) {
     shouldUpdateImages = true;
-    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products');
+    const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products', {
+      requestId: req.requestId,
+      productId: product._id.toString()
+    });
     uploadedNewImages = uploadResults.map((item, index) => {
       const url = typeof item === 'string' ? item : item.url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
@@ -609,9 +619,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Only update images if FormData was sent (not plain JSON)
+  // Build updated image map if images were provided via FormData or JSON
   if (shouldUpdateImages) {
-    const previousImages = product.images || [];
     const imageMap = [];
 
     // Add existing images with their order
@@ -649,17 +658,6 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         isPrimary: index === 0,
         order: index
       }));
-
-    // Delete removed images from storage provider (Cloudinary or R2)
-    const keptUrls = new Set(allImages.map(img => img.url));
-    const removedImages = previousImages.filter(prevImg => prevImg && prevImg.url && !keptUrls.has(prevImg.url));
-    for (const removed of removedImages) {
-      try {
-        await uploadService.deleteImage(removed);
-      } catch (err) {
-        console.error('[UpdateProduct] Failed to delete removed image:', err.message);
-      }
-    }
 
     product.images = allImages;
   }
@@ -794,6 +792,10 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 
   // Remove fields that shouldn't be directly updated
   delete updateFields.existingImages;
+  delete updateFields.newImagesOrder;
+  if (shouldUpdateImages) {
+    delete updateFields.images;
+  }
   delete updateFields._id;
   delete updateFields.__v;
   delete updateFields.createdAt;
@@ -921,6 +923,52 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   // Invalidate cached product listings and homepage sections
   cacheService.delPattern('products_');
   cacheService.delPattern('homepage_');
+
+  // Safe post-save storage cleanup: only executed AFTER product.save() succeeds
+  // and verifies image is not used by variants, size charts, or other products
+  if (shouldUpdateImages && previousImages && previousImages.length > 0) {
+    try {
+      const currentProductUrls = new Set();
+      (product.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
+      (product.variants || []).forEach(v => {
+        (v.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
+        (v.sizes || []).forEach(s => s?.sizeChartUrl && currentProductUrls.add(s.sizeChartUrl));
+      });
+
+      const candidateRemovedImages = previousImages.filter(
+        prevImg => prevImg && prevImg.url && !currentProductUrls.has(prevImg.url)
+      );
+
+      for (const removed of candidateRemovedImages) {
+        const queryConditions = [
+          { 'images.url': removed.url },
+          { 'variants.images.url': removed.url },
+          { 'variants.sizes.sizeChartUrl': removed.url }
+        ];
+        if (removed.key) {
+          queryConditions.push({ 'images.key': removed.key });
+          queryConditions.push({ 'variants.images.key': removed.key });
+        }
+
+        const isShared = await Product.countDocuments({
+          _id: { $ne: product._id },
+          isDeleted: { $ne: true },
+          $or: queryConditions
+        });
+
+        if (isShared === 0) {
+          await uploadService.deleteImage(removed, {
+            productId: product._id.toString(),
+            requestId: req.requestId
+          });
+        } else {
+          console.log(`[UpdateProduct] Preserved shared image: ${removed.url}`);
+        }
+      }
+    } catch (cleanupErr) {
+      console.error('[UpdateProduct] Safe storage cleanup error:', cleanupErr.message);
+    }
+  }
 
   res.json(
     new ApiResponse(200, { product }, 'Product updated successfully')

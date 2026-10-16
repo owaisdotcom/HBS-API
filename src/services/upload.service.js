@@ -38,9 +38,17 @@ class UploadService {
   /**
    * Delete file from Cloudflare R2
    */
-  async deleteImage(imageOrIdentifier) {
+  async deleteImage(imageOrIdentifier, options = {}) {
     if (!imageOrIdentifier) return null;
-    return r2Service.deleteFile(imageOrIdentifier);
+    return r2Service.deleteFile(imageOrIdentifier, options);
+  }
+
+  /**
+   * Check if image exists in storage
+   */
+  async checkImageExists(imageOrIdentifier, options = {}) {
+    if (!imageOrIdentifier) return false;
+    return r2Service.checkObjectExists(imageOrIdentifier, options);
   }
 }
 

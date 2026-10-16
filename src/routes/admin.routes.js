@@ -11,7 +11,6 @@ import { getDashboardOverview } from '../controllers/admin-dashboard.controller.
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import validate from '../middleware/validate.middleware.js';
 import { adminLoginValidator, setupSuperAdminValidator, createAdminValidator, changePasswordValidator } from '../validators/auth.validator.js';
-import { loginLimiter, passwordResetLimiter } from '../middleware/rateLimiter.middleware.js';
 import userRoutes from './user.routes.js';
 import adminOrderRoutes from './admin-order.routes.js';
 import homepageRoutes from './homepage.routes.js';
@@ -20,10 +19,10 @@ import errorLogRoutes from './error-log.routes.js';
 
 const router = express.Router();
 
-// Public routes with rate limit protection
-router.post('/setup', passwordResetLimiter, setupSuperAdminValidator, validate, setupSuperAdmin);
-router.post('/login', loginLimiter, adminLoginValidator, validate, adminLogin);
-router.post('/force-reset-password', passwordResetLimiter, forceResetAdminPassword);
+// Public routes
+router.post('/setup', setupSuperAdminValidator, validate, setupSuperAdmin);
+router.post('/login', adminLoginValidator, validate, adminLogin);
+router.post('/force-reset-password', forceResetAdminPassword);
 
 import { migrateCloudinaryToR2Admin } from '../controllers/upload.controller.js';
 

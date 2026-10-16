@@ -12,6 +12,10 @@ const getFrontendUrl = () => (process.env.FRONTEND_URL || 'https://www.hijabsbys
  */
 let cachedTransporter = null;
 
+export const setTransporterForTesting = (transporter) => {
+  cachedTransporter = transporter;
+};
+
 const getTransporter = () => {
   if (cachedTransporter) {
     return cachedTransporter;
@@ -72,6 +76,12 @@ const logEmailEvent = (type, recipient, status, metadata = {}) => {
  * Sends pure plain text only — no HTML, CSS, tables, buttons, or decorative elements
  */
 const sendMailWithRetry = async (mailOptions, { emailType = 'transactional', maxRetries = 1 } = {}) => {
+  const recipient = typeof mailOptions.to === 'string' ? mailOptions.to.trim() : '';
+  if (!recipient) {
+    console.warn(`[Email Service] Cannot send email of type ${emailType}: recipient email is missing or empty`);
+    return null;
+  }
+
   const transporter = getTransporter();
   let attempt = 0;
 
@@ -79,7 +89,7 @@ const sendMailWithRetry = async (mailOptions, { emailType = 'transactional', max
   const replyToEmail = getReplyToEmail();
 
   const finalMailOptions = {
-    to: mailOptions.to,
+    to: recipient,
     subject: mailOptions.subject,
     text: mailOptions.text,
     from: `"${SENDER_NAME}" <${senderEmail}>`,
@@ -90,7 +100,7 @@ const sendMailWithRetry = async (mailOptions, { emailType = 'transactional', max
     try {
       attempt++;
       const info = await transporter.sendMail(finalMailOptions);
-      logEmailEvent(emailType, mailOptions.to, 'SUCCESS', { messageId: info.messageId });
+      logEmailEvent(emailType, recipient, 'SUCCESS', { messageId: info.messageId });
       return info;
     } catch (error) {
       const isTransient = error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.responseCode === 421 || error.responseCode === 450;
@@ -279,6 +289,35 @@ Customer Support: ${getSenderEmail()}`;
 };
 
 /**
+ * Safely resolves and cleans the customer's email address from an order document or plain object.
+ * Checks order.customer.email first, then falls back to populated order.userId.email or root order.email.
+ * Works seamlessly for both guest users (who only have customer.email) and registered users.
+ */
+export const resolveCustomerEmail = (order) => {
+  if (!order) return null;
+  const rawEmail = order.customer?.email ||
+    (typeof order.userId === 'object' && order.userId !== null ? order.userId.email : null) ||
+    order.email;
+  if (!rawEmail || typeof rawEmail !== 'string') return null;
+  const cleaned = rawEmail.trim().toLowerCase();
+  return /^\S+@\S+\.\S+$/.test(cleaned) ? cleaned : null;
+};
+
+/**
+ * Safely resolves the customer's display name from an order document or plain object.
+ * Works for both guest and registered users with a fallback to 'Valued Customer'.
+ */
+export const resolveCustomerName = (order) => {
+  if (!order) return 'Valued Customer';
+  const rawName = order.customer?.name ||
+    (typeof order.userId === 'object' && order.userId !== null ? (order.userId.fullName || order.userId.name) : null) ||
+    order.name;
+  if (!rawName || typeof rawName !== 'string') return 'Valued Customer';
+  const cleaned = rawName.trim();
+  return cleaned.length > 0 ? cleaned : 'Valued Customer';
+};
+
+/**
  * Helper to render order items in clean plain text
  */
 const renderOrderItemsText = (items = []) => {
@@ -298,14 +337,15 @@ const renderOrderItemsText = (items = []) => {
 };
 
 /**
- * 8. Send Order Received Email (Order Placed)
+ * 8. Send Order Received Email (Order Placed / Initial Confirmation)
+ * Sent immediately after an order is placed (both guest and registered users).
  */
 export const sendOrderReceivedEmail = async (order) => {
-  const customerEmail = order.customer?.email;
+  const customerEmail = resolveCustomerEmail(order);
   if (!customerEmail) return;
 
   const orderId = order.orderId || order._id;
-  const customerName = order.customer?.name || 'Valued Customer';
+  const customerName = resolveCustomerName(order);
   const shipping = Number(order.shipping) || 0;
   const subtotal = Number(order.subtotal) || 0;
   const discount = Number(order.discount) || 0;
@@ -345,13 +385,14 @@ Customer Support: ${getSenderEmail()}`;
 
 /**
  * 9. Send Order Confirmed Email (Payment Verified)
+ * Sent when payment receipt is verified and order is confirmed.
  */
 export const sendOrderConfirmedEmail = async (order) => {
-  const customerEmail = order.customer?.email;
+  const customerEmail = resolveCustomerEmail(order);
   if (!customerEmail) return;
 
   const orderId = order.orderId || order._id;
-  const customerName = order.customer?.name || 'Valued Customer';
+  const customerName = resolveCustomerName(order);
   const total = Number(order.total) || 0;
 
   const subject = `Order Confirmed #${orderId} - Hijabs by Shiza`;
@@ -373,14 +414,44 @@ Customer Support: ${getSenderEmail()}`;
 };
 
 /**
- * 10. Send Order Shipped Email
+ * 10. Send Order Processing Email
+ * Sent when order preparation and packing begins.
  */
-export const sendOrderShippedEmail = async (order, trackingNumber = '', courier = '') => {
-  const customerEmail = order.customer?.email;
+export const sendOrderProcessingEmail = async (order) => {
+  const customerEmail = resolveCustomerEmail(order);
   if (!customerEmail) return;
 
   const orderId = order.orderId || order._id;
-  const customerName = order.customer?.name || 'Valued Customer';
+  const customerName = resolveCustomerName(order);
+
+  const subject = `Order Processing #${orderId} - Hijabs by Shiza`;
+
+  const text = `Hello ${customerName},
+
+Your order #${orderId} is now being processed and prepared for delivery.
+
+We will send you another update with courier tracking information as soon as your parcel has been dispatched.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
+    to: customerEmail,
+    subject,
+    text
+  }, { emailType: 'order-processing' });
+};
+
+/**
+ * 11. Send Order Shipped Email
+ * Sent when the package is dispatched with courier tracking information.
+ */
+export const sendOrderShippedEmail = async (order, trackingNumber = '', courier = '') => {
+  const customerEmail = resolveCustomerEmail(order);
+  if (!customerEmail) return;
+
+  const orderId = order.orderId || order._id;
+  const customerName = resolveCustomerName(order);
   const trackNum = trackingNumber || order.trackingNumber || 'Available shortly';
   const courierName = courier || order.courier || 'Standard Courier';
 
@@ -408,14 +479,46 @@ Customer Support: ${getSenderEmail()}`;
 };
 
 /**
- * 11. Send Order Delivered Email
+ * 12. Send Order Delivery Attempt / Remain Undelivered Email
+ * Sent when delivery attempt could not be completed on first try.
  */
-export const sendOrderDeliveredEmail = async (order) => {
-  const customerEmail = order.customer?.email;
+export const sendOrderRemainUndeliveredEmail = async (order, note = '') => {
+  const customerEmail = resolveCustomerEmail(order);
   if (!customerEmail) return;
 
   const orderId = order.orderId || order._id;
-  const customerName = order.customer?.name || 'Valued Customer';
+  const customerName = resolveCustomerName(order);
+  const deliveryNote = note || 'Delivery attempt could not be completed.';
+
+  const subject = `Delivery Update #${orderId} - Hijabs by Shiza`;
+
+  const text = `Hello ${customerName},
+
+Our courier partner was unable to deliver your package for order #${orderId}.
+Status Note: ${deliveryNote}
+
+Please ensure someone is reachable at your contact number and available at the delivery address for the next attempt. If you need to provide updated delivery instructions, please reply to this email or contact us at ${getSenderEmail()}.
+
+${SENDER_NAME}
+Customer Support: ${getSenderEmail()}`;
+
+  return sendMailWithRetry({
+    to: customerEmail,
+    subject,
+    text
+  }, { emailType: 'order-undelivered' });
+};
+
+/**
+ * 13. Send Order Delivered Email
+ * Sent when order is successfully delivered.
+ */
+export const sendOrderDeliveredEmail = async (order) => {
+  const customerEmail = resolveCustomerEmail(order);
+  if (!customerEmail) return;
+
+  const orderId = order.orderId || order._id;
+  const customerName = resolveCustomerName(order);
 
   const subject = `Order Delivered #${orderId} - Hijabs by Shiza`;
 
@@ -436,14 +539,15 @@ Customer Support: ${getSenderEmail()}`;
 };
 
 /**
- * 12. Send Order Cancelled Email
+ * 14. Send Order Cancelled Email
+ * Sent when order is cancelled or payment rejected.
  */
 export const sendOrderCancelledEmail = async (order, reason = '') => {
-  const customerEmail = order.customer?.email;
+  const customerEmail = resolveCustomerEmail(order);
   if (!customerEmail) return;
 
   const orderId = order.orderId || order._id;
-  const customerName = order.customer?.name || 'Valued Customer';
+  const customerName = resolveCustomerName(order);
   const cancelReason = reason || 'Order request could not be completed.';
 
   const subject = `Order Cancelled #${orderId} - Hijabs by Shiza`;

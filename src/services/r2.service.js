@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
 
@@ -76,6 +76,7 @@ class R2Service {
     const prefix = this.mapFolderToPrefix(folder);
     const ext = this.getFileExtension(file);
     const uniqueId = crypto.randomUUID();
+    const requestId = options.requestId || `req_${Date.now()}`;
     
     let key;
     if (options.subPath) {
@@ -89,7 +90,7 @@ class R2Service {
     const contentType = file.mimetype || 'application/octet-stream';
     const cacheControl = options.cacheControl || 'public, max-age=31536000, immutable';
 
-    console.log(`[R2] Upload started: ${key}`);
+    console.log(`[R2][UPLOAD_START] requestId=${requestId} key=${key} bucket=${bucketName} size=${file.buffer?.length || 0}`);
 
     try {
       const client = this.getClient();
@@ -104,7 +105,7 @@ class R2Service {
       await client.send(command);
 
       const finalUrl = `${publicUrl}/${key}`;
-      console.log(`[R2] Upload successful: ${key}`);
+      console.log(`[R2][UPLOAD_SUCCESS] requestId=${requestId} key=${key} url=${finalUrl}`);
 
       return {
         provider: 'r2',
@@ -112,7 +113,7 @@ class R2Service {
         url: finalUrl
       };
     } catch (error) {
-      console.error(`[R2] Upload failed: ${key} - ${error.message}`);
+      console.error(`[R2][UPLOAD_FAIL] requestId=${requestId} key=${key} error=${error.name || error.message}`);
       throw new Error(`R2 upload failed for key ${key}: ${error.message}`);
     }
   }
@@ -151,16 +152,19 @@ class R2Service {
   }
 
   /**
-   * Delete object from R2
+   * Delete object from R2 with structured diagnostics
    */
-  async deleteFile(imageOrKeyOrUrl) {
+  async deleteFile(imageOrKeyOrUrl, options = {}) {
     const key = this.extractKey(imageOrKeyOrUrl);
+    const requestId = options.requestId || `req_${Date.now()}`;
+    const productId = options.productId || 'unspecified';
+
     if (!key) {
-      console.warn(`[R2] Delete skipped: unable to derive key from ${JSON.stringify(imageOrKeyOrUrl)}`);
+      console.warn(`[R2][DELETE_SKIP] requestId=${requestId} productId=${productId} unable to derive key from identifier`);
       return false;
     }
 
-    console.log(`[R2] Delete started: ${key}`);
+    console.log(`[R2][DELETE_START] requestId=${requestId} productId=${productId} key=${key} bucket=${this.getBucketName()}`);
 
     try {
       const client = this.getClient();
@@ -169,11 +173,39 @@ class R2Service {
         Key: key
       });
       await client.send(command);
-      console.log(`[R2] Delete successful: ${key}`);
+      console.log(`[R2][DELETE_SUCCESS] requestId=${requestId} productId=${productId} key=${key}`);
       return true;
     } catch (error) {
-      console.error(`[R2] Delete failed: ${key} - ${error.message}`);
+      console.error(`[R2][DELETE_FAIL] requestId=${requestId} productId=${productId} key=${key} error=${error.name || error.message}`);
       throw new Error(`R2 deletion failed for key ${key}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify if an object exists in Cloudflare R2 using HeadObjectCommand
+   * without incurring full download/body costs.
+   */
+  async checkObjectExists(imageOrKeyOrUrl, options = {}) {
+    const key = this.extractKey(imageOrKeyOrUrl);
+    const requestId = options.requestId || `req_${Date.now()}`;
+    if (!key) return false;
+
+    try {
+      const client = this.getClient();
+      const command = new HeadObjectCommand({
+        Bucket: this.getBucketName(),
+        Key: key
+      });
+      await client.send(command);
+      console.log(`[R2][HEAD_EXISTS] requestId=${requestId} key=${key} status=200`);
+      return true;
+    } catch (error) {
+      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+        console.log(`[R2][HEAD_NOT_FOUND] requestId=${requestId} key=${key} status=404`);
+        return false;
+      }
+      console.warn(`[R2][HEAD_ERROR] requestId=${requestId} key=${key} error=${error.name || error.message}`);
+      throw error;
     }
   }
 }

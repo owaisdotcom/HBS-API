@@ -14,7 +14,9 @@ import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js'
 import {
   sendOrderReceivedEmail,
   sendOrderConfirmedEmail,
+  sendOrderProcessingEmail,
   sendOrderShippedEmail,
+  sendOrderRemainUndeliveredEmail,
   sendOrderDeliveredEmail,
   sendOrderCancelledEmail
 } from '../services/email.service.js';
@@ -537,13 +539,14 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
 
   // Create order
+  const normalizedCustomerEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
   const order = await Order.create({
     userId: req.user?.id || null,
     customer: {
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      alternatePhone: customer.alternatePhone || null,
+      name: (customer.name || '').trim(),
+      email: normalizedCustomerEmail,
+      phone: (customer.phone || '').trim(),
+      alternatePhone: customer.alternatePhone ? customer.alternatePhone.trim() : null,
       houseNumber: customer.houseNumber || null,
       streetNumber: customer.streetNumber || null,
       nearestLandmark: customer.nearestLandmark || null,
@@ -772,7 +775,7 @@ export const getOrder = asyncHandler(async (req, res, next) => {
   const { email } = req.query;
   const isAdmin = !!req.admin;
   const isOwnerUser = req.user && order.userId && order.userId.toString() === req.user.id;
-  const isGuestEmailMatch = email && order.customer?.email?.toLowerCase() === email.trim().toLowerCase();
+  const isGuestEmailMatch = email && (order.customer?.email || '').trim().toLowerCase() === email.trim().toLowerCase();
 
   if (!isAdmin && !isOwnerUser && !isGuestEmailMatch) {
     return next(new ApiError('Not authorized to access this order', 403));
@@ -872,8 +875,12 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   if (statusChanged || (targetStatus === 'shipped' && trackingNumberChanged)) {
     if (statusChanged && targetStatus === 'confirmed') {
       sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
+    } else if (statusChanged && targetStatus === 'processing') {
+      sendOrderProcessingEmail(order).catch(err => console.error('Failed to send order processing email:', err.message));
     } else if (targetStatus === 'shipped') {
       sendOrderShippedEmail(order, order.trackingNumber, order.courier).catch(err => console.error('Failed to send order shipped email:', err.message));
+    } else if (statusChanged && targetStatus === 'remain_undelivered') {
+      sendOrderRemainUndeliveredEmail(order, note).catch(err => console.error('Failed to send order remain undelivered email:', err.message));
     } else if (statusChanged && targetStatus === 'delivered') {
       sendOrderDeliveredEmail(order).catch(err => console.error('Failed to send order delivered email:', err.message));
     } else if (statusChanged && targetStatus === 'cancelled') {
