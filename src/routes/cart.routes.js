@@ -11,10 +11,13 @@ import { protect } from '../middleware/auth.middleware.js';
 import { body } from 'express-validator';
 import validate from '../middleware/validate.middleware.js';
 
+import { cartLimiter } from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
-// All cart routes require authentication
+// All cart routes require authentication and cart rate limiting
 router.use(protect);
+router.use(cartLimiter);
 
 router.get('/', getCart);
 router.post('/add', [

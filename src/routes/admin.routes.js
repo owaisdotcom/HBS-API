@@ -17,23 +17,30 @@ import homepageRoutes from './homepage.routes.js';
 import testimonialRoutes from './testimonial.routes.js';
 import errorLogRoutes from './error-log.routes.js';
 
+import {
+  authLimiter,
+  signupLimiter,
+  passwordResetLimiter,
+  adminLimiter
+} from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
 // Public routes
-router.post('/setup', setupSuperAdminValidator, validate, setupSuperAdmin);
-router.post('/login', adminLoginValidator, validate, adminLogin);
-router.post('/force-reset-password', forceResetAdminPassword);
+router.post('/setup', signupLimiter, setupSuperAdminValidator, validate, setupSuperAdmin);
+router.post('/login', authLimiter, adminLoginValidator, validate, adminLogin);
+router.post('/force-reset-password', passwordResetLimiter, forceResetAdminPassword);
 
 import { migrateCloudinaryToR2Admin } from '../controllers/upload.controller.js';
 
 // Protected routes (requires authentication)
 router.get('/profile', protectAdmin, getAdminProfile);
 router.put('/password', protectAdmin, changePasswordValidator, validate, changeAdminPassword);
-router.get('/dashboard/overview', protectAdmin, getDashboardOverview);
+router.get('/dashboard/overview', protectAdmin, adminLimiter, getDashboardOverview);
 // router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
 
 // Admin management (requires super_admin role - add middleware check if needed)
-router.post('/register', protectAdmin, createAdminValidator, validate, createAdmin);
+router.post('/register', protectAdmin, signupLimiter, createAdminValidator, validate, createAdmin);
 
 // User management routes
 router.use('/users', userRoutes);

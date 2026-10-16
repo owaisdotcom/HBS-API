@@ -21,11 +21,13 @@ import {
   getProductsValidator
 } from '../validators/product.validator.js';
 
+import { productSearchLimiter } from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
 // Public routes
-router.get('/', getProductsValidator, validate, getAllProducts);
-router.get('/search', (req, _res, next) => {
+router.get('/', productSearchLimiter, getProductsValidator, validate, getAllProducts);
+router.get('/search', productSearchLimiter, (req, _res, next) => {
   if (req.query.q && !req.query.search) {
     req.query.search = req.query.q;
   }
@@ -33,7 +35,7 @@ router.get('/search', (req, _res, next) => {
 }, getProductsValidator, validate, getAllProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/new-arrivals', getNewArrivals);
-router.get('/check-availability', checkProductAvailability);
+router.get('/check-availability', productSearchLimiter, checkProductAvailability);
 router.get('/:id', optionalAuth, getProduct);
 router.get('/:id/related', getRelatedProducts);
 

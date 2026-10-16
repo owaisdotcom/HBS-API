@@ -222,6 +222,8 @@ productSchema.index({ tags: 1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ isDeleted: 1 });
 productSchema.index({ isDeleted: 1, status: 1, categories: 1, createdAt: -1 });
+productSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });
+productSchema.index({ isDeleted: 1, status: 1, price: 1 });
 productSchema.index({ isDeleted: 1, status: 1, isFeatured: 1, createdAt: -1 });
 productSchema.index({ isDeleted: 1, status: 1, isNewArrival: 1, publishedAt: -1 });
 // Indexes for variants

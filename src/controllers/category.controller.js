@@ -27,29 +27,32 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 
   // Get product counts for all categories
   const categoryIds = categories.map(cat => cat._id);
-  // Count products per category by combining product.categories and product.categoryPath
+  // Count products per category with indexed $match as stage 1 to avoid scanning whole collection
   const productCounts = await Product.aggregate([
     {
-      $project: {
-        categories: { $ifNull: ['$categories', []] },
-        categoryPath: { $ifNull: ['$categoryPath', []] },
-        status: 1,
-        isDeleted: 1
+      $match: {
+        status: 'active',
+        isDeleted: { $ne: true },
+        $or: [
+          { categories: { $in: categoryIds } },
+          { categoryPath: { $in: categoryIds } }
+        ]
       }
     },
     {
       $project: {
-        matchCats: { $setUnion: ['$categories', '$categoryPath'] },
-        status: 1,
-        isDeleted: 1
+        matchCats: {
+          $setUnion: [
+            { $ifNull: ['$categories', []] },
+            { $ifNull: ['$categoryPath', []] }
+          ]
+        }
       }
     },
     { $unwind: '$matchCats' },
     {
       $match: {
-        matchCats: { $in: categoryIds },
-        status: 'active',
-        isDeleted: { $ne: true }
+        matchCats: { $in: categoryIds }
       }
     },
     {

@@ -140,9 +140,14 @@ app.get('/api', (req, res) => {
 // Import routes
 import routes from './routes/index.js';
 import { getSitemap } from './controllers/seo.controller.js';
+import { generalLimiter } from './middleware/rateLimiter.middleware.js';
 
 app.get('/sitemap.xml', getSitemap);
 app.get('/api/sitemap.xml', getSitemap);
+
+// Global distributed rate limiting on /api endpoints
+app.use('/api', generalLimiter);
+
 app.use('/api', routes);
 
 // 404 handler

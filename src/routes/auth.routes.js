@@ -30,22 +30,29 @@ import {
   savedCheckoutDetailsValidator
 } from '../validators/auth.validator.js';
 
+import {
+  authLimiter,
+  signupLimiter,
+  otpLimiter,
+  passwordResetLimiter
+} from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
 // Public routes
-router.post('/signup', signupValidator, validate, signup);
-router.post('/login', loginValidator, validate, login);
-router.post('/verify-otp', verifyOTP);
-router.post('/resend-otp', resendOTP);
-router.post('/guest-send-otp', sendGuestOTP);
-router.post('/guest-verify-otp', verifyGuestOTP);
-router.get('/verify-email/:token', verifyEmail);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password/:token', resetPassword);
+router.post('/signup', signupLimiter, signupValidator, validate, signup);
+router.post('/login', authLimiter, loginValidator, validate, login);
+router.post('/verify-otp', otpLimiter, verifyOTP);
+router.post('/resend-otp', otpLimiter, resendOTP);
+router.post('/guest-send-otp', otpLimiter, sendGuestOTP);
+router.post('/guest-verify-otp', otpLimiter, verifyGuestOTP);
+router.get('/verify-email/:token', otpLimiter, verifyEmail);
+router.post('/forgot-password', passwordResetLimiter, forgotPassword);
+router.post('/reset-password/:token', passwordResetLimiter, resetPassword);
 
 // Protected routes
 router.get('/me', protect, getMe);
-router.post('/resend-verification', protect, resendVerification);
+router.post('/resend-verification', protect, otpLimiter, resendVerification);
 router.put('/profile', protect, updateProfileValidator, validate, updateProfile);
 router.put('/password', protect, changePasswordValidator, validate, changePassword);
 

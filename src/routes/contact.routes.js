@@ -10,10 +10,12 @@ import { protectAdmin } from '../middleware/admin.middleware.js';
 import { body } from 'express-validator';
 import validate from '../middleware/validate.middleware.js';
 
+import { contactLimiter } from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
 // Public route
-router.post('/', [
+router.post('/', contactLimiter, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').trim().isEmail().withMessage('Valid email is required'),
   body('message').trim().notEmpty().withMessage('Message is required')

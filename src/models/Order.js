@@ -193,8 +193,16 @@ orderSchema.pre('validate', async function() {
     
     // Generate sequential number for today (starting from 1)
     const sequentialNumber = String(todayOrderCount + 1).padStart(4, '0');
-    
-    this.orderId = `HBS-${datePrefix}${sequentialNumber}`;
+    let candidateId = `HBS-${datePrefix}${sequentialNumber}`;
+
+    // Concurrency guard: verify candidate uniqueness before assigning
+    const collision = await this.constructor.exists({ orderId: candidateId });
+    if (collision) {
+      const randSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      candidateId = `HBS-${datePrefix}${sequentialNumber}-${randSuffix}`;
+    }
+
+    this.orderId = candidateId;
   }
 });
 
@@ -216,7 +224,6 @@ orderSchema.pre('save', async function() {
 });
 
 // Indexes
-orderSchema.index({ orderId: 1 }, { unique: true });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });

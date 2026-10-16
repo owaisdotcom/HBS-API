@@ -53,15 +53,51 @@ export const proxyImage = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Invalid URL format', 400));
   }
 
+  const hostname = parsedUrl.hostname.toLowerCase();
+
+  // Block private and internal network SSRF attempts
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('172.16.') ||
+    hostname.startsWith('169.254.')
+  ) {
+    return next(new ApiError('Access to private network addresses is forbidden', 403));
+  }
+
+  // Restrict to trusted media hostnames (Cloudinary, Cloudflare R2, HBS domain)
+  const isAllowedHost =
+    hostname.endsWith('cloudinary.com') ||
+    hostname.endsWith('hijabsbyshiza.com') ||
+    hostname.endsWith('r2.cloudflarestorage.com') ||
+    hostname.endsWith('amazonaws.com') ||
+    (process.env.R2_PUBLIC_URL && hostname === new URL(process.env.R2_PUBLIC_URL).hostname.toLowerCase());
+
+  if (!isAllowedHost) {
+    return next(new ApiError('Remote domain is not authorized for proxying', 403));
+  }
+
   try {
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       return next(new ApiError('Failed to fetch remote image', response.status));
     }
 
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return next(new ApiError('Remote resource is not an image', 400));
+    }
+
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
     const arrayBuffer = await response.arrayBuffer();

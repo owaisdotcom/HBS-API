@@ -19,12 +19,13 @@ import preMadeBundleRoutes from './preMadeBundle.routes.js';
 
 import { uploadSingleImage, proxyImage } from '../controllers/upload.controller.js';
 import { noCache, staticCache } from '../middleware/cache.middleware.js';
+import { productSearchLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
-// Public Image Proxy (CORS-friendly image fetching for canvas cropper)
-router.get('/proxy-image', proxyImage);
-router.get('/upload/proxy-image', proxyImage);
+// Public Image Proxy (CORS-friendly image fetching for canvas cropper, rate-limited)
+router.get('/proxy-image', productSearchLimiter, proxyImage);
+router.get('/upload/proxy-image', productSearchLimiter, proxyImage);
 
 // Stock-sensitive routes (Always get fresh data, no stale stock cache)
 router.use('/products', noCache, productRoutes);

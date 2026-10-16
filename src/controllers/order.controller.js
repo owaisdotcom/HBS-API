@@ -10,6 +10,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import { syncCheckoutDetailsWithUser } from './auth.controller.js';
 import cacheService from '../services/cache.service.js';
+import rateLimiterService from '../services/rateLimiter.service.js';
 import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
 import {
   sendOrderReceivedEmail,
@@ -248,28 +249,47 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Payment receipt is required', 400));
   }
 
-  // Guest checkout email verification check
+  // Acquire distributed submission lock to safeguard against duplicate order submissions
+  const normalizedEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
+  const idempotencyKey = req.headers['x-idempotency-key'] ||
+    req.body.idempotencyKey ||
+    (req.user ? `user_${req.user.id || req.user._id}` : `guest_${guestVerificationToken || normalizedEmail}`);
+  const lockKey = `order_checkout_${idempotencyKey}`;
+  const lockAcquired = await rateLimiterService.acquireLock(lockKey, 30);
+  if (!lockAcquired) {
+    return next(new ApiError('An order placement is already in progress for this request. Please wait a moment.', 409));
+  }
+
+  // Guest checkout email verification check (atomic check-and-set to prevent race conditions)
   let guestVerificationDoc = null;
   if (!req.user) {
     if (!customer?.email) {
+      await rateLimiterService.releaseLock(lockKey);
       return next(new ApiError('Customer email is required', 400));
     }
 
     const normalizedGuestEmail = customer.email.toLowerCase().trim();
 
     if (!guestVerificationToken) {
+      await rateLimiterService.releaseLock(lockKey);
       return next(new ApiError('Email verification required for guest checkout. Please verify your email before placing the order.', 400));
     }
 
-    guestVerificationDoc = await GuestVerification.findOne({
-      email: normalizedGuestEmail,
-      verificationToken: guestVerificationToken,
-      isVerified: true,
-      isUsed: false,
-      verificationTokenExpire: { $gt: new Date() }
-    });
+    // Atomic findOneAndUpdate claims token immediately
+    guestVerificationDoc = await GuestVerification.findOneAndUpdate(
+      {
+        email: normalizedGuestEmail,
+        verificationToken: guestVerificationToken,
+        isVerified: true,
+        isUsed: false,
+        verificationTokenExpire: { $gt: new Date() }
+      },
+      { $set: { isUsed: true, usedAt: new Date() } },
+      { new: true }
+    );
 
     if (!guestVerificationDoc) {
+      await rateLimiterService.releaseLock(lockKey);
       return next(new ApiError('Invalid or expired email verification code. Please verify your email again.', 400));
     }
   }
@@ -608,13 +628,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
   order.stockDeducted = true;
 
-  // Mark guest verification token as used to prevent duplicate order placement
-  if (guestVerificationDoc) {
-    await GuestVerification.updateOne(
-      { _id: guestVerificationDoc._id },
-      { $set: { isUsed: true } }
-    );
-  }
+  // Release submission lock
+  await rateLimiterService.releaseLock(lockKey);
 
   // If registered user opted to save/update checkout details, persist them
   if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {

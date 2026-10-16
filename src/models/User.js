@@ -160,7 +160,6 @@ userSchema.pre('save', async function() {
 });
 
 // Indexes
-userSchema.index({ email: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ createdAt: -1 });
 

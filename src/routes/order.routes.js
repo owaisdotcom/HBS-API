@@ -38,11 +38,13 @@ const parseOrderBody = (req, _res, next) => {
   next();
 };
 
+import { checkoutLimiter } from '../middleware/rateLimiter.middleware.js';
+
 // Public/User routes
-router.post('/', optionalAuth, uploadReceiptSingle, parseOrderBody, createOrderValidator, validate, createOrder);
+router.post('/', checkoutLimiter, optionalAuth, uploadReceiptSingle, parseOrderBody, createOrderValidator, validate, createOrder);
 router.get('/', protect, getOrders);
 router.get('/:id', optionalAuth, getOrder);
-router.post('/:id/receipt', uploadReceiptSingle, uploadReceipt);
+router.post('/:id/receipt', checkoutLimiter, uploadReceiptSingle, uploadReceipt);
 router.put('/:id/cancel', protect, cancelOrder);
 
 export default router;

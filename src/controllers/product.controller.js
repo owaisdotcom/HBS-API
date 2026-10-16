@@ -148,18 +148,26 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     query.stock = { $gt: 0 };
   }
 
-  // Text search (partial match)
-  if (search) {
-    const searchRegex = new RegExp(search, 'i');
-    query.$or = [
-      { name: searchRegex },
-      { slug: searchRegex },
-      { sku: searchRegex },
-      { description: searchRegex }
-    ];
+  // Bounded pagination: protect against unbounded limit queries causing CPU/memory spikes
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.min(Math.max(1, parseInt(limit, 10) || 20), 100);
+
+  // Text search (safe sanitized regex preventing ReDoS)
+  if (search && typeof search === 'string') {
+    const trimmed = search.trim().slice(0, 80);
+    if (trimmed) {
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escaped, 'i');
+      query.$or = [
+        { name: searchRegex },
+        { slug: searchRegex },
+        { sku: searchRegex },
+        { description: searchRegex }
+      ];
+    }
   }
 
-  const skip = (page - 1) * limit;
+  const skip = (safePage - 1) * safeLimit;
 
   let sortOption = sort;
   if (req.query.sortBy) {
@@ -170,7 +178,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   const products = await Product.find(query)
     .sort(sortOption)
     .skip(skip)
-    .limit(Number(limit))
+    .limit(safeLimit)
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
