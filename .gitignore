@@ -40,3 +40,6 @@ temp/
 .vercel
 .wrangler
 .env*
+
+.vercel
+.env*
