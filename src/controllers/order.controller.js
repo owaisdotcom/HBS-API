@@ -232,6 +232,35 @@ const computeOrderTotalWeight = async (order, productMap = null, bundleMap = nul
   return Math.round(total * 1000) / 1000;
 };
 
+export const DELIVERY_OPTIONS = {
+  tcs_express: {
+    id: 'tcs_express',
+    name: 'TCS Express Delivery',
+    shortName: 'TCS Express',
+    courier: 'TCS Express',
+    fee: 500,
+    estimatedDeliveryTime: '2 to 3 working days',
+    isDefault: false
+  },
+  other_couriers: {
+    id: 'other_couriers',
+    name: 'Other Couriers (Trax, PostEx, etc.)',
+    shortName: 'Other Couriers',
+    courier: 'Other Couriers (Trax, PostEx, etc.)',
+    fee: 300,
+    estimatedDeliveryTime: '4 to 7 working days',
+    isDefault: true
+  }
+};
+
+export const resolveDeliveryOption = (optionKey) => {
+  const normalizedKey = (optionKey || '').trim().toLowerCase();
+  if (normalizedKey === 'tcs_express' || normalizedKey === 'tcs' || normalizedKey === 'tcs express') {
+    return DELIVERY_OPTIONS.tcs_express;
+  }
+  return DELIVERY_OPTIONS.other_couriers;
+};
+
 // @route   POST /api/orders
 // @desc    Create new order
 // @access  Public/Private
@@ -242,11 +271,26 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     couponCode,
     paymentMethod,
     customerNotes,
-    guestVerificationToken
+    guestVerificationToken,
+    deliveryOption
   } = req.body;
 
   if (!req.file) {
     return next(new ApiError('Payment receipt is required', 400));
+  }
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return next(new ApiError('Order must contain at least one item', 400));
+  }
+
+  // Pre-validate guest required fields before lock acquisition
+  if (!req.user) {
+    if (!customer?.email) {
+      return next(new ApiError('Customer email is required', 400));
+    }
+    if (!guestVerificationToken) {
+      return next(new ApiError('Email verification required for guest checkout. Please verify your email before placing the order.', 400));
+    }
   }
 
   // Acquire distributed submission lock to safeguard against duplicate order submissions
@@ -260,39 +304,31 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('An order placement is already in progress for this request. Please wait a moment.', 409));
   }
 
-  // Guest checkout email verification check (atomic check-and-set to prevent race conditions)
   let guestVerificationDoc = null;
-  if (!req.user) {
-    if (!customer?.email) {
-      await rateLimiterService.releaseLock(lockKey);
-      return next(new ApiError('Customer email is required', 400));
+  let orderCreatedSuccessfully = false;
+
+  try {
+    // Guest checkout email verification check (atomic check-and-set to prevent race conditions)
+    if (!req.user) {
+      const normalizedGuestEmail = customer.email.toLowerCase().trim();
+
+      // Atomic findOneAndUpdate claims token immediately
+      guestVerificationDoc = await GuestVerification.findOneAndUpdate(
+        {
+          email: normalizedGuestEmail,
+          verificationToken: guestVerificationToken,
+          isVerified: true,
+          isUsed: false,
+          verificationTokenExpire: { $gt: new Date() }
+        },
+        { $set: { isUsed: true, usedAt: new Date() } },
+        { new: true }
+      );
+
+      if (!guestVerificationDoc) {
+        return next(new ApiError('Invalid or expired email verification code. Please verify your email again.', 400));
+      }
     }
-
-    const normalizedGuestEmail = customer.email.toLowerCase().trim();
-
-    if (!guestVerificationToken) {
-      await rateLimiterService.releaseLock(lockKey);
-      return next(new ApiError('Email verification required for guest checkout. Please verify your email before placing the order.', 400));
-    }
-
-    // Atomic findOneAndUpdate claims token immediately
-    guestVerificationDoc = await GuestVerification.findOneAndUpdate(
-      {
-        email: normalizedGuestEmail,
-        verificationToken: guestVerificationToken,
-        isVerified: true,
-        isUsed: false,
-        verificationTokenExpire: { $gt: new Date() }
-      },
-      { $set: { isUsed: true, usedAt: new Date() } },
-      { new: true }
-    );
-
-    if (!guestVerificationDoc) {
-      await rateLimiterService.releaseLock(lockKey);
-      return next(new ApiError('Invalid or expired email verification code. Please verify your email again.', 400));
-    }
-  }
 
   // Validate and calculate totals
   let subtotal = 0;
@@ -545,8 +581,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     discount = couponDiscount;
   }
 
-  // Calculate shipping (Rs. 300 standard shipping)
-  const shipping = 300;
+  // Calculate delivery fee based on selected option (never trust frontend amount)
+  const selectedDelivery = resolveDeliveryOption(deliveryOption);
+  const shipping = selectedDelivery.fee;
 
   // Calculate total
   const total = subtotal - discount + shipping;
@@ -582,7 +619,12 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     subtotal,
     discount,
     shipping,
+    deliveryFee: shipping,
     total,
+    deliveryOption: selectedDelivery.id,
+    deliveryOptionName: selectedDelivery.name,
+    estimatedDeliveryTime: selectedDelivery.estimatedDeliveryTime,
+    courier: selectedDelivery.courier,
     couponCode: couponCode?.toUpperCase(),
     couponDiscount,
     paymentMethod: paymentMethod || 'bank_transfer',
@@ -628,9 +670,6 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
   order.stockDeducted = true;
 
-  // Release submission lock
-  await rateLimiterService.releaseLock(lockKey);
-
   // If registered user opted to save/update checkout details, persist them
   if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {
     try {
@@ -650,18 +689,41 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     console.error('Failed to send order received email:', err.message)
   );
 
+  orderCreatedSuccessfully = true;
+
   res.status(201).json(
     new ApiResponse(201, { order }, 'Order created successfully')
   );
+} finally {
+  // If order was not created successfully, revert guest verification token consumption so customer can retry
+  if (!orderCreatedSuccessfully && guestVerificationDoc?._id) {
+    await GuestVerification.updateOne(
+      { _id: guestVerificationDoc._id },
+      { $set: { isUsed: false, usedAt: null } }
+    ).catch(() => {});
+  }
+
+  // Always release the distributed submission lock so subsequent requests are not blocked
+  await rateLimiterService.releaseLock(lockKey).catch((err) => {
+    console.error(`Failed to release order lock ${lockKey}:`, err.message);
+  });
+}
 });
 
-/** Helper: normalize shipping charge to Rs. 300 for existing/legacy orders */
+/** Helper: normalize shipping charge for existing/legacy orders */
 const normalizeOrderShipping = (orderObj) => {
   if (!orderObj) return orderObj;
   const sub = Number(orderObj.subtotal) || 0;
   const disc = Number(orderObj.discount) || 0;
-  orderObj.shipping = 300;
-  orderObj.total = Math.max(0, sub - disc + 300);
+  const shipping = (typeof orderObj.shipping === 'number' && !isNaN(orderObj.shipping))
+    ? orderObj.shipping
+    : (typeof orderObj.deliveryFee === 'number' && !isNaN(orderObj.deliveryFee)
+      ? orderObj.deliveryFee
+      : 300);
+  orderObj.shipping = shipping;
+  if (orderObj.total == null || isNaN(orderObj.total)) {
+    orderObj.total = Math.max(0, sub - disc + shipping);
+  }
   return orderObj;
 };
 

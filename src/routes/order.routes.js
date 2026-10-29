@@ -32,6 +32,12 @@ const parseOrderBody = (req, _res, next) => {
     if (!req.body.guestVerificationToken && req.headers['x-guest-verification-token']) {
       req.body.guestVerificationToken = req.headers['x-guest-verification-token'];
     }
+    if (!req.body.idempotencyKey && req.headers['x-idempotency-key']) {
+      req.body.idempotencyKey = req.headers['x-idempotency-key'];
+    }
+    if (!req.body.deliveryOption && req.headers['x-delivery-option']) {
+      req.body.deliveryOption = req.headers['x-delivery-option'];
+    }
   } catch (error) {
     // Let validator handle invalid payload
   }

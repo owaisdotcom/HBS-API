@@ -86,7 +86,13 @@ export const createOrderValidator = [
   body('paymentMethod')
     .optional()
     .isIn(['bank_transfer', 'cod', 'card'])
-    .withMessage('Invalid payment method')
+    .withMessage('Invalid payment method'),
+
+  body('deliveryOption')
+    .optional({ values: 'null' })
+    .trim()
+    .isIn(['tcs_express', 'other_couriers', 'standard', 'tcs', ''])
+    .withMessage('Invalid delivery option')
 ];
 
 export const updateOrderStatusValidator = [

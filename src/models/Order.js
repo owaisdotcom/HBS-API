@@ -90,6 +90,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
   tax: {
     type: Number,
     default: 0
@@ -146,10 +150,13 @@ const orderSchema = new mongoose.Schema({
     }
   }],
   
-  // Tracking
+  // Tracking & Delivery
   trackingNumber: String,
   courier: String,
-  estimatedDelivery: Date,
+  estimatedDelivery: mongoose.Schema.Types.Mixed,
+  estimatedDeliveryTime: String,
+  deliveryOption: String,
+  deliveryOptionName: String,
   
   // Notes
   customerNotes: String,

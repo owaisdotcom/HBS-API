@@ -364,11 +364,13 @@ Order Summary:
 ${renderOrderItemsText(order.items)}
 
 Subtotal: Rs. ${subtotal.toLocaleString()}
-${discount > 0 ? `Discount: -Rs. ${discount.toLocaleString()}\n` : ''}Shipping: ${shipping === 0 ? 'Free' : `Rs. ${shipping.toLocaleString()}`}
+${discount > 0 ? `Discount: -Rs. ${discount.toLocaleString()}\n` : ''}Shipping (${order.deliveryOptionName || order.courier || 'Delivery'}): ${shipping === 0 ? 'Free' : `Rs. ${shipping.toLocaleString()}`}
 Total Amount: Rs. ${total.toLocaleString()}
 
-Delivery Address:
-${address ? `${address}, ` : ''}${city}
+Delivery Details:
+Courier Service: ${order.deliveryOptionName || order.courier || 'Standard Courier'}
+Estimated Delivery: ${order.estimatedDeliveryTime || '3 to 6 working days'}
+Address: ${address ? `${address}, ` : ''}${city}
 Contact: ${phone}
 
 We will notify you once your payment is verified and your package is dispatched.
