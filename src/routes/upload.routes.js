@@ -1,5 +1,5 @@
 import express from 'express';
-import { uploadSingleImage, migrateCloudinaryToR2Admin, proxyImage } from '../controllers/upload.controller.js';
+import { uploadSingleImage, migrateCloudinaryToR2Admin, migrateImageUrlsToR2Admin, proxyImage } from '../controllers/upload.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import { uploadSingle } from '../middleware/upload.middleware.js';
 
@@ -12,6 +12,9 @@ router.get('/proxy-image', proxyImage);
 router.post('/image', protectAdmin, uploadSingle, uploadSingleImage);
 
 // Admin only - Trigger Cloudinary to R2 Database Migration
-// router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
+router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
+
+// Admin only - Trigger Dual R2 Image URLs Migration
+router.post('/migrate-image-urls-to-r2', protectAdmin, migrateImageUrlsToR2Admin);
 
 export default router;

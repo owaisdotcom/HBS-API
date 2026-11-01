@@ -5,6 +5,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 // @route   GET /api/reviews/product/:productId
 // @desc    Get reviews for a product
@@ -19,7 +20,7 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
   }
 
   const query = { productId };
-  
+
   // Admin can see all reviews, public only sees approved
   if (!req.admin) {
     query.status = 'approved';
@@ -110,8 +111,17 @@ export const createReview = asyncHandler(async (req, res, next) => {
 
   // Handle image uploads
   let images = [];
+  let r2Images = [];
   if (req.files && req.files.length > 0) {
-    images = await uploadService.uploadMultiple(req.files, 'hbs-reviews');
+    const uploadRes = await uploadService.uploadMultiple(req.files, 'hbs-reviews');
+    images = uploadRes.map(item => {
+      const raw = typeof item === 'string' ? item : item.url;
+      return resolveImageUrl(raw) || raw;
+    });
+    r2Images = uploadRes.map(item => {
+      const raw = typeof item === 'object' && item.r2Url ? item.r2Url : (typeof item === 'string' ? item : item.url);
+      return resolveImageUrl(raw) || raw;
+    });
   }
 
   // Create review
@@ -123,6 +133,7 @@ export const createReview = asyncHandler(async (req, res, next) => {
     title,
     comment,
     images,
+    r2Images,
     isVerifiedPurchase
   });
 

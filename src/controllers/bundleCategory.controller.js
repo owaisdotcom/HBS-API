@@ -6,6 +6,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
 
 const resolveBundleCategory = async (id) => {
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -75,15 +76,21 @@ export const createBundleCategory = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Slug already exists', 400));
   }
   let thumbnail = null;
+  let thumbnailR2Url = null;
   let coverImage = null;
+  let coverImageR2Url = null;
   if (req.files) {
     if (req.files.thumbnail?.[0]) {
       const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
-      thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      const rawThumb = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      thumbnail = resolveImageUrl(rawThumb) || rawThumb;
+      thumbnailR2Url = typeof resThumb === 'object' && resThumb?.r2Url ? (resolveImageUrl(resThumb.r2Url) || resThumb.r2Url) : thumbnail;
     }
     if (req.files.coverImage?.[0]) {
       const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
-      coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
+      const rawCover = typeof resCover === 'string' ? resCover : resCover?.url;
+      coverImage = resolveImageUrl(rawCover) || rawCover;
+      coverImageR2Url = typeof resCover === 'object' && resCover?.r2Url ? (resolveImageUrl(resCover.r2Url) || resCover.r2Url) : coverImage;
     }
   }
   const finalSlug = (slug || name?.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')) || 'bundle-category';
@@ -92,7 +99,9 @@ export const createBundleCategory = asyncHandler(async (req, res, next) => {
     slug: finalSlug,
     description,
     thumbnail,
+    thumbnailR2Url,
     coverImage,
+    coverImageR2Url,
     displayOrder: displayOrder != null ? Number(displayOrder) : 0,
     status: status || 'active'
   });
@@ -111,11 +120,15 @@ export const updateBundleCategory = asyncHandler(async (req, res, next) => {
   }
   if (req.files?.thumbnail?.[0]) {
     const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-bundle-categories');
-    category.thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+    const rawThumb = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+    category.thumbnail = resolveImageUrl(rawThumb) || rawThumb;
+    category.thumbnailR2Url = typeof resThumb === 'object' && resThumb?.r2Url ? (resolveImageUrl(resThumb.r2Url) || resThumb.r2Url) : category.thumbnail;
   }
   if (req.files?.coverImage?.[0]) {
     const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-bundle-categories');
-    category.coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
+    const rawCover = typeof resCover === 'string' ? resCover : resCover?.url;
+    category.coverImage = resolveImageUrl(rawCover) || rawCover;
+    category.coverImageR2Url = typeof resCover === 'object' && resCover?.r2Url ? (resolveImageUrl(resCover.r2Url) || resCover.r2Url) : category.coverImage;
   }
   const { name, slug, description, displayOrder, status } = req.body;
   if (name !== undefined) category.name = name;

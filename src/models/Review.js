@@ -34,6 +34,7 @@ const reviewSchema = new mongoose.Schema({
   
   // Media
   images: [String],
+  r2Images: [String],
   
   // Status
   status: {

@@ -38,6 +38,7 @@ const productSchema = new mongoose.Schema({
     provider: { type: String, enum: ['cloudinary', 'r2'] },
     key: String,
     url: String,
+    r2Url: String,
     publicId: String,
     alt: String,
     isPrimary: {
@@ -59,6 +60,7 @@ const productSchema = new mongoose.Schema({
       provider: { type: String, enum: ['cloudinary', 'r2'] },
       key: String,
       url: String,
+      r2Url: String,
       publicId: String,
       alt: String,
       isPrimary: { type: Boolean, default: false },
@@ -92,6 +94,7 @@ const productSchema = new mongoose.Schema({
         bridalStock: { type: Number, min: [0, 'Bridal stock cannot be negative'], default: 0 },
         // Optional per-size size chart image URL
         sizeChartUrl: { type: String },
+        sizeChartR2Url: { type: String },
       weight: Number,
       isActive: { type: Boolean, default: true }
     }],

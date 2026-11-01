@@ -4,10 +4,15 @@ const heroSliderSchema = new mongoose.Schema({
   slides: [{
     // Image - support both simple URL and responsive images
     imageUrl: String, // Simple single URL (primary)
+    imageUrlR2Url: String,
+    r2Url: String,
     image: {
       desktop: String,
+      desktopR2Url: String,
       tablet: String,
+      tabletR2Url: String,
       mobile: String,
+      mobileR2Url: String,
       alt: String
     },
     

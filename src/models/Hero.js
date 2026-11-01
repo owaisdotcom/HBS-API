@@ -5,6 +5,14 @@ const heroSchema = new mongoose.Schema({
     type: String,
     default: '/hero.png'
   },
+  imageUrlR2Url: {
+    type: String,
+    default: null
+  },
+  r2Url: {
+    type: String,
+    default: null
+  },
   title: {
     type: String,
     default: 'Modesty that reveals your dignity. Style that feels like you.'

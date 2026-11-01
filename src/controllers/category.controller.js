@@ -5,6 +5,7 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import cacheService from '../services/cache.service.js';
+import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
 
 // @route   GET /api/categories
 // @desc    Get all categories (with hierarchy)
@@ -305,16 +306,22 @@ export const createCategory = asyncHandler(async (req, res, next) => {
 
   // Handle image uploads
   let thumbnail = null;
+  let thumbnailR2Url = null;
   let coverImage = null;
-  
+  let coverImageR2Url = null;
+
   if (req.files) {
     if (req.files.thumbnail && req.files.thumbnail[0]) {
       const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
-      thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      const rawThumb = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      thumbnail = resolveImageUrl(rawThumb) || rawThumb;
+      thumbnailR2Url = typeof resThumb === 'object' && resThumb?.r2Url ? (resolveImageUrl(resThumb.r2Url) || resThumb.r2Url) : thumbnail;
     }
     if (req.files.coverImage && req.files.coverImage[0]) {
       const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
-      coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
+      const rawCover = typeof resCover === 'string' ? resCover : resCover?.url;
+      coverImage = resolveImageUrl(rawCover) || rawCover;
+      coverImageR2Url = typeof resCover === 'object' && resCover?.r2Url ? (resolveImageUrl(resCover.r2Url) || resCover.r2Url) : coverImage;
     }
   }
 
@@ -325,7 +332,9 @@ export const createCategory = asyncHandler(async (req, res, next) => {
     description,
     parentId: parentId || null,
     thumbnail,
+    thumbnailR2Url,
     coverImage,
+    coverImageR2Url,
     displayOrder,
     status: status || 'active',
     metaTitle,
@@ -353,12 +362,24 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
   if (req.files) {
     if (req.files.thumbnail && req.files.thumbnail[0]) {
       const resThumb = await uploadService.uploadSingle(req.files.thumbnail[0], 'hbs-categories');
-      req.body.thumbnail = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      const rawThumb = typeof resThumb === 'string' ? resThumb : resThumb?.url;
+      req.body.thumbnail = resolveImageUrl(rawThumb) || rawThumb;
+      req.body.thumbnailR2Url = typeof resThumb === 'object' && resThumb?.r2Url ? (resolveImageUrl(resThumb.r2Url) || resThumb.r2Url) : req.body.thumbnail;
     }
     if (req.files.coverImage && req.files.coverImage[0]) {
       const resCover = await uploadService.uploadSingle(req.files.coverImage[0], 'hbs-categories');
-      req.body.coverImage = typeof resCover === 'string' ? resCover : resCover?.url;
+      const rawCover = typeof resCover === 'string' ? resCover : resCover?.url;
+      req.body.coverImage = resolveImageUrl(rawCover) || rawCover;
+      req.body.coverImageR2Url = typeof resCover === 'object' && resCover?.r2Url ? (resolveImageUrl(resCover.r2Url) || resCover.r2Url) : req.body.coverImage;
     }
+  }
+  if (req.body.thumbnail && typeof req.body.thumbnail === 'string') {
+    req.body.thumbnail = resolveImageUrl(req.body.thumbnail) || req.body.thumbnail;
+    req.body.thumbnailR2Url = req.body.thumbnail;
+  }
+  if (req.body.coverImage && typeof req.body.coverImage === 'string') {
+    req.body.coverImage = resolveImageUrl(req.body.coverImage) || req.body.coverImage;
+    req.body.coverImageR2Url = req.body.coverImage;
   }
 
   // Check if slug is being changed and if it already exists (excluding soft-deleted)
@@ -395,21 +416,21 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
   }
 
   // Check if category has active subcategories
-  const subcategories = await Category.countDocuments({ 
-    parentId: id, 
-    isDeleted: { $ne: true } 
+  const subcategories = await Category.countDocuments({
+    parentId: id,
+    isDeleted: { $ne: true }
   });
   if (subcategories > 0) {
     return next(new ApiError('Cannot delete category with subcategories', 400));
   }
 
   // Check if category has active products (consider products linked to categories or categoryPath)
-  const products = await Product.countDocuments({ 
+  const products = await Product.countDocuments({
     $or: [
       { categories: id },
       { categoryPath: id }
     ],
-    isDeleted: { $ne: true } 
+    isDeleted: { $ne: true }
   });
   if (products > 0) {
     return next(new ApiError('Cannot delete category with products', 400));

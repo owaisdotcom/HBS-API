@@ -17,7 +17,15 @@ const bundleCategorySchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  thumbnailR2Url: {
+    type: String,
+    default: null
+  },
   coverImage: {
+    type: String,
+    default: null
+  },
+  coverImageR2Url: {
     type: String,
     default: null
   },

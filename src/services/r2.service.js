@@ -1,6 +1,7 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
+import { getR2PublicUrl, extractImageKey, resolveImageUrl } from '../utils/imageUrl.js';
 
 class R2Service {
   constructor() {
@@ -37,8 +38,11 @@ class R2Service {
   }
 
   getPublicUrl() {
-    const rawUrl = process.env.R2_PUBLIC_URL || 'https://images.hijabsbyshiza.com';
-    return rawUrl.replace(/\/+$/, '');
+    return getR2PublicUrl();
+  }
+
+  getR2DevUrl() {
+    return getR2PublicUrl();
   }
 
   /**
@@ -56,7 +60,7 @@ class R2Service {
       const ext = path.extname(file.originalname).toLowerCase();
       if (ext) return ext;
     }
-    
+
     const mimeMap = {
       'image/jpeg': '.jpg',
       'image/jpg': '.jpg',
@@ -77,7 +81,7 @@ class R2Service {
     const ext = this.getFileExtension(file);
     const uniqueId = crypto.randomUUID();
     const requestId = options.requestId || `req_${Date.now()}`;
-    
+
     let key;
     if (options.subPath) {
       key = `${prefix}/${options.subPath}/${uniqueId}${ext}`;
@@ -88,7 +92,8 @@ class R2Service {
     const bucketName = this.getBucketName();
     const publicUrl = this.getPublicUrl();
     const contentType = file.mimetype || 'application/octet-stream';
-    const cacheControl = options.cacheControl || 'public, max-age=31536000, immutable';
+    // Configure HTTP Cache-Control header: public, max-age=604800 (7 days) for browser caching
+    const cacheControl = options.cacheControl || 'public, max-age=604800';
 
     console.log(`[R2][UPLOAD_START] requestId=${requestId} key=${key} bucket=${bucketName} size=${file.buffer?.length || 0}`);
 
@@ -104,13 +109,16 @@ class R2Service {
 
       await client.send(command);
 
+      const r2DevUrl = this.getR2DevUrl();
       const finalUrl = `${publicUrl}/${key}`;
-      console.log(`[R2][UPLOAD_SUCCESS] requestId=${requestId} key=${key} url=${finalUrl}`);
+      const r2Url = `${r2DevUrl}/${key}`;
+      console.log(`[R2][UPLOAD_SUCCESS] requestId=${requestId} key=${key} url=${finalUrl} r2Url=${r2Url}`);
 
       return {
         provider: 'r2',
         key,
-        url: finalUrl
+        url: finalUrl,
+        r2Url
       };
     } catch (error) {
       console.error(`[R2][UPLOAD_FAIL] requestId=${requestId} key=${key} error=${error.name || error.message}`);
@@ -122,33 +130,7 @@ class R2Service {
    * Extract object key from URL or string key
    */
   extractKey(imageOrKeyOrUrl) {
-    if (!imageOrKeyOrUrl) return null;
-    if (typeof imageOrKeyOrUrl === 'object') {
-      if (imageOrKeyOrUrl.key) return imageOrKeyOrUrl.key;
-      if (imageOrKeyOrUrl.url) return this.extractKey(imageOrKeyOrUrl.url);
-      return null;
-    }
-    
-    if (typeof imageOrKeyOrUrl === 'string') {
-      const publicUrl = this.getPublicUrl();
-      if (imageOrKeyOrUrl.startsWith(publicUrl)) {
-        return imageOrKeyOrUrl.replace(`${publicUrl}/`, '');
-      }
-      if (imageOrKeyOrUrl.startsWith('https://images.hijabsbyshiza.com/')) {
-        return imageOrKeyOrUrl.replace('https://images.hijabsbyshiza.com/', '');
-      }
-      if (imageOrKeyOrUrl.includes('.r2.cloudflarestorage.com/')) {
-        const parts = imageOrKeyOrUrl.split('.r2.cloudflarestorage.com/');
-        const afterHost = parts[1] || '';
-        const slashIdx = afterHost.indexOf('/');
-        return slashIdx !== -1 ? afterHost.substring(slashIdx + 1) : afterHost;
-      }
-      // If it doesn't look like an HTTP URL, assume it's directly a key
-      if (!imageOrKeyOrUrl.startsWith('http://') && !imageOrKeyOrUrl.startsWith('https://')) {
-        return imageOrKeyOrUrl;
-      }
-    }
-    return null;
+    return extractImageKey(imageOrKeyOrUrl);
   }
 
   /**
@@ -206,6 +188,39 @@ class R2Service {
       }
       console.warn(`[R2][HEAD_ERROR] requestId=${requestId} key=${key} error=${error.name || error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Update Cache-Control header on an existing R2 object in-place without re-uploading the file.
+   *
+   * @param {string|object} imageOrKeyOrUrl
+   * @param {string} cacheControl - e.g. 'public, max-age=604800'
+   */
+  async updateObjectCacheControl(imageOrKeyOrUrl, cacheControl = 'public, max-age=604800') {
+    const key = this.extractKey(imageOrKeyOrUrl);
+    if (!key) return false;
+
+    try {
+      const client = this.getClient();
+      const bucket = this.getBucketName();
+
+      const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      const command = new CopyObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        CopySource: `${bucket}/${key}`,
+        ContentType: head.ContentType || 'image/jpeg',
+        CacheControl: cacheControl,
+        MetadataDirective: 'REPLACE'
+      });
+
+      await client.send(command);
+      console.log(`[R2][UPDATE_CACHE_CONTROL_SUCCESS] key=${key} cacheControl=${cacheControl}`);
+      return true;
+    } catch (error) {
+      console.error(`[R2][UPDATE_CACHE_CONTROL_FAIL] key=${key} error=${error.message}`);
+      return false;
     }
   }
 }

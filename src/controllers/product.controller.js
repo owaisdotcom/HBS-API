@@ -9,6 +9,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import { sendWishlistRestockEmail } from '../services/email.service.js';
 import cacheService from '../services/cache.service.js';
+import { generateR2Url, generateCustomDomainUrl, resolveImageUrl } from '../utils/imageUrl.js';
 
 const LISTING_PROJECTION = '_id name slug price originalPrice images categories stock availableStock status rating reviewCount isFeatured isNewArrival createdAt publishedAt variants';
 
@@ -121,7 +122,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
       query._id = { $in: idArray };
     }
   }
-  
+
   const categoryParam = category || req.query.categories;
   if (categoryParam) {
     if (Array.isArray(categoryParam)) {
@@ -363,11 +364,18 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   // Handle image uploads (product-level and variant-level)
   let images = [];
   let uploadedUrls = [];
+  let uploadedItems = [];
   if (req.files && req.files.length > 0) {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-products');
-    uploadedUrls = uploadResults.map(item => (typeof item === 'string' ? item : item.url));
+    uploadedItems = uploadResults;
+    uploadedUrls = uploadResults.map(item => {
+      const raw = typeof item === 'string' ? item : item.url;
+      return resolveImageUrl(raw) || raw;
+    });
     images = uploadResults.map((item, index) => {
-      const url = typeof item === 'string' ? item : item.url;
+      const rawUrl = typeof item === 'string' ? item : item.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       const publicId = typeof item === 'object' ? item.publicId : undefined;
@@ -376,6 +384,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         key,
         publicId,
         url,
+        r2Url,
         isPrimary: index === 0,
         order: index
       };
@@ -416,16 +425,33 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     variantImageMap.forEach(mapping => {
       const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
       if (!colorId) return;
-      
+
       const imagesFromFiles = (fileIndexes || [])
-        .map(idx => uploadedUrls[idx])
+        .map(idx => {
+          const item = uploadedItems[idx];
+          if (!item) return null;
+          const rawUrl = typeof item === 'string' ? item : item.url;
+          const url = resolveImageUrl(rawUrl) || rawUrl;
+          const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
+          return { url, r2Url };
+        })
         .filter(Boolean);
-      
+
       const allImages = [
-        ...existingUrls.map((url, idx) => ({ url, isPrimary: idx === 0 && imagesFromFiles.length === 0, order: idx })),
-        ...imagesFromFiles.map((url, idx) => ({ url, isPrimary: existingUrls.length === 0 && idx === 0, order: existingUrls.length + idx }))
+        ...existingUrls.map((entry, idx) => {
+          const rawUrl = typeof entry === 'string' ? entry : entry.url;
+          const url = resolveImageUrl(rawUrl) || rawUrl;
+          const r2Url = typeof entry === 'object' && entry.r2Url ? (resolveImageUrl(entry.r2Url) || entry.r2Url) : url;
+          return { url, r2Url, isPrimary: idx === 0 && imagesFromFiles.length === 0, order: idx };
+        }),
+        ...imagesFromFiles.map((entry, idx) => ({
+          url: entry.url,
+          r2Url: entry.r2Url || entry.url,
+          isPrimary: existingUrls.length === 0 && idx === 0,
+          order: existingUrls.length + idx
+        }))
       ];
-      
+
       variantImagesById[colorId] = allImages;
     });
 
@@ -461,7 +487,9 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         if (colorVariant && Array.isArray(colorVariant.sizes)) {
           const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
           if (size) {
-            size.sizeChartUrl = url;
+            const resolvedSizeUrl = resolveImageUrl(url) || url;
+            size.sizeChartUrl = resolvedSizeUrl;
+            size.sizeChartR2Url = resolvedSizeUrl;
           }
         }
       });
@@ -491,41 +519,60 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     let existingImages = [];
     try {
       existingImages = typeof req.body.existingImages === 'string' ? JSON.parse(req.body.existingImages) : req.body.existingImages;
-    } catch (e) {}
+    } catch (e) { }
     if (Array.isArray(existingImages) && existingImages.length > 0) {
-      productData.images = existingImages.map((img, index) => ({
-        url: img.url || img,
-        publicId: img.publicId || undefined,
-        isPrimary: (img.order ?? index) === 0,
-        order: img.order ?? index
-      }));
+      productData.images = existingImages.map((img, index) => {
+        const rawUrl = img.url || img;
+        const url = resolveImageUrl(rawUrl) || rawUrl;
+        const r2Url = img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
+        return {
+          url,
+          r2Url,
+          publicId: img.publicId || undefined,
+          isPrimary: (img.order ?? index) === 0,
+          order: img.order ?? index
+        };
+      });
     }
   } else if (req.body.newImagesOrder && uploadedUrls.length > 0) {
     let newImagesOrder = [];
     try {
       newImagesOrder = JSON.parse(req.body.newImagesOrder);
-    } catch(e) {}
+    } catch (e) { }
     if (newImagesOrder.length > 0) {
-      productData.images = newImagesOrder.map(orderInfo => ({
-         url: uploadedUrls[orderInfo.fileIndex],
-         isPrimary: orderInfo.order === 0,
-         order: orderInfo.order
-      })).filter(img => img.url);
+      productData.images = newImagesOrder.map(orderInfo => {
+        const uploadedItem = uploadedItems[orderInfo.fileIndex];
+        const rawUrl = uploadedUrls[orderInfo.fileIndex];
+        const url = resolveImageUrl(rawUrl) || rawUrl;
+        const r2Url = typeof uploadedItem === 'object' && uploadedItem?.r2Url
+          ? (resolveImageUrl(uploadedItem.r2Url) || uploadedItem.r2Url)
+          : url;
+        return {
+          url,
+          r2Url,
+          isPrimary: orderInfo.order === 0,
+          order: orderInfo.order
+        };
+      }).filter(img => img.url);
     } else {
       productData.images = images;
     }
   } else if (req.body.images && (!req.files || req.files.length === 0)) {
     let imgs = req.body.images;
     if (typeof imgs === 'string') {
-      try { imgs = JSON.parse(imgs); } catch(e) {}
+      try { imgs = JSON.parse(imgs); } catch (e) { }
     }
     if (Array.isArray(imgs) && imgs.length > 0) {
-      productData.images = imgs.map((img, index) => ({
-        url: typeof img === 'string' ? img : img.url,
-        publicId: typeof img === 'object' ? img.publicId || undefined : undefined,
-        isPrimary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : index === 0,
-        order: typeof img === 'object' && img.order !== undefined ? img.order : index
-      }));
+      productData.images = imgs.map((img, index) => {
+        const url = typeof img === 'string' ? img : img.url;
+        return {
+          url,
+          r2Url: (typeof img === 'object' && img.r2Url) ? img.r2Url : generateR2Url(url),
+          publicId: typeof img === 'object' ? img.publicId || undefined : undefined,
+          isPrimary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : index === 0,
+          order: typeof img === 'object' && img.order !== undefined ? img.order : index
+        };
+      });
     }
   } else {
     // If a thumbnail index is provided (legacy), use only that as product thumbnail
@@ -533,8 +580,10 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       ? parseInt(req.body.thumbnailFileIndex, 10)
       : null;
     if (thumbnailFileIndex !== null && uploadedUrls[thumbnailFileIndex]) {
+      const url = uploadedUrls[thumbnailFileIndex];
       productData.images = [{
-        url: uploadedUrls[thumbnailFileIndex],
+        url,
+        r2Url: generateR2Url(url),
         isPrimary: true,
         order: 0
       }];
@@ -582,7 +631,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   let existingImagesWithOrder = [];
   let newImagesOrder = [];
   let shouldUpdateImages = false;
-  
+
   if (req.body.existingImages) {
     shouldUpdateImages = true;
     try {
@@ -614,6 +663,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     });
     uploadedNewImages = uploadResults.map((item, index) => {
       const url = typeof item === 'string' ? item : item.url;
+      const r2Url = typeof item === 'object' && item.r2Url ? item.r2Url : generateR2Url(url);
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
       const publicId = typeof item === 'object' ? item.publicId : undefined;
@@ -622,6 +672,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         key,
         publicId,
         url,
+        r2Url,
         fileIndex: index
       };
     });
@@ -633,22 +684,27 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 
     // Add existing images with their order
     existingImagesWithOrder.forEach(img => {
-      const url = typeof img === 'string' ? img : img.url;
+      const rawUrl = typeof img === 'string' ? img : img.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof img === 'object' && img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
       const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
       const key = typeof img === 'object' ? img.key : undefined;
       const publicId = typeof img === 'object' ? img.publicId : undefined;
-      imageMap.push({ provider, key, publicId, url, order: img.order, type: 'existing' });
+      imageMap.push({ provider, key, publicId, url, r2Url, order: img.order, type: 'existing' });
     });
 
     // Add new images with their order
     newImagesOrder.forEach(orderInfo => {
       const newImage = uploadedNewImages.find(img => img.fileIndex === orderInfo.fileIndex);
       if (newImage) {
+        const url = resolveImageUrl(newImage.url) || newImage.url;
+        const r2Url = newImage.r2Url ? (resolveImageUrl(newImage.r2Url) || newImage.r2Url) : url;
         imageMap.push({
           provider: newImage.provider,
           key: newImage.key,
           publicId: newImage.publicId,
-          url: newImage.url,
+          url,
+          r2Url,
           order: orderInfo.order,
           type: 'new'
         });
@@ -658,329 +714,355 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     // Sort by order and format for DB
     const allImages = imageMap
       .sort((a, b) => a.order - b.order)
-      .map((img, index) => ({
-        provider: img.provider,
-        key: img.key,
-        publicId: img.publicId,
-        url: img.url,
-        isPrimary: index === 0,
-        order: index
-      }));
+      .map((img, index) => {
+        const url = resolveImageUrl(img.url) || img.url;
+        const r2Url = img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
+        return {
+          provider: img.provider,
+          key: img.key,
+          publicId: img.publicId,
+          url,
+          r2Url,
+          isPrimary: index === 0,
+          order: index
+        };
+      });
 
-    product.images = allImages;
+product.images = allImages;
   }
 
-  // Thumbnail update (optional)
-  if (req.body.thumbnailExistingUrl) {
+// Thumbnail update (optional)
+if (req.body.thumbnailExistingUrl) {
+  const rawThumb = req.body.thumbnailExistingUrl;
+  const thumbUrl = resolveImageUrl(rawThumb) || rawThumb;
+  product.images = [{
+    url: thumbUrl,
+    r2Url: thumbUrl,
+    isPrimary: true,
+    order: 0
+  }];
+}
+if (req.body.thumbnailFileIndex !== undefined) {
+  const idx = parseInt(req.body.thumbnailFileIndex, 10);
+  const newThumb = uploadedNewImages.find(img => img.fileIndex === idx);
+  if (newThumb) {
+    const thumbUrl = resolveImageUrl(newThumb.url) || newThumb.url;
     product.images = [{
-      url: req.body.thumbnailExistingUrl,
+      url: thumbUrl,
+      r2Url: newThumb.r2Url ? (resolveImageUrl(newThumb.r2Url) || newThumb.r2Url) : thumbUrl,
       isPrimary: true,
       order: 0
     }];
   }
-  if (req.body.thumbnailFileIndex !== undefined) {
-    const idx = parseInt(req.body.thumbnailFileIndex, 10);
-    const newThumb = uploadedNewImages.find(img => img.fileIndex === idx);
-    if (newThumb) {
-      product.images = [{
-        url: newThumb.url,
-        isPrimary: true,
-        order: 0
-      }];
-    }
-  }
+}
 
-  // Update fields (variant images applied after so they are not overwritten by request variants)
-  const updateFields = { ...req.body };
+// Update fields (variant images applied after so they are not overwritten by request variants)
+const updateFields = { ...req.body };
 
-  // Parse JSON strings if present
-  if (updateFields.colors && typeof updateFields.colors === 'string') {
-    updateFields.colors = JSON.parse(updateFields.colors);
+// Parse JSON strings if present
+if (updateFields.colors && typeof updateFields.colors === 'string') {
+  updateFields.colors = JSON.parse(updateFields.colors);
+}
+if (updateFields.sizes && typeof updateFields.sizes === 'string') {
+  updateFields.sizes = JSON.parse(updateFields.sizes);
+}
+if (updateFields.features && typeof updateFields.features === 'string') {
+  updateFields.features = JSON.parse(updateFields.features);
+}
+if (updateFields.careInstructions && typeof updateFields.careInstructions === 'string') {
+  updateFields.careInstructions = JSON.parse(updateFields.careInstructions);
+}
+if (updateFields.tags && typeof updateFields.tags === 'string') {
+  updateFields.tags = JSON.parse(updateFields.tags);
+}
+if (updateFields.dimensions && typeof updateFields.dimensions === 'string') {
+  updateFields.dimensions = JSON.parse(updateFields.dimensions);
+}
+if (updateFields.shipping && typeof updateFields.shipping === 'string') {
+  updateFields.shipping = JSON.parse(updateFields.shipping);
+}
+if (updateFields.variants && typeof updateFields.variants === 'string') {
+  try {
+    updateFields.variants = JSON.parse(updateFields.variants);
+  } catch (e) {
+    updateFields.variants = [];
   }
-  if (updateFields.sizes && typeof updateFields.sizes === 'string') {
-    updateFields.sizes = JSON.parse(updateFields.sizes);
-  }
-  if (updateFields.features && typeof updateFields.features === 'string') {
-    updateFields.features = JSON.parse(updateFields.features);
-  }
-  if (updateFields.careInstructions && typeof updateFields.careInstructions === 'string') {
-    updateFields.careInstructions = JSON.parse(updateFields.careInstructions);
-  }
-  if (updateFields.tags && typeof updateFields.tags === 'string') {
-    updateFields.tags = JSON.parse(updateFields.tags);
-  }
-  if (updateFields.dimensions && typeof updateFields.dimensions === 'string') {
-    updateFields.dimensions = JSON.parse(updateFields.dimensions);
-  }
-  if (updateFields.shipping && typeof updateFields.shipping === 'string') {
-    updateFields.shipping = JSON.parse(updateFields.shipping);
-  }
-  if (updateFields.variants && typeof updateFields.variants === 'string') {
-    try {
-      updateFields.variants = JSON.parse(updateFields.variants);
-    } catch (e) {
-      updateFields.variants = [];
-    }
-  }
+}
 
-  // Derive product stock from all sizes across all color variants
-  if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
-    updateFields.stock = updateFields.variants.reduce((sum, colorVariant) => {
-      const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
-        const tie = Number(size.tieStock) || 0;
-        const elastic = Number(size.elasticStock) || 0;
-        const bridal = Number(size.bridalStock) || 0;
-        if (size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0) {
-          size.stock = tie + elastic + bridal;
-        } else {
-          size.stock = Number(size.stock) || 0;
-        }
-        return sizeSum + size.stock;
-      }, 0);
-      return sum + sizesStock;
+// Derive product stock from all sizes across all color variants
+if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
+  updateFields.stock = updateFields.variants.reduce((sum, colorVariant) => {
+    const sizesStock = (colorVariant.sizes || []).reduce((sizeSum, size) => {
+      const tie = Number(size.tieStock) || 0;
+      const elastic = Number(size.elasticStock) || 0;
+      const bridal = Number(size.bridalStock) || 0;
+      if (size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0) {
+        size.stock = tie + elastic + bridal;
+      } else {
+        size.stock = Number(size.stock) || 0;
+      }
+      return sizeSum + size.stock;
     }, 0);
-  }
+    return sum + sizesStock;
+  }, 0);
+}
 
-  // Convert boolean strings from FormData
-  if (typeof updateFields.isFeatured === 'string') {
-    updateFields.isFeatured = updateFields.isFeatured === 'true';
-  }
-  if (typeof updateFields.isNewArrival === 'string') {
-    updateFields.isNewArrival = updateFields.isNewArrival === 'true';
-  }
-  if (typeof updateFields.isOnSale === 'string') {
-    updateFields.isOnSale = updateFields.isOnSale === 'true';
-  }
-  if (updateFields.onSale !== undefined) {
-    updateFields.isOnSale = updateFields.onSale === true || updateFields.onSale === 'true';
-  }
+// Convert boolean strings from FormData
+if (typeof updateFields.isFeatured === 'string') {
+  updateFields.isFeatured = updateFields.isFeatured === 'true';
+}
+if (typeof updateFields.isNewArrival === 'string') {
+  updateFields.isNewArrival = updateFields.isNewArrival === 'true';
+}
+if (typeof updateFields.isOnSale === 'string') {
+  updateFields.isOnSale = updateFields.isOnSale === 'true';
+}
+if (updateFields.onSale !== undefined) {
+  updateFields.isOnSale = updateFields.onSale === true || updateFields.onSale === 'true';
+}
 
-  // Convert numeric strings from FormData
-  const numericFields = ['price', 'originalPrice', 'costPrice', 'stock', 'lowStockThreshold', 'weight'];
-  numericFields.forEach(field => {
-    if (updateFields[field] && typeof updateFields[field] === 'string') {
-      updateFields[field] = parseFloat(updateFields[field]);
+// Convert numeric strings from FormData
+const numericFields = ['price', 'originalPrice', 'costPrice', 'stock', 'lowStockThreshold', 'weight'];
+numericFields.forEach(field => {
+  if (updateFields[field] && typeof updateFields[field] === 'string') {
+    updateFields[field] = parseFloat(updateFields[field]);
+  }
+});
+
+// Handle category(s) update - accept legacy categoryId or new categories array
+if (updateFields.categoryId && !updateFields.categories) {
+  updateFields.categories = [updateFields.categoryId];
+}
+// Normalize categories if sent as JSON string or double-wrapped (FormData quirks)
+if (updateFields.categories && typeof updateFields.categories === 'string') {
+  try {
+    updateFields.categories = JSON.parse(updateFields.categories);
+  } catch (e) {
+    // leave as-is; validation will catch it later
+  }
+}
+// Handle case where categories is an array but contains a single JSON-stringified array element
+if (Array.isArray(updateFields.categories) && updateFields.categories.length === 1 && typeof updateFields.categories[0] === 'string' && updateFields.categories[0].trim().startsWith('[')) {
+  try {
+    updateFields.categories = JSON.parse(updateFields.categories[0]);
+  } catch (e) {
+    // ignore, keep original
+  }
+}
+if (updateFields.categories && Array.isArray(updateFields.categories)) {
+  const selectedCategories = await Category.find({ _id: { $in: updateFields.categories }, isDeleted: { $ne: true } });
+  if (selectedCategories.length !== updateFields.categories.length) {
+    return next(new ApiError('One or more categories not found', 404));
+  }
+  const categoryPathSet = new Set();
+  selectedCategories.forEach(cat => {
+    (cat.path || []).forEach(p => categoryPathSet.add(p.toString()));
+    categoryPathSet.add(cat._id.toString());
+  });
+  updateFields.categoryPath = Array.from(categoryPathSet).map(id => new mongoose.Types.ObjectId(id));
+  product.categories = selectedCategories.map(c => c._id);
+  product.categoryPath = updateFields.categoryPath;
+}
+
+// Remove fields that shouldn't be directly updated
+delete updateFields.existingImages;
+delete updateFields.newImagesOrder;
+if (shouldUpdateImages) {
+  delete updateFields.images;
+}
+delete updateFields._id;
+delete updateFields.__v;
+delete updateFields.createdAt;
+delete updateFields.updatedAt;
+
+// Apply all fields to product
+Object.keys(updateFields).forEach(key => {
+  if (updateFields[key] !== undefined) {
+    product[key] = updateFields[key];
+  }
+});
+
+// Apply variant images after updateFields so request variants don't overwrite them
+// Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
+if (req.body.variantImageMap && Array.isArray(product.variants) && product.variants.length > 0) {
+  let variantImageMap = [];
+  try {
+    variantImageMap = JSON.parse(req.body.variantImageMap);
+  } catch (e) {
+    variantImageMap = [];
+  }
+  const newImagesByFileIndex = {};
+  const newR2ImagesByFileIndex = {};
+  (uploadedNewImages || []).forEach(img => {
+    newImagesByFileIndex[img.fileIndex] = img.url;
+    newR2ImagesByFileIndex[img.fileIndex] = img.r2Url;
+  });
+  variantImageMap.forEach(mapping => {
+    const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
+    const imagesForVariant = [];
+    existingUrls.forEach((entry, idx) => {
+      const rawUrl = typeof entry === 'string' ? entry : entry.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof entry === 'object' && entry.r2Url ? (resolveImageUrl(entry.r2Url) || entry.r2Url) : url;
+      imagesForVariant.push({ url, r2Url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
+    });
+    (fileIndexes || []).forEach((fi) => {
+      const rawUrl = newImagesByFileIndex[fi];
+      if (rawUrl) {
+        const url = resolveImageUrl(rawUrl) || rawUrl;
+        const r2Url = newR2ImagesByFileIndex[fi] ? (resolveImageUrl(newR2ImagesByFileIndex[fi]) || newR2ImagesByFileIndex[fi]) : url;
+        imagesForVariant.push({ url, r2Url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
+      }
+    });
+    const colorVariant = product.variants.find(v => v.colorId === colorId);
+    if (colorVariant) {
+      colorVariant.images = imagesForVariant;
     }
   });
+}
 
-  // Handle category(s) update - accept legacy categoryId or new categories array
-  if (updateFields.categoryId && !updateFields.categories) {
-    updateFields.categories = [updateFields.categoryId];
-  }
-  // Normalize categories if sent as JSON string or double-wrapped (FormData quirks)
-  if (updateFields.categories && typeof updateFields.categories === 'string') {
-    try {
-      updateFields.categories = JSON.parse(updateFields.categories);
-    } catch (e) {
-      // leave as-is; validation will catch it later
-    }
-  }
-  // Handle case where categories is an array but contains a single JSON-stringified array element
-  if (Array.isArray(updateFields.categories) && updateFields.categories.length === 1 && typeof updateFields.categories[0] === 'string' && updateFields.categories[0].trim().startsWith('[')) {
-    try {
-      updateFields.categories = JSON.parse(updateFields.categories[0]);
-    } catch (e) {
-      // ignore, keep original
-    }
-  }
-  if (updateFields.categories && Array.isArray(updateFields.categories)) {
-    const selectedCategories = await Category.find({ _id: { $in: updateFields.categories }, isDeleted: { $ne: true } });
-    if (selectedCategories.length !== updateFields.categories.length) {
-      return next(new ApiError('One or more categories not found', 404));
-    }
-    const categoryPathSet = new Set();
-    selectedCategories.forEach(cat => {
-      (cat.path || []).forEach(p => categoryPathSet.add(p.toString()));
-      categoryPathSet.add(cat._id.toString());
-    });
-    updateFields.categoryPath = Array.from(categoryPathSet).map(id => new mongoose.Types.ObjectId(id));
-    product.categories = selectedCategories.map(c => c._id);
-    product.categoryPath = updateFields.categoryPath;
+// Handle size chart mapping for updates (req.body.sizeChartMap)
+if (req.body.sizeChartMap && Array.isArray(product.variants) && product.variants.length > 0) {
+  let sizeChartMap = [];
+  try {
+    sizeChartMap = JSON.parse(req.body.sizeChartMap);
+  } catch (e) {
+    sizeChartMap = [];
   }
 
-  // Remove fields that shouldn't be directly updated
-  delete updateFields.existingImages;
-  delete updateFields.newImagesOrder;
-  if (shouldUpdateImages) {
-    delete updateFields.images;
-  }
-  delete updateFields._id;
-  delete updateFields.__v;
-  delete updateFields.createdAt;
-  delete updateFields.updatedAt;
-
-  // Apply all fields to product
-  Object.keys(updateFields).forEach(key => {
-    if (updateFields[key] !== undefined) {
-      product[key] = updateFields[key];
-    }
+  const newImagesByFileIndex = {};
+  const newR2ImagesByFileIndex = {};
+  (uploadedNewImages || []).forEach(img => {
+    newImagesByFileIndex[img.fileIndex] = img.url;
+    newR2ImagesByFileIndex[img.fileIndex] = img.r2Url;
   });
 
-  // Apply variant images after updateFields so request variants don't overwrite them
-  // Expect req.body.variantImageMap = JSON.stringify([{ colorId, fileIndexes: [0,1], existingUrls: [] }])
-  if (req.body.variantImageMap && Array.isArray(product.variants) && product.variants.length > 0) {
-    let variantImageMap = [];
-    try {
-      variantImageMap = JSON.parse(req.body.variantImageMap);
-    } catch (e) {
-      variantImageMap = [];
-    }
-    const newImagesByFileIndex = {};
-    (uploadedNewImages || []).forEach(img => {
-      newImagesByFileIndex[img.fileIndex] = img.url;
-    });
-    variantImageMap.forEach(mapping => {
-      const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
-      const imagesForVariant = [];
-      existingUrls.forEach((url, idx) => {
-        imagesForVariant.push({ url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
-      });
-      (fileIndexes || []).forEach((fi) => {
-        const url = newImagesByFileIndex[fi];
-        if (url) imagesForVariant.push({ url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
-      });
-      const colorVariant = product.variants.find(v => v.colorId === colorId);
-      if (colorVariant) {
-        colorVariant.images = imagesForVariant;
+  sizeChartMap.forEach(mapping => {
+    const { colorId, sizeId, fileIndex, existingUrl } = mapping || {};
+    if (!colorId || !sizeId) return;
+    const rawUrl = (fileIndex != null && newImagesByFileIndex[fileIndex]) ? newImagesByFileIndex[fileIndex] : existingUrl;
+    if (!rawUrl) return;
+    const resolvedUrl = resolveImageUrl(rawUrl) || rawUrl;
+    const r2Url = (fileIndex != null && newR2ImagesByFileIndex[fileIndex])
+      ? (resolveImageUrl(newR2ImagesByFileIndex[fileIndex]) || newR2ImagesByFileIndex[fileIndex])
+      : resolvedUrl;
+    const colorVariant = product.variants.find(v => v.colorId === colorId);
+    if (colorVariant && Array.isArray(colorVariant.sizes)) {
+      const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
+      if (size) {
+        size.sizeChartUrl = resolvedUrl;
+        size.sizeChartR2Url = r2Url;
       }
-    });
-  }
-
-  // Handle size chart mapping for updates (req.body.sizeChartMap)
-  if (req.body.sizeChartMap && Array.isArray(product.variants) && product.variants.length > 0) {
-    let sizeChartMap = [];
-    try {
-      sizeChartMap = JSON.parse(req.body.sizeChartMap);
-    } catch (e) {
-      sizeChartMap = [];
     }
+  });
+}
 
-    const newImagesByFileIndex = {};
-    (uploadedNewImages || []).forEach(img => {
-      newImagesByFileIndex[img.fileIndex] = img.url;
-    });
+// Save product
+await product.save();
 
-    sizeChartMap.forEach(mapping => {
-      const { colorId, sizeId, fileIndex, existingUrl } = mapping || {};
-      if (!colorId || !sizeId) return;
-      const url = (fileIndex != null && newImagesByFileIndex[fileIndex]) ? newImagesByFileIndex[fileIndex] : existingUrl;
-      if (!url) return;
-      const colorVariant = product.variants.find(v => v.colorId === colorId);
-      if (colorVariant && Array.isArray(colorVariant.sizes)) {
-        const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
-        if (size) {
-          size.sizeChartUrl = url;
-        }
+// Wishlist restock notifications
+const nowInStock = product.stock > 0;
+const wasOutOfStock = previousStock <= 0;
+const becameOutOfStock = previousStock > 0 && product.stock <= 0;
+
+if (becameOutOfStock) {
+  try {
+    await Wishlist.updateMany(
+      { 'items.productId': product._id },
+      { $set: { 'items.$[item].notifyOnRestock': true } },
+      { arrayFilters: [{ 'item.productId': product._id }] }
+    );
+  } catch (error) {
+    console.error('Failed to flag wishlist items for restock notifications:', error);
+  }
+}
+
+if (wasOutOfStock && nowInStock) {
+  try {
+    const wishlists = await Wishlist.find({
+      'items.productId': product._id,
+      'items.notifyOnRestock': true
+    }).populate('userId', 'fullName email');
+
+    for (const wishlist of wishlists) {
+      const userEmail = wishlist.userId?.email;
+      if (!userEmail) continue;
+
+      const item = wishlist.items.find((entry) => (
+        entry.productId.toString() === product._id.toString() && entry.notifyOnRestock
+      ));
+
+      if (!item) continue;
+
+      try {
+        await sendWishlistRestockEmail(userEmail, wishlist.userId?.fullName, product);
+        await Wishlist.updateOne(
+          { _id: wishlist._id },
+          { $set: { 'items.$[item].notifyOnRestock': false } },
+          { arrayFilters: [{ 'item.productId': product._id }] }
+        );
+      } catch (error) {
+        console.error(`Failed to send restock email to ${userEmail}:`, error);
       }
+    }
+  } catch (error) {
+    console.error('Failed to process wishlist restock notifications:', error);
+  }
+}
+
+// Invalidate cached product listings and homepage sections
+cacheService.delPattern('products_');
+cacheService.delPattern('homepage_');
+
+// Safe post-save storage cleanup: only executed AFTER product.save() succeeds
+// and verifies image is not used by variants, size charts, or other products
+if (shouldUpdateImages && previousImages && previousImages.length > 0) {
+  try {
+    const currentProductUrls = new Set();
+    (product.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
+    (product.variants || []).forEach(v => {
+      (v.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
+      (v.sizes || []).forEach(s => s?.sizeChartUrl && currentProductUrls.add(s.sizeChartUrl));
     });
-  }
 
-  // Save product
-  await product.save();
+    const candidateRemovedImages = previousImages.filter(
+      prevImg => prevImg && prevImg.url && !currentProductUrls.has(prevImg.url)
+    );
 
-  // Wishlist restock notifications
-  const nowInStock = product.stock > 0;
-  const wasOutOfStock = previousStock <= 0;
-  const becameOutOfStock = previousStock > 0 && product.stock <= 0;
-
-  if (becameOutOfStock) {
-    try {
-      await Wishlist.updateMany(
-        { 'items.productId': product._id },
-        { $set: { 'items.$[item].notifyOnRestock': true } },
-        { arrayFilters: [{ 'item.productId': product._id }] }
-      );
-    } catch (error) {
-      console.error('Failed to flag wishlist items for restock notifications:', error);
-    }
-  }
-
-  if (wasOutOfStock && nowInStock) {
-    try {
-      const wishlists = await Wishlist.find({
-        'items.productId': product._id,
-        'items.notifyOnRestock': true
-      }).populate('userId', 'fullName email');
-
-      for (const wishlist of wishlists) {
-        const userEmail = wishlist.userId?.email;
-        if (!userEmail) continue;
-
-        const item = wishlist.items.find((entry) => (
-          entry.productId.toString() === product._id.toString() && entry.notifyOnRestock
-        ));
-
-        if (!item) continue;
-
-        try {
-          await sendWishlistRestockEmail(userEmail, wishlist.userId?.fullName, product);
-          await Wishlist.updateOne(
-            { _id: wishlist._id },
-            { $set: { 'items.$[item].notifyOnRestock': false } },
-            { arrayFilters: [{ 'item.productId': product._id }] }
-          );
-        } catch (error) {
-          console.error(`Failed to send restock email to ${userEmail}:`, error);
-        }
+    for (const removed of candidateRemovedImages) {
+      const queryConditions = [
+        { 'images.url': removed.url },
+        { 'variants.images.url': removed.url },
+        { 'variants.sizes.sizeChartUrl': removed.url }
+      ];
+      if (removed.key) {
+        queryConditions.push({ 'images.key': removed.key });
+        queryConditions.push({ 'variants.images.key': removed.key });
       }
-    } catch (error) {
-      console.error('Failed to process wishlist restock notifications:', error);
-    }
-  }
 
-  // Invalidate cached product listings and homepage sections
-  cacheService.delPattern('products_');
-  cacheService.delPattern('homepage_');
-
-  // Safe post-save storage cleanup: only executed AFTER product.save() succeeds
-  // and verifies image is not used by variants, size charts, or other products
-  if (shouldUpdateImages && previousImages && previousImages.length > 0) {
-    try {
-      const currentProductUrls = new Set();
-      (product.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
-      (product.variants || []).forEach(v => {
-        (v.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
-        (v.sizes || []).forEach(s => s?.sizeChartUrl && currentProductUrls.add(s.sizeChartUrl));
+      const isShared = await Product.countDocuments({
+        _id: { $ne: product._id },
+        isDeleted: { $ne: true },
+        $or: queryConditions
       });
 
-      const candidateRemovedImages = previousImages.filter(
-        prevImg => prevImg && prevImg.url && !currentProductUrls.has(prevImg.url)
-      );
-
-      for (const removed of candidateRemovedImages) {
-        const queryConditions = [
-          { 'images.url': removed.url },
-          { 'variants.images.url': removed.url },
-          { 'variants.sizes.sizeChartUrl': removed.url }
-        ];
-        if (removed.key) {
-          queryConditions.push({ 'images.key': removed.key });
-          queryConditions.push({ 'variants.images.key': removed.key });
-        }
-
-        const isShared = await Product.countDocuments({
-          _id: { $ne: product._id },
-          isDeleted: { $ne: true },
-          $or: queryConditions
+      if (isShared === 0) {
+        await uploadService.deleteImage(removed, {
+          productId: product._id.toString(),
+          requestId: req.requestId
         });
-
-        if (isShared === 0) {
-          await uploadService.deleteImage(removed, {
-            productId: product._id.toString(),
-            requestId: req.requestId
-          });
-        } else {
-          console.log(`[UpdateProduct] Preserved shared image: ${removed.url}`);
-        }
+      } else {
+        console.log(`[UpdateProduct] Preserved shared image: ${removed.url}`);
       }
-    } catch (cleanupErr) {
-      console.error('[UpdateProduct] Safe storage cleanup error:', cleanupErr.message);
     }
+  } catch (cleanupErr) {
+    console.error('[UpdateProduct] Safe storage cleanup error:', cleanupErr.message);
   }
+}
 
-  res.json(
-    new ApiResponse(200, { product }, 'Product updated successfully')
-  );
+res.json(
+  new ApiResponse(200, { product }, 'Product updated successfully')
+);
 });
 
 // @route   DELETE /api/products/:id

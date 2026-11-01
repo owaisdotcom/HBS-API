@@ -3,6 +3,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
 
 const resolveSlug = (id) => {
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -80,10 +81,12 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
   if (req.files?.length) {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     images = uploadResults.map((item, i) => {
-      const url = typeof item === 'string' ? item : item.url;
+      const rawUrl = typeof item === 'string' ? item : item.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
-      return { provider, key, url, order: i, isPrimary: i === 0 };
+      return { provider, key, url, r2Url, order: i, isPrimary: i === 0 };
     });
   }
 
@@ -161,13 +164,16 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
   // Images: existingImages (JSON array with url, order) + new uploads
   if (parsed.existingImages !== undefined && Array.isArray(parsed.existingImages)) {
     bundle.images = parsed.existingImages.map((img, i) => {
-      const url = typeof img === 'string' ? img : img.url;
+      const rawUrl = typeof img === 'string' ? img : img.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof img === 'object' && img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
       const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
       const key = typeof img === 'object' ? img.key : undefined;
       return {
         provider,
         key,
         url,
+        r2Url,
         alt: typeof img === 'object' ? img.alt : undefined,
         isPrimary: i === 0,
         order: i
@@ -178,10 +184,12 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     const startOrder = (bundle.images || []).length;
     uploadResults.forEach((item, i) => {
-      const url = typeof item === 'string' ? item : item.url;
+      const rawUrl = typeof item === 'string' ? item : item.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
       const key = typeof item === 'object' ? item.key : undefined;
-      bundle.images.push({ provider, key, url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
+      bundle.images.push({ provider, key, url, r2Url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
     });
   }
 

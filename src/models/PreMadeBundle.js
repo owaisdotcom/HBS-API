@@ -30,6 +30,7 @@ const preMadeBundleSchema = new mongoose.Schema({
     provider: { type: String, enum: ['cloudinary', 'r2'] },
     key: String,
     url: String,
+    r2Url: String,
     alt: String,
     isPrimary: { type: Boolean, default: false },
     order: Number

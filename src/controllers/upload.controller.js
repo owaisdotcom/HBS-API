@@ -1,5 +1,6 @@
 import uploadService from '../services/upload.service.js';
-import { runCloudinaryToR2Migration } from '../services/migration.service.js';
+import { runCloudinaryToR2Migration, runDualR2UrlMigration } from '../services/migration.service.js';
+import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -13,12 +14,26 @@ export const uploadSingleImage = asyncHandler(async (req, res, next) => {
   }
 
   const folder = req.body.folder || 'hbs-uploads';
-  
+
   const uploadResult = await uploadService.uploadSingle(req.file, folder);
   const { url, key, publicId, provider } = uploadResult;
+  const resolvedUrl = resolveImageUrl(url) || url;
+  const r2Url = uploadResult.r2Url ? (resolveImageUrl(uploadResult.r2Url) || uploadResult.r2Url) : resolvedUrl;
 
   res.status(200).json(
-    new ApiResponse(200, { provider, url, key, publicId }, 'Image uploaded successfully')
+    new ApiResponse(200, { provider, url: resolvedUrl, r2Url, key, publicId }, 'Image uploaded successfully')
+  );
+});
+
+// @route   POST /api/admin/migrate-image-urls-to-r2
+// @desc    Migrate image URLs to dual R2 public dev URLs across the entire database
+// @access  Private (Admin)
+export const migrateImageUrlsToR2Admin = asyncHandler(async (req, res) => {
+  const dryRun = req.body?.dryRun === true || req.query?.dryRun === 'true';
+  const result = await runDualR2UrlMigration({ dryRun });
+
+  res.status(200).json(
+    new ApiResponse(200, result, 'Dual R2 image URL migration completed successfully')
   );
 });
 
@@ -73,6 +88,7 @@ export const proxyImage = asyncHandler(async (req, res, next) => {
     hostname.endsWith('cloudinary.com') ||
     hostname.endsWith('hijabsbyshiza.com') ||
     hostname.endsWith('r2.cloudflarestorage.com') ||
+    hostname.endsWith('r2.dev') ||
     hostname.endsWith('amazonaws.com') ||
     (process.env.R2_PUBLIC_URL && hostname === new URL(process.env.R2_PUBLIC_URL).hostname.toLowerCase());
 

@@ -11,7 +11,9 @@ const siteSettingSchema = new mongoose.Schema({
   siteName: String,
   siteTagline: String,
   logo: String,
+  logoR2Url: String,
   favicon: String,
+  faviconR2Url: String,
   
   // Contact Information
   contactEmail: String,
@@ -46,7 +48,8 @@ const siteSettingSchema = new mongoose.Schema({
     metaTitle: String,
     metaDescription: String,
     metaKeywords: [String],
-    ogImage: String
+    ogImage: String,
+    ogImageR2Url: String
   },
   
   // Shipping Settings
@@ -89,7 +92,8 @@ const siteSettingSchema = new mongoose.Schema({
       default: true
     },
     showPaymentMethods: Boolean,
-    paymentMethodImages: [String]
+    paymentMethodImages: [String],
+    paymentMethodR2Images: [String]
   },
   
   // Maintenance Mode
@@ -108,6 +112,7 @@ const siteSettingSchema = new mongoose.Schema({
       title: String,
       paragraphs: [String],
       image: String,
+      imageR2Url: String,
       primaryButtonText: String,
       primaryButtonUrl: String,
       secondaryButtonText: String,
@@ -117,6 +122,7 @@ const siteSettingSchema = new mongoose.Schema({
       title: String,
       paragraphs: [String],
       image: String,
+      imageR2Url: String,
       primaryButtonText: String,
       primaryButtonUrl: String,
       secondaryButtonText: String,
@@ -131,6 +137,7 @@ const siteSettingSchema = new mongoose.Schema({
       default: false
     },
     image: String,
+    imageR2Url: String,
     title: String,
     subtitle: String,
     buttonText: String,

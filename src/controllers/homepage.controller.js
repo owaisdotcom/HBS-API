@@ -9,6 +9,7 @@ import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import cacheService from '../services/cache.service.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 // @route   GET /api/homepage/settings
 // @desc    Get complete homepage configuration
@@ -134,7 +135,7 @@ export const getNavigation = asyncHandler(async (req, res) => {
         itemObj.label = itemObj.categoryId.name;
         itemObj.link = `/category/${itemObj.categoryId.slug}`;
       }
-      
+
       // Transform children (level 2)
       if (itemObj.children && itemObj.children.length > 0) {
         itemObj.children = itemObj.children.map(child => {
@@ -143,7 +144,7 @@ export const getNavigation = asyncHandler(async (req, res) => {
             processedChild.label = processedChild.categoryId.name;
             processedChild.link = `/category/${processedChild.categoryId.slug}`;
           }
-          
+
           // Transform grandchildren (level 3)
           if (processedChild.children && processedChild.children.length > 0) {
             processedChild.children = processedChild.children.map(grandchild => {
@@ -157,11 +158,11 @@ export const getNavigation = asyncHandler(async (req, res) => {
               return grandchild;
             });
           }
-          
+
           return processedChild;
         });
       }
-      
+
       return itemObj;
     });
   }
@@ -188,7 +189,7 @@ export const updateNavigation = asyncHandler(async (req, res, next) => {
     { ...req.body, updatedBy: req.admin.id },
     { new: true, runValidators: true }
   ).populate('menuItems.categoryId', 'name slug')
-   .populate('menuItems.children.categoryId', 'name slug');
+    .populate('menuItems.children.categoryId', 'name slug');
 
   cacheService.delPattern('homepage_');
 
@@ -266,6 +267,29 @@ export const updateOrCreateHero = asyncHandler(async (req, res) => {
   // If payload contains slides, persist to HeroSlider; otherwise persist to Hero
   if (Array.isArray(req.body.slides)) {
     const clean = sanitizePayload(req.body);
+    if (Array.isArray(clean.slides)) {
+      clean.slides.forEach(slide => {
+        if (slide.imageUrl) {
+          slide.imageUrl = resolveImageUrl(slide.imageUrl) || slide.imageUrl;
+          slide.imageUrlR2Url = slide.imageUrl;
+          slide.r2Url = slide.imageUrl;
+        }
+        if (slide.image && typeof slide.image === 'object') {
+          if (slide.image.desktop) {
+            slide.image.desktop = resolveImageUrl(slide.image.desktop) || slide.image.desktop;
+            slide.image.desktopR2Url = slide.image.desktop;
+          }
+          if (slide.image.tablet) {
+            slide.image.tablet = resolveImageUrl(slide.image.tablet) || slide.image.tablet;
+            slide.image.tabletR2Url = slide.image.tablet;
+          }
+          if (slide.image.mobile) {
+            slide.image.mobile = resolveImageUrl(slide.image.mobile) || slide.image.mobile;
+            slide.image.mobileR2Url = slide.image.mobile;
+          }
+        }
+      });
+    }
     let heroSlider = await HeroSlider.findOne({ isActive: true });
     if (!heroSlider) {
       heroSlider = await HeroSlider.create({
@@ -289,6 +313,11 @@ export const updateOrCreateHero = asyncHandler(async (req, res) => {
 
   // Legacy single-hero behavior
   const clean = sanitizePayload(req.body);
+  if (clean.imageUrl) {
+    clean.imageUrl = resolveImageUrl(clean.imageUrl) || clean.imageUrl;
+    clean.imageUrlR2Url = clean.imageUrl;
+    clean.r2Url = clean.imageUrl;
+  }
   let hero = await Hero.findOne({ isActive: true });
   if (!hero) {
     hero = await Hero.create({
@@ -357,14 +386,14 @@ export const updateHomepageSections = asyncHandler(async (req, res, next) => {
   // Upsert: Find the active homepage sections and update or create
   const homepageSections = await HomepageSection.findOneAndUpdate(
     { isActive: true },
-    { 
-      ...req.body, 
+    {
+      ...req.body,
       isActive: true,
-      updatedBy: req.admin.id 
+      updatedBy: req.admin.id
     },
-    { 
-      new: true, 
-      upsert: true, 
+    {
+      new: true,
+      upsert: true,
       runValidators: true,
       setDefaultsOnInsert: true
     }
@@ -394,25 +423,52 @@ export const updateSiteSettings = asyncHandler(async (req, res, next) => {
   if (req.files) {
     if (req.files.logo) {
       const resLogo = await uploadService.uploadSingle(req.files.logo[0], 'hbs-settings');
-      req.body.logo = typeof resLogo === 'string' ? resLogo : resLogo?.url;
+      const rawLogo = typeof resLogo === 'string' ? resLogo : resLogo?.url;
+      req.body.logo = resolveImageUrl(rawLogo) || rawLogo;
+      req.body.logoR2Url = typeof resLogo === 'object' && resLogo?.r2Url ? (resolveImageUrl(resLogo.r2Url) || resLogo.r2Url) : req.body.logo;
     }
     if (req.files.favicon) {
       const resFav = await uploadService.uploadSingle(req.files.favicon[0], 'hbs-settings');
-      req.body.favicon = typeof resFav === 'string' ? resFav : resFav?.url;
+      const rawFav = typeof resFav === 'string' ? resFav : resFav?.url;
+      req.body.favicon = resolveImageUrl(rawFav) || rawFav;
+      req.body.faviconR2Url = typeof resFav === 'object' && resFav?.r2Url ? (resolveImageUrl(resFav.r2Url) || resFav.r2Url) : req.body.favicon;
     }
+  }
+
+  if (req.body.logo && typeof req.body.logo === 'string') {
+    req.body.logo = resolveImageUrl(req.body.logo) || req.body.logo;
+    req.body.logoR2Url = req.body.logo;
+  }
+  if (req.body.favicon && typeof req.body.favicon === 'string') {
+    req.body.favicon = resolveImageUrl(req.body.favicon) || req.body.favicon;
+    req.body.faviconR2Url = req.body.favicon;
+  }
+  if (req.body.contentBlocks) {
+    if (req.body.contentBlocks.hijabCollection?.image) {
+      req.body.contentBlocks.hijabCollection.image = resolveImageUrl(req.body.contentBlocks.hijabCollection.image) || req.body.contentBlocks.hijabCollection.image;
+      req.body.contentBlocks.hijabCollection.imageR2Url = req.body.contentBlocks.hijabCollection.image;
+    }
+    if (req.body.contentBlocks.eleganceEssence?.image) {
+      req.body.contentBlocks.eleganceEssence.image = resolveImageUrl(req.body.contentBlocks.eleganceEssence.image) || req.body.contentBlocks.eleganceEssence.image;
+      req.body.contentBlocks.eleganceEssence.imageR2Url = req.body.contentBlocks.eleganceEssence.image;
+    }
+  }
+  if (req.body.marketingBanner?.image) {
+    req.body.marketingBanner.image = resolveImageUrl(req.body.marketingBanner.image) || req.body.marketingBanner.image;
+    req.body.marketingBanner.imageR2Url = req.body.marketingBanner.image;
   }
 
   // Upsert: Find by key 'general_settings' and update or create
   const siteSettings = await SiteSetting.findOneAndUpdate(
     { key: 'general_settings' },
-    { 
-      ...req.body, 
+    {
+      ...req.body,
       key: 'general_settings', // Ensure key is set
-      updatedBy: req.admin.id 
+      updatedBy: req.admin.id
     },
-    { 
-      new: true, 
-      upsert: true, 
+    {
+      new: true,
+      upsert: true,
       runValidators: true,
       setDefaultsOnInsert: true
     }

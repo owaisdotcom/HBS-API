@@ -8,6 +8,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
 import { syncCheckoutDetailsWithUser } from './auth.controller.js';
 import cacheService from '../services/cache.service.js';
 import rateLimiterService from '../services/rateLimiter.service.js';
@@ -34,7 +35,7 @@ const recomputeProductStock = async (productId) => {
       const hasCust = size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0;
       const sizeStock = hasCust ? (tie + elastic + bridal) : (Number(size.stock) || 0);
       totalStock += sizeStock;
-      
+
       await Product.updateOne(
         { _id: productId },
         { $set: { 'variants.$[c].sizes.$[s].stock': sizeStock } },
@@ -200,7 +201,7 @@ const toRefId = (ref) => {
   try {
     const s = ref.toString();
     if (/^[0-9a-fA-F]{24}$/.test(s)) return s;
-  } catch (_) {}
+  } catch (_) { }
   return null;
 };
 
@@ -330,384 +331,402 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       }
     }
 
-  // Validate and calculate totals
-  let subtotal = 0;
-  const orderItems = [];
+    // Validate and calculate totals
+    let subtotal = 0;
+    const orderItems = [];
 
-  for (const item of items) {
-    if (item.preMadeBundleId) {
-      const bundle = await PreMadeBundle.findOne({ _id: item.preMadeBundleId, status: 'active' });
-      if (!bundle) {
-        return next(new ApiError(`Pre-made bundle ${item.preMadeBundleId} not found or inactive`, 404));
+    for (const item of items) {
+      if (item.preMadeBundleId) {
+        const bundle = await PreMadeBundle.findOne({ _id: item.preMadeBundleId, status: 'active' });
+        if (!bundle) {
+          return next(new ApiError(`Pre-made bundle ${item.preMadeBundleId} not found or inactive`, 404));
+        }
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        const bundleStock = Number(bundle.stock) ?? 0;
+        if (bundleStock < qty) {
+          return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${qty}`, 400));
+        }
+        const itemSubtotal = bundle.price * qty;
+        subtotal += itemSubtotal;
+        const rawBundleImg = bundle.images?.[0]?.url || '';
+        const bundleImg = resolveImageUrl(rawBundleImg) || rawBundleImg;
+        orderItems.push({
+          productId: null,
+          preMadeBundleId: bundle._id,
+          productName: bundle.name,
+          productImage: bundleImg,
+          productImageR2Url: bundleImg,
+          sku: null,
+          variantId: null,
+          variantName: null,
+          variantImage: null,
+          variantImageR2Url: null,
+          variantImages: [],
+          variantR2Images: [],
+          orderedVariantImage: null,
+          orderedVariantImageR2Url: null,
+          orderedVariantImages: [],
+          orderedVariantR2Images: [],
+          variantSnapshot: null,
+          price: bundle.price,
+          quantity: qty,
+          selectedColor: null,
+          selectedSize: null,
+          subtotal: itemSubtotal
+        });
+        continue;
       }
-      const qty = Math.max(1, Number(item.quantity) || 1);
-      const bundleStock = Number(bundle.stock) ?? 0;
-      if (bundleStock < qty) {
-        return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${qty}`, 400));
+
+      const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }).lean();
+      if (!product) {
+        return next(new ApiError(`Product ${item.productId} not found`, 404));
       }
-      const itemSubtotal = bundle.price * qty;
-      subtotal += itemSubtotal;
-      orderItems.push({
-        productId: null,
-        preMadeBundleId: bundle._id,
-        productName: bundle.name,
-        productImage: bundle.images?.[0]?.url || '',
-        sku: null,
-        variantId: null,
-        variantName: null,
-        variantImage: null,
-        variantImages: [],
-        orderedVariantImage: null,
-        orderedVariantImages: [],
-        variantSnapshot: null,
-        price: bundle.price,
-        quantity: qty,
-        selectedColor: null,
-        selectedSize: null,
-        subtotal: itemSubtotal
-      });
-      continue;
-    }
 
-    const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }).lean();
-    if (!product) {
-      return next(new ApiError(`Product ${item.productId} not found`, 404));
-    }
-
-    let colorV = null;
-    let sizeV = null;
-    if (Array.isArray(product.variants) && product.variants.length > 0) {
-      // 1. Try finding by variantId (matches `${v.colorId}-${sz.sizeId}` or `sz.sizeId`)
-      if (item.variantId) {
-        for (const v of product.variants) {
-          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
-          if (s) {
-            colorV = v;
-            sizeV = s;
-            break;
+      let colorV = null;
+      let sizeV = null;
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        // 1. Try finding by variantId (matches `${v.colorId}-${sz.sizeId}` or `sz.sizeId`)
+        if (item.variantId) {
+          for (const v of product.variants) {
+            const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
+            if (s) {
+              colorV = v;
+              sizeV = s;
+              break;
+            }
+          }
+          // If not found in sizes, check if variantId matches colorId
+          if (!colorV) {
+            colorV = product.variants.find(v => v.colorId === item.variantId || v.color === item.variantId);
+            if (colorV) {
+              sizeV = (colorV.sizes || []).find(sz => sz.size === item.selectedSize || sz.sizeId === item.selectedSize) || colorV.sizes?.[0] || null;
+            }
           }
         }
-        // If not found in sizes, check if variantId matches colorId
-        if (!colorV) {
-          colorV = product.variants.find(v => v.colorId === item.variantId || v.color === item.variantId);
+
+        // 2. If not found by variantId, try finding by selectedColor
+        if (!colorV && item.selectedColor) {
+          colorV = product.variants.find(v =>
+            v.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
+            v.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
+          );
           if (colorV) {
-            sizeV = (colorV.sizes || []).find(sz => sz.size === item.selectedSize || sz.sizeId === item.selectedSize) || colorV.sizes?.[0] || null;
+            if (item.selectedSize) {
+              sizeV = (colorV.sizes || []).find(sz =>
+                sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
+                sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
+              );
+            }
+            if (!sizeV) {
+              sizeV = colorV.sizes?.[0] || null;
+            }
           }
         }
       }
 
-      // 2. If not found by variantId, try finding by selectedColor
-      if (!colorV && item.selectedColor) {
-        colorV = product.variants.find(v => 
-          v.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
-          v.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
-        );
-        if (colorV) {
-          if (item.selectedSize) {
-            sizeV = (colorV.sizes || []).find(sz => 
-              sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
-              sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
-            );
-          }
-          if (!sizeV) {
-            sizeV = colorV.sizes?.[0] || null;
-          }
-        }
-      }
-    }
-
-    if (item.variantId && !colorV && !sizeV) {
-      return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
-    }
-
-    let chosenVariant = null;
-    if (sizeV && colorV) {
-      chosenVariant = { ...sizeV, images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: sizeV.size };
-    } else if (colorV) {
-      chosenVariant = { images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: item.selectedSize || null };
-    }
-
-    if (sizeV) {
-      const variantStock = Number(sizeV.stock) || 0;
-      const requestedQty = Number(item.quantity) || 0;
-      if (variantStock < requestedQty) {
-        return next(new ApiError(`Insufficient stock for ${product.name} (variant). Available: ${variantStock}, requested: ${requestedQty}`, 400));
+      if (item.variantId && !colorV && !sizeV) {
+        return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
       }
 
-      // Check Customization options requirement (Tie, Elastic, or Bridal Length)
-      const hasCustomizations = sizeV.hasTieElastic || sizeV.hasBridalLength;
-      if (hasCustomizations) {
-        const hasTieSelection = item.selectedTieElastic && ['tie', 'elastic'].includes(item.selectedTieElastic);
-        const hasBridalSelection = item.selectedBridalLength === 'bridal';
+      let chosenVariant = null;
+      if (sizeV && colorV) {
+        chosenVariant = { ...sizeV, images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: sizeV.size };
+      } else if (colorV) {
+        chosenVariant = { images: colorV.images, color: colorV.color, colorId: colorV.colorId, size: item.selectedSize || null };
+      }
 
-        if (!hasTieSelection && !hasBridalSelection) {
-          return next(new ApiError(`Please select a customization option (Tie, Elastic, or Bridal Length) for ${product.name}`, 400));
+      if (sizeV) {
+        const variantStock = Number(sizeV.stock) || 0;
+        const requestedQty = Number(item.quantity) || 0;
+        if (variantStock < requestedQty) {
+          return next(new ApiError(`Insufficient stock for ${product.name} (variant). Available: ${variantStock}, requested: ${requestedQty}`, 400));
         }
 
-        if (item.selectedTieElastic === 'tie') {
-          const tieStock = Number(sizeV.tieStock) || 0;
-          if (tieStock < requestedQty) {
-            return next(new ApiError(`Tie option for ${product.name} is out of stock. Available: ${tieStock}, requested: ${requestedQty}`, 400));
+        // Check Customization options requirement (Tie, Elastic, or Bridal Length)
+        const hasCustomizations = sizeV.hasTieElastic || sizeV.hasBridalLength;
+        if (hasCustomizations) {
+          const hasTieSelection = item.selectedTieElastic && ['tie', 'elastic'].includes(item.selectedTieElastic);
+          const hasBridalSelection = item.selectedBridalLength === 'bridal';
+
+          if (!hasTieSelection && !hasBridalSelection) {
+            return next(new ApiError(`Please select a customization option (Tie, Elastic, or Bridal Length) for ${product.name}`, 400));
           }
-        } else if (item.selectedTieElastic === 'elastic') {
-          const elasticStock = Number(sizeV.elasticStock) || 0;
-          if (elasticStock < requestedQty) {
-            return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
+
+          if (item.selectedTieElastic === 'tie') {
+            const tieStock = Number(sizeV.tieStock) || 0;
+            if (tieStock < requestedQty) {
+              return next(new ApiError(`Tie option for ${product.name} is out of stock. Available: ${tieStock}, requested: ${requestedQty}`, 400));
+            }
+          } else if (item.selectedTieElastic === 'elastic') {
+            const elasticStock = Number(sizeV.elasticStock) || 0;
+            if (elasticStock < requestedQty) {
+              return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
+            }
+          }
+          if (item.selectedBridalLength === 'bridal') {
+            const bridalStock = Number(sizeV.bridalStock) || 0;
+            if (bridalStock < requestedQty) {
+              return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
+            }
           }
         }
-        if (item.selectedBridalLength === 'bridal') {
-          const bridalStock = Number(sizeV.bridalStock) || 0;
-          if (bridalStock < requestedQty) {
-            return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
-          }
+      } else {
+        const productStock = Number(product.stock) || 0;
+        const requestedQty = Number(item.quantity) || 0;
+        if (productStock < requestedQty) {
+          return next(new ApiError(`Insufficient stock for ${product.name}. Available: ${productStock}, requested: ${requestedQty}`, 400));
         }
       }
-    } else {
-      const productStock = Number(product.stock) || 0;
-      const requestedQty = Number(item.quantity) || 0;
-      if (productStock < requestedQty) {
-        return next(new ApiError(`Insufficient stock for ${product.name}. Available: ${productStock}, requested: ${requestedQty}`, 400));
+
+      const baseUnitPrice = chosenVariant?.price ?? product.price;
+      const bridalExtra = (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0;
+      const unitPrice = baseUnitPrice + bridalExtra;
+      const rule = item.variantId ? await getBundleRule(item.productId, item.variantId) : null;
+      const computed = computeLineWithBundle(unitPrice, item.quantity, rule);
+      subtotal += computed.effectiveLineTotal;
+      const effectiveUnitPrice = computed.effectiveLineTotal / item.quantity;
+
+      // Collect all image URLs for this variant
+      const rawVariantImages = colorV?.images || chosenVariant?.images || [];
+      const variantImagesList = (Array.isArray(rawVariantImages) ? rawVariantImages : [])
+        .map(img => (typeof img === 'string' ? img : img?.url))
+        .filter(Boolean);
+
+      const primaryVariantImg = (Array.isArray(rawVariantImages) ? rawVariantImages : []).find(i => i?.isPrimary)?.url ||
+        variantImagesList[0] ||
+        null;
+
+      // Resolve exact variant image (prioritizing customer selected/snapshot image, then primary variant image)
+      const resolvedVariantImg = item.selectedImage ||
+        item.variantSnapshot?.image ||
+        primaryVariantImg ||
+        null;
+
+      const finalVariantImages = [];
+      if (resolvedVariantImg) {
+        finalVariantImages.push(resolvedVariantImg);
+      }
+      for (const url of variantImagesList) {
+        if (!finalVariantImages.includes(url)) {
+          finalVariantImages.push(url);
+        }
+      }
+
+      // Default/main product image
+      const productMainImage = product.images?.find(i => i?.isPrimary)?.url ||
+        product.images?.[0]?.url ||
+        product.image ||
+        '';
+
+      // Readable variant name (e.g. "Dark Grey" or "Dark Grey / Standard")
+      const variantName = [item.selectedColor || colorV?.color, item.selectedSize || sizeV?.size]
+        .filter(Boolean)
+        .join(' / ') || item.selectedColor || colorV?.color || null;
+
+      const rawMainImg = productMainImage || resolvedVariantImg || '';
+      const mainImg = resolveImageUrl(rawMainImg) || rawMainImg;
+      const finalVariantImg = resolveImageUrl(resolvedVariantImg) || resolvedVariantImg;
+      const resolvedVariantImages = (finalVariantImages || []).map(img => resolveImageUrl(img) || img);
+
+      orderItems.push({
+        productId: product._id,
+        preMadeBundleId: null,
+        productName: product.name,
+        productImage: mainImg,
+        productImageR2Url: mainImg,
+        sku: chosenVariant?.sku || product.sku,
+        variantId: item.variantId || (colorV && sizeV ? `${colorV.colorId}-${sizeV.sizeId}` : (colorV?.colorId || null)),
+        variantName,
+        variantImage: finalVariantImg,
+        variantImageR2Url: finalVariantImg,
+        variantImages: resolvedVariantImages,
+        variantR2Images: resolvedVariantImages,
+        orderedVariantImage: finalVariantImg,
+        orderedVariantImageR2Url: finalVariantImg,
+        orderedVariantImages: resolvedVariantImages,
+        orderedVariantR2Images: resolvedVariantImages,
+        variantSnapshot: (chosenVariant || resolvedVariantImg) ? {
+          sku: chosenVariant?.sku || product.sku || null,
+          price: chosenVariant?.price || effectiveUnitPrice,
+          name: variantName,
+          image: resolvedVariantImg,
+          images: finalVariantImages,
+          color: chosenVariant?.color || item.selectedColor || null,
+          size: chosenVariant?.size || item.selectedSize || null,
+          specs: chosenVariant?.specs || colorV?.specs || null,
+          hasTieElastic: chosenVariant?.hasTieElastic || false,
+          hasBridalLength: chosenVariant?.hasBridalLength || false,
+          bridalLengthPrice: chosenVariant?.bridalLengthPrice || 0
+        } : null,
+        price: effectiveUnitPrice,
+        quantity: item.quantity,
+        selectedColor: item.selectedColor || chosenVariant?.color || null,
+        selectedSize: item.selectedSize || chosenVariant?.size || null,
+        selectedTieElastic: chosenVariant?.hasTieElastic ? item.selectedTieElastic : null,
+        selectedBridalLength: chosenVariant?.hasBridalLength ? item.selectedBridalLength : null,
+        bridalLengthPrice: (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0,
+        subtotal: computed.effectiveLineTotal
+      });
+    }
+
+    // Apply coupon if provided
+    let discount = 0;
+    let couponDiscount = 0;
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+
+      if (!coupon) {
+        return next(new ApiError('Invalid coupon code', 400));
+      }
+
+      if (!coupon.isValid()) {
+        return next(new ApiError('Coupon is expired or invalid', 400));
+      }
+
+      if (subtotal < coupon.minOrderAmount) {
+        return next(new ApiError(`Minimum order amount is PKR ${coupon.minOrderAmount}`, 400));
+      }
+
+      if (coupon.type === 'percentage') {
+        couponDiscount = (subtotal * coupon.value) / 100;
+        if (coupon.maxDiscount) {
+          couponDiscount = Math.min(couponDiscount, coupon.maxDiscount);
+        }
+      } else {
+        couponDiscount = coupon.value;
+      }
+
+      discount = couponDiscount;
+    }
+
+    // Calculate delivery fee based on selected option (never trust frontend amount)
+    const selectedDelivery = resolveDeliveryOption(deliveryOption);
+    const shipping = selectedDelivery.fee;
+
+    // Calculate total
+    const total = subtotal - discount + shipping;
+
+    // Upload receipt to cloud
+    const receiptRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
+    const receiptUrl = typeof receiptRes === 'string' ? receiptRes : receiptRes?.url;
+    const receiptProvider = typeof receiptRes === 'object' && receiptRes?.provider ? receiptRes.provider : 'r2';
+    const receiptKey = typeof receiptRes === 'object' ? receiptRes?.key : undefined;
+    const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
+
+    // Create order
+    const normalizedCustomerEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
+    const order = await Order.create({
+      userId: req.user?.id || null,
+      customer: {
+        name: (customer.name || '').trim(),
+        email: normalizedCustomerEmail,
+        phone: (customer.phone || '').trim(),
+        alternatePhone: customer.alternatePhone ? customer.alternatePhone.trim() : null,
+        houseNumber: customer.houseNumber || null,
+        streetNumber: customer.streetNumber || null,
+        nearestLandmark: customer.nearestLandmark || null,
+        completeAddress: customer.completeAddress || customer.address || '',
+        address: customer.completeAddress || customer.address || '',
+        tehsil: customer.tehsil || null,
+        district: customer.district || null,
+        city: customer.city || null,
+        postalCode: customer.postalCode || null,
+        specialInstructions: customer.specialInstructions || null
+      },
+      items: orderItems,
+      subtotal,
+      discount,
+      shipping,
+      deliveryFee: shipping,
+      total,
+      deliveryOption: selectedDelivery.id,
+      deliveryOptionName: selectedDelivery.name,
+      estimatedDeliveryTime: selectedDelivery.estimatedDeliveryTime,
+      courier: selectedDelivery.courier,
+      couponCode: couponCode?.toUpperCase(),
+      couponDiscount,
+      paymentMethod: paymentMethod || 'bank_transfer',
+      customerNotes,
+      paymentReceipt: {
+        provider: receiptProvider,
+        key: receiptKey,
+        publicId: receiptPublicId,
+        url: resolveImageUrl(receiptUrl) || receiptUrl,
+        r2Url: resolveImageUrl(receiptUrl) || receiptUrl,
+        uploadedAt: new Date()
+      },
+      paymentStatus: 'pending'
+    });
+
+    // Update coupon usage if applicable
+    if (couponCode) {
+      await Coupon.findOneAndUpdate(
+        { code: couponCode.toUpperCase() },
+        {
+          $inc: { usedCount: 1 },
+          $push: {
+            usedBy: {
+              userId: req.user?.id,
+              orderId: order._id,
+              usedAt: new Date(),
+              discountAmount: couponDiscount
+            }
+          }
+        }
+      );
+    }
+
+    // Deduct stock for all items and mark order as stock-deducted (idempotency guard)
+    const touchedProductIds = new Set();
+    for (const item of orderItems) {
+      const pId = await deductOrderItem(item);
+      if (pId) touchedProductIds.add(pId);
+    }
+    for (const productId of touchedProductIds) {
+      await recomputeProductStock(productId);
+    }
+    // Mark stock as deducted so restoreAllStock knows it needs to restore later if cancelled
+    await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
+    order.stockDeducted = true;
+
+    // If registered user opted to save/update checkout details, persist them
+    if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {
+      try {
+        const userToUpdate = await User.findById(req.user.id || req.user._id);
+        if (userToUpdate) {
+          syncCheckoutDetailsWithUser(userToUpdate, customer);
+          await userToUpdate.save();
+        }
+      } catch (saveErr) {
+        console.error('Failed to auto-save checkout details on order creation:', saveErr);
+        // Non-fatal, do not break order creation
       }
     }
 
-    const baseUnitPrice = chosenVariant?.price ?? product.price;
-    const bridalExtra = (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0;
-    const unitPrice = baseUnitPrice + bridalExtra;
-    const rule = item.variantId ? await getBundleRule(item.productId, item.variantId) : null;
-    const computed = computeLineWithBundle(unitPrice, item.quantity, rule);
-    subtotal += computed.effectiveLineTotal;
-    const effectiveUnitPrice = computed.effectiveLineTotal / item.quantity;
+    // Send Order Received Email (asynchronous, non-blocking)
+    sendOrderReceivedEmail(order).catch(err =>
+      console.error('Failed to send order received email:', err.message)
+    );
 
-    // Collect all image URLs for this variant
-    const rawVariantImages = colorV?.images || chosenVariant?.images || [];
-    const variantImagesList = (Array.isArray(rawVariantImages) ? rawVariantImages : [])
-      .map(img => (typeof img === 'string' ? img : img?.url))
-      .filter(Boolean);
+    orderCreatedSuccessfully = true;
 
-    const primaryVariantImg = (Array.isArray(rawVariantImages) ? rawVariantImages : []).find(i => i?.isPrimary)?.url ||
-      variantImagesList[0] ||
-      null;
-
-    // Resolve exact variant image (prioritizing customer selected/snapshot image, then primary variant image)
-    const resolvedVariantImg = item.selectedImage ||
-      item.variantSnapshot?.image ||
-      primaryVariantImg ||
-      null;
-
-    const finalVariantImages = [];
-    if (resolvedVariantImg) {
-      finalVariantImages.push(resolvedVariantImg);
-    }
-    for (const url of variantImagesList) {
-      if (!finalVariantImages.includes(url)) {
-        finalVariantImages.push(url);
-      }
+    res.status(201).json(
+      new ApiResponse(201, { order }, 'Order created successfully')
+    );
+  } finally {
+    // If order was not created successfully, revert guest verification token consumption so customer can retry
+    if (!orderCreatedSuccessfully && guestVerificationDoc?._id) {
+      await GuestVerification.updateOne(
+        { _id: guestVerificationDoc._id },
+        { $set: { isUsed: false, usedAt: null } }
+      ).catch(() => { });
     }
 
-    // Default/main product image
-    const productMainImage = product.images?.find(i => i?.isPrimary)?.url ||
-      product.images?.[0]?.url ||
-      product.image ||
-      '';
-
-    // Readable variant name (e.g. "Dark Grey" or "Dark Grey / Standard")
-    const variantName = [item.selectedColor || colorV?.color, item.selectedSize || sizeV?.size]
-      .filter(Boolean)
-      .join(' / ') || item.selectedColor || colorV?.color || null;
-
-    orderItems.push({
-      productId: product._id,
-      preMadeBundleId: null,
-      productName: product.name,
-      productImage: productMainImage || resolvedVariantImg || '',
-      sku: chosenVariant?.sku || product.sku,
-      variantId: item.variantId || (colorV && sizeV ? `${colorV.colorId}-${sizeV.sizeId}` : (colorV?.colorId || null)),
-      variantName,
-      variantImage: resolvedVariantImg,
-      variantImages: finalVariantImages,
-      orderedVariantImage: resolvedVariantImg,
-      orderedVariantImages: finalVariantImages,
-      variantSnapshot: (chosenVariant || resolvedVariantImg) ? {
-        sku: chosenVariant?.sku || product.sku || null,
-        price: chosenVariant?.price || effectiveUnitPrice,
-        name: variantName,
-        image: resolvedVariantImg,
-        images: finalVariantImages,
-        color: chosenVariant?.color || item.selectedColor || null,
-        size: chosenVariant?.size || item.selectedSize || null,
-        specs: chosenVariant?.specs || colorV?.specs || null,
-        hasTieElastic: chosenVariant?.hasTieElastic || false,
-        hasBridalLength: chosenVariant?.hasBridalLength || false,
-        bridalLengthPrice: chosenVariant?.bridalLengthPrice || 0
-      } : null,
-      price: effectiveUnitPrice,
-      quantity: item.quantity,
-      selectedColor: item.selectedColor || chosenVariant?.color || null,
-      selectedSize: item.selectedSize || chosenVariant?.size || null,
-      selectedTieElastic: chosenVariant?.hasTieElastic ? item.selectedTieElastic : null,
-      selectedBridalLength: chosenVariant?.hasBridalLength ? item.selectedBridalLength : null,
-      bridalLengthPrice: (chosenVariant?.hasBridalLength && item.selectedBridalLength === 'bridal') ? (Number(chosenVariant.bridalLengthPrice) || 0) : 0,
-      subtotal: computed.effectiveLineTotal
+    // Always release the distributed submission lock so subsequent requests are not blocked
+    await rateLimiterService.releaseLock(lockKey).catch((err) => {
+      console.error(`Failed to release order lock ${lockKey}:`, err.message);
     });
   }
-
-  // Apply coupon if provided
-  let discount = 0;
-  let couponDiscount = 0;
-  if (couponCode) {
-    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
-
-    if (!coupon) {
-      return next(new ApiError('Invalid coupon code', 400));
-    }
-
-    if (!coupon.isValid()) {
-      return next(new ApiError('Coupon is expired or invalid', 400));
-    }
-
-    if (subtotal < coupon.minOrderAmount) {
-      return next(new ApiError(`Minimum order amount is PKR ${coupon.minOrderAmount}`, 400));
-    }
-
-    if (coupon.type === 'percentage') {
-      couponDiscount = (subtotal * coupon.value) / 100;
-      if (coupon.maxDiscount) {
-        couponDiscount = Math.min(couponDiscount, coupon.maxDiscount);
-      }
-    } else {
-      couponDiscount = coupon.value;
-    }
-
-    discount = couponDiscount;
-  }
-
-  // Calculate delivery fee based on selected option (never trust frontend amount)
-  const selectedDelivery = resolveDeliveryOption(deliveryOption);
-  const shipping = selectedDelivery.fee;
-
-  // Calculate total
-  const total = subtotal - discount + shipping;
-
-  // Upload receipt to cloud
-  const receiptRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
-  const receiptUrl = typeof receiptRes === 'string' ? receiptRes : receiptRes?.url;
-  const receiptProvider = typeof receiptRes === 'object' && receiptRes?.provider ? receiptRes.provider : 'r2';
-  const receiptKey = typeof receiptRes === 'object' ? receiptRes?.key : undefined;
-  const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
-
-  // Create order
-  const normalizedCustomerEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
-  const order = await Order.create({
-    userId: req.user?.id || null,
-    customer: {
-      name: (customer.name || '').trim(),
-      email: normalizedCustomerEmail,
-      phone: (customer.phone || '').trim(),
-      alternatePhone: customer.alternatePhone ? customer.alternatePhone.trim() : null,
-      houseNumber: customer.houseNumber || null,
-      streetNumber: customer.streetNumber || null,
-      nearestLandmark: customer.nearestLandmark || null,
-      completeAddress: customer.completeAddress || customer.address || '',
-      address: customer.completeAddress || customer.address || '',
-      tehsil: customer.tehsil || null,
-      district: customer.district || null,
-      city: customer.city || null,
-      postalCode: customer.postalCode || null,
-      specialInstructions: customer.specialInstructions || null
-    },
-    items: orderItems,
-    subtotal,
-    discount,
-    shipping,
-    deliveryFee: shipping,
-    total,
-    deliveryOption: selectedDelivery.id,
-    deliveryOptionName: selectedDelivery.name,
-    estimatedDeliveryTime: selectedDelivery.estimatedDeliveryTime,
-    courier: selectedDelivery.courier,
-    couponCode: couponCode?.toUpperCase(),
-    couponDiscount,
-    paymentMethod: paymentMethod || 'bank_transfer',
-    customerNotes,
-    paymentReceipt: {
-      provider: receiptProvider,
-      key: receiptKey,
-      publicId: receiptPublicId,
-      url: receiptUrl,
-      uploadedAt: new Date()
-    },
-    paymentStatus: 'pending'
-  });
-
-  // Update coupon usage if applicable
-  if (couponCode) {
-    await Coupon.findOneAndUpdate(
-      { code: couponCode.toUpperCase() },
-      {
-        $inc: { usedCount: 1 },
-        $push: {
-          usedBy: {
-            userId: req.user?.id,
-            orderId: order._id,
-            usedAt: new Date(),
-            discountAmount: couponDiscount
-          }
-        }
-      }
-    );
-  }
-
-  // Deduct stock for all items and mark order as stock-deducted (idempotency guard)
-  const touchedProductIds = new Set();
-  for (const item of orderItems) {
-    const pId = await deductOrderItem(item);
-    if (pId) touchedProductIds.add(pId);
-  }
-  for (const productId of touchedProductIds) {
-    await recomputeProductStock(productId);
-  }
-  // Mark stock as deducted so restoreAllStock knows it needs to restore later if cancelled
-  await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
-  order.stockDeducted = true;
-
-  // If registered user opted to save/update checkout details, persist them
-  if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {
-    try {
-      const userToUpdate = await User.findById(req.user.id || req.user._id);
-      if (userToUpdate) {
-        syncCheckoutDetailsWithUser(userToUpdate, customer);
-        await userToUpdate.save();
-      }
-    } catch (saveErr) {
-      console.error('Failed to auto-save checkout details on order creation:', saveErr);
-      // Non-fatal, do not break order creation
-    }
-  }
-
-  // Send Order Received Email (asynchronous, non-blocking)
-  sendOrderReceivedEmail(order).catch(err =>
-    console.error('Failed to send order received email:', err.message)
-  );
-
-  orderCreatedSuccessfully = true;
-
-  res.status(201).json(
-    new ApiResponse(201, { order }, 'Order created successfully')
-  );
-} finally {
-  // If order was not created successfully, revert guest verification token consumption so customer can retry
-  if (!orderCreatedSuccessfully && guestVerificationDoc?._id) {
-    await GuestVerification.updateOne(
-      { _id: guestVerificationDoc._id },
-      { $set: { isUsed: false, usedAt: null } }
-    ).catch(() => {});
-  }
-
-  // Always release the distributed submission lock so subsequent requests are not blocked
-  await rateLimiterService.releaseLock(lockKey).catch((err) => {
-    console.error(`Failed to release order lock ${lockKey}:`, err.message);
-  });
-}
 });
 
 /** Helper: normalize shipping charge for existing/legacy orders */
@@ -997,7 +1016,8 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
     provider: receiptProvider,
     key: receiptKey,
     publicId: receiptPublicId,
-    url: receiptUrl,
+    url: resolveImageUrl(receiptUrl) || receiptUrl,
+    r2Url: resolveImageUrl(receiptUrl) || receiptUrl,
     uploadedAt: new Date()
   };
 

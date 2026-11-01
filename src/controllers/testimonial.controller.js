@@ -3,6 +3,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 // @route   GET /api/homepage/testimonials
 // @desc    Get published testimonials for homepage
@@ -61,7 +62,10 @@ export const createTestimonial = asyncHandler(async (req, res, next) => {
   };
   if (req.file) {
     const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
-    payload.customerImage = typeof resImg === 'string' ? resImg : resImg?.url;
+    const rawImg = typeof resImg === 'string' ? resImg : resImg?.url;
+    payload.customerImage = resolveImageUrl(rawImg) || rawImg;
+    payload.customerImageR2Url = typeof resImg === 'object' && resImg?.r2Url ? (resolveImageUrl(resImg.r2Url) || resImg.r2Url) : payload.customerImage;
+    payload.r2Url = payload.customerImageR2Url;
   }
   const created = await Testimonial.create(payload);
   res.status(201).json(
@@ -87,7 +91,10 @@ export const updateTestimonial = asyncHandler(async (req, res, next) => {
   if (body.displayOrder !== undefined) testimonial.displayOrder = Number(body.displayOrder) ?? 0;
   if (req.file) {
     const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
-    testimonial.customerImage = typeof resImg === 'string' ? resImg : resImg?.url;
+    const rawImg = typeof resImg === 'string' ? resImg : resImg?.url;
+    testimonial.customerImage = resolveImageUrl(rawImg) || rawImg;
+    testimonial.customerImageR2Url = typeof resImg === 'object' && resImg?.r2Url ? (resolveImageUrl(resImg.r2Url) || resImg.r2Url) : testimonial.customerImage;
+    testimonial.r2Url = testimonial.customerImageR2Url;
   }
   await testimonial.save();
   res.json(

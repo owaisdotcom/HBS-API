@@ -31,13 +31,14 @@ router.post('/setup', signupLimiter, setupSuperAdminValidator, validate, setupSu
 router.post('/login', authLimiter, adminLoginValidator, validate, adminLogin);
 router.post('/force-reset-password', passwordResetLimiter, forceResetAdminPassword);
 
-import { migrateCloudinaryToR2Admin } from '../controllers/upload.controller.js';
+import { migrateCloudinaryToR2Admin, migrateImageUrlsToR2Admin } from '../controllers/upload.controller.js';
 
 // Protected routes (requires authentication)
 router.get('/profile', protectAdmin, getAdminProfile);
 router.put('/password', protectAdmin, changePasswordValidator, validate, changeAdminPassword);
 router.get('/dashboard/overview', protectAdmin, adminLimiter, getDashboardOverview);
-// router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
+router.post('/migrate-image-urls-to-r2', protectAdmin, migrateImageUrlsToR2Admin);
+router.post('/migrate-r2', protectAdmin, migrateCloudinaryToR2Admin);
 
 // Admin management (requires super_admin role - add middleware check if needed)
 router.post('/register', protectAdmin, signupLimiter, createAdminValidator, validate, createAdmin);
