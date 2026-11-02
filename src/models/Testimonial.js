@@ -7,8 +7,12 @@ const testimonialSchema = new mongoose.Schema({
     trim: true
   },
   customerImage: String,
+  customerImageUrl: String,
   customerImageR2Url: String,
+  customerImageObjectKey: String,
   r2Url: String,
+  imageUrl: String,
+  objectKey: String,
   rating: {
     type: Number,
     required: [true, 'Rating is required'],

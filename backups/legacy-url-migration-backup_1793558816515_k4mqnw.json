@@ -1,0 +1,4758 @@
+{
+  "backupId": "backup_1793558816515_k4mqnw",
+  "timestamp": "2026-11-01T18:46:25.202Z",
+  "totalDocumentsModified": 41,
+  "totalUrlsMigrated": 75,
+  "collections": {
+    "orders": [
+      {
+        "docId": "698bc421bcd57cea3dc364ad",
+        "originalDoc": {
+          "_id": "698bc421bcd57cea3dc364ad",
+          "userId": "698bb682539e99851da4bd1f",
+          "customer": {
+            "name": "Owais Ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "03328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "B-013, Ramsha Avenue, Block 13, Gulistan-e-Jauhar, Karachi",
+            "address": "B-013, Ramsha Avenue, Block 13, Gulistan-e-Jauhar, Karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "Karachi",
+            "postalCode": "75290",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826651",
+              "preMadeBundleId": null,
+              "productName": "Embroidered Shayla",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1770764340/hbs-products/yihkrstsemdoyxtp9emc.webp",
+              "sku": "SHY-EMB-ROSE",
+              "variantId": "dusty-rose-one-size",
+              "variantSnapshot": {
+                "sku": "SHY-EMB-ROSE",
+                "price": 20,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1770764340/hbs-products/yihkrstsemdoyxtp9emc.webp",
+                "color": "Dusty Rose",
+                "size": "One Size",
+                "specs": null
+              },
+              "price": 10,
+              "quantity": 2,
+              "selectedColor": "Dusty Rose",
+              "selectedSize": "One Size",
+              "subtotal": 20,
+              "_id": "698bc421bcd57cea3dc364ae"
+            }
+          ],
+          "subtotal": 20,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 320,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/pbny4ghprnpk61di6cmw.png",
+            "uploadedAt": "2026-02-10T23:49:53.318Z",
+            "verifiedAt": "2026-02-10T23:50:18.943Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/pbny4ghprnpk61di6cmw.png",
+            "provider": "r2"
+          },
+          "status": "processing",
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-10T23:50:18.943Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "698bc43abcd57cea3dc3655e"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-10T23:50:18.945Z",
+              "_id": "698bc43abcd57cea3dc3655f"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-10T23:50:23.124Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "698bc43fbcd57cea3dc3656d"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-10T23:50:23.125Z",
+              "_id": "698bc43fbcd57cea3dc3656e"
+            }
+          ],
+          "orderId": "HBS-202602110001",
+          "createdAt": "2026-02-10T23:49:53.331Z",
+          "updatedAt": "2026-08-23T02:45:43.417Z",
+          "__v": 2,
+          "confirmedAt": "2026-02-10T23:50:18.945Z",
+          "isDeleted": false,
+          "stockDeducted": false,
+          "stockRestored": false
+        }
+      },
+      {
+        "docId": "699ce1e27d708803a14db822",
+        "originalDoc": {
+          "_id": "699ce1e27d708803a14db822",
+          "userId": "698bb682539e99851da4bd1f",
+          "customer": {
+            "name": "Owais Ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "03328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "B-013, Ramsha Avenue, Block 13, Gulistan-e-Jauhar, Karachi",
+            "address": "B-013, Ramsha Avenue, Block 13, Gulistan-e-Jauhar, Karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "Karachi",
+            "postalCode": "75290",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "696c50684415a09927af199b",
+              "preMadeBundleId": null,
+              "productName": "Gold Foil Lawn Hijabs",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1768706282/hbs-products/ksnemx6iwwr74ydnrlkp.png",
+              "sku": "HBS-GFL-002",
+              "variantId": null,
+              "variantSnapshot": null,
+              "price": 700,
+              "quantity": 1,
+              "selectedColor": "Dark Gray",
+              "selectedSize": "One Size",
+              "subtotal": 700,
+              "_id": "699ce1e27d708803a14db823"
+            },
+            {
+              "productId": "6979512c0e7e21b5e40f73ff",
+              "preMadeBundleId": null,
+              "productName": "Gold Foil Lawn Hijabs",
+              "productImage": "",
+              "sku": "HBS-1993-008",
+              "variantId": null,
+              "variantSnapshot": null,
+              "price": 700,
+              "quantity": 1,
+              "selectedColor": null,
+              "selectedSize": "One Size",
+              "subtotal": 700,
+              "_id": "699ce1e27d708803a14db824"
+            }
+          ],
+          "subtotal": 1400,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1700,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/ubx4isyx0igp0p42sjpe.png",
+            "uploadedAt": "2026-02-23T23:25:22.119Z",
+            "verifiedAt": "2026-02-23T23:32:23.706Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/ubx4isyx0igp0p42sjpe.png",
+            "provider": "r2"
+          },
+          "status": "confirmed",
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:32:23.706Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce387f1541edd7ff26851"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:32:23.709Z",
+              "_id": "699ce387f1541edd7ff26852"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-23T23:32:27.217Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce38bf1541edd7ff26860"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-23T23:32:27.219Z",
+              "_id": "699ce38bf1541edd7ff26861"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:32:44.777Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce39cf1541edd7ff26871"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:32:44.778Z",
+              "_id": "699ce39cf1541edd7ff26872"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-23T23:32:47.424Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce39ff1541edd7ff26884"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-02-23T23:32:47.425Z",
+              "_id": "699ce39ff1541edd7ff26885"
+            },
+            {
+              "status": "shipped",
+              "timestamp": "2026-02-23T23:32:52.553Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce3a4f1541edd7ff26899"
+            },
+            {
+              "status": "shipped",
+              "timestamp": "2026-02-23T23:32:52.554Z",
+              "_id": "699ce3a4f1541edd7ff2689a"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:33:14.017Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "699ce3baf1541edd7ff268ec"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-02-23T23:33:14.018Z",
+              "_id": "699ce3baf1541edd7ff268ed"
+            }
+          ],
+          "orderId": "HBS-202602240001",
+          "createdAt": "2026-02-23T23:25:22.123Z",
+          "updatedAt": "2026-08-23T02:45:43.434Z",
+          "__v": 6,
+          "confirmedAt": "2026-02-23T23:33:14.018Z",
+          "shippedAt": "2026-02-23T23:32:52.555Z",
+          "isDeleted": false,
+          "stockDeducted": false,
+          "stockRestored": false
+        }
+      },
+      {
+        "docId": "699ce6ecf1541edd7ff27acb",
+        "originalDoc": {
+          "_id": "699ce6ecf1541edd7ff27acb",
+          "userId": "698bb682539e99851da4bd1f",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "03328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697567dcac5cc22ee969ca6f",
+              "preMadeBundleId": null,
+              "productName": "Plain Jersey Hijabs",
+              "productImage": "",
+              "sku": "HBS-PJH-001",
+              "variantId": null,
+              "variantSnapshot": null,
+              "price": 750,
+              "quantity": 1,
+              "selectedColor": null,
+              "selectedSize": "One Size",
+              "subtotal": 750,
+              "_id": "699ce6ecf1541edd7ff27acc"
+            }
+          ],
+          "subtotal": 750,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1050,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/wtkb45mgseyilbpikjxo.png",
+            "uploadedAt": "2026-02-23T23:46:52.683Z",
+            "key": "hbs-receipts/wtkb45mgseyilbpikjxo.png",
+            "provider": "r2"
+          },
+          "status": "received",
+          "statusHistory": [],
+          "orderId": "HBS-202602240002",
+          "createdAt": "2026-02-23T23:46:52.687Z",
+          "updatedAt": "2026-08-23T02:45:43.435Z",
+          "__v": 0,
+          "isDeleted": false,
+          "stockDeducted": false,
+          "stockRestored": false
+        }
+      },
+      {
+        "docId": "6a7f46b358d52bcf0b816e05",
+        "originalDoc": {
+          "_id": "6a7f46b358d52bcf0b816e05",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "Owais Ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": "13123123123",
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "bridalDeductedFrom": null,
+              "subtotal": 29.99,
+              "_id": "6a7f46b358d52bcf0b816e06"
+            }
+          ],
+          "subtotal": 29.99,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 329.99,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/cddr6nhvuaixlwixdcg5.jpg",
+            "uploadedAt": "2026-08-14T16:47:47.679Z",
+            "key": "hbs-receipts/cddr6nhvuaixlwixdcg5.jpg",
+            "provider": "r2"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "statusHistory": [
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T16:49:13.811Z",
+              "note": "Payment rejected",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f470958d52bcf0b816e61"
+            },
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T16:49:13.812Z",
+              "_id": "6a7f470958d52bcf0b816e62"
+            },
+            {
+              "status": "received",
+              "timestamp": "2026-11-01T18:24:48.401Z",
+              "note": "Payment rejection reverted: Admin verified payment receipt with Meezan Bank statement",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6ae783f09659e858722efad4"
+            }
+          ],
+          "orderId": "HBS-202608140001",
+          "createdAt": "2026-08-14T16:47:47.683Z",
+          "updatedAt": "2026-11-01T18:24:48.405Z",
+          "__v": 2,
+          "cancelledAt": null,
+          "isDeleted": false,
+          "deliveryFee": 0
+        }
+      },
+      {
+        "docId": "6a7f4b34d0b8edbd2669178b",
+        "originalDoc": {
+          "_id": "6a7f4b34d0b8edbd2669178b",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150,
+                "customizationLabel": "Elastic"
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "customizationLabel": "Elastic",
+              "bridalDeductedFrom": null,
+              "subtotal": 29.99,
+              "_id": "6a7f4b34d0b8edbd2669178c"
+            }
+          ],
+          "subtotal": 29.99,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 329.99,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/kb2gsn8jrdhwzckun4ms.jpg",
+            "uploadedAt": "2026-08-14T17:07:00.736Z",
+            "key": "hbs-receipts/kb2gsn8jrdhwzckun4ms.jpg",
+            "provider": "r2"
+          },
+          "status": "cancelled",
+          "stockDeducted": true,
+          "stockRestored": true,
+          "statusHistory": [
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T17:09:41.167Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f4bd5d0b8edbd26692177"
+            },
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T17:09:41.168Z",
+              "_id": "6a7f4bd5d0b8edbd26692178"
+            }
+          ],
+          "orderId": "HBS-202608140002",
+          "createdAt": "2026-08-14T17:07:00.741Z",
+          "updatedAt": "2026-08-23T02:45:43.439Z",
+          "__v": 1,
+          "cancelledAt": "2026-08-14T17:09:41.168Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f4bb4d0b8edbd26691fde",
+        "originalDoc": {
+          "_id": "6a7f4bb4d0b8edbd26691fde",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150,
+                "customizationLabel": "Tie"
+              },
+              "price": 29.99,
+              "quantity": 2,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "customizationLabel": "Tie",
+              "bridalDeductedFrom": null,
+              "subtotal": 59.98,
+              "_id": "6a7f4bb4d0b8edbd26691fdf"
+            }
+          ],
+          "subtotal": 59.98,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 359.98,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/tzgbktb1babcdl8ed7bf.jpg",
+            "uploadedAt": "2026-08-14T17:09:08.780Z",
+            "verifiedAt": "2026-08-14T17:09:37.497Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/tzgbktb1babcdl8ed7bf.jpg",
+            "provider": "r2"
+          },
+          "status": "confirmed",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:09:37.497Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f4bd1d0b8edbd2669216a"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:09:37.498Z",
+              "_id": "6a7f4bd1d0b8edbd2669216b"
+            }
+          ],
+          "orderId": "HBS-202608140003",
+          "createdAt": "2026-08-14T17:09:08.784Z",
+          "updatedAt": "2026-08-23T02:45:43.440Z",
+          "__v": 1,
+          "confirmedAt": "2026-08-14T17:09:37.498Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f4c1bd0b8edbd26692773",
+        "originalDoc": {
+          "_id": "6a7f4c1bd0b8edbd26692773",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150,
+                "customizationLabel": "Bridal Length"
+              },
+              "price": 179.99,
+              "quantity": 5,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "customizationLabel": "Bridal Length",
+              "bridalDeductedFrom": "elastic",
+              "subtotal": 899.95,
+              "_id": "6a7f4c1bd0b8edbd26692774"
+            }
+          ],
+          "subtotal": 899.95,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1199.95,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/wzekzfrnr8m5wkonxkzj.jpg",
+            "uploadedAt": "2026-08-14T17:10:51.081Z",
+            "verifiedAt": "2026-08-14T17:14:44.309Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/wzekzfrnr8m5wkonxkzj.jpg",
+            "provider": "r2"
+          },
+          "status": "confirmed",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:14:44.309Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f4d0444c31d0fe3b27686"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:14:44.313Z",
+              "_id": "6a7f4d0444c31d0fe3b27687"
+            }
+          ],
+          "orderId": "HBS-202608140004",
+          "createdAt": "2026-08-14T17:10:51.085Z",
+          "updatedAt": "2026-08-23T02:45:43.442Z",
+          "__v": 1,
+          "confirmedAt": "2026-08-14T17:14:44.313Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f53b5ec37ef847977dfc6",
+        "originalDoc": {
+          "_id": "6a7f53b5ec37ef847977dfc6",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "Owais Ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150,
+                "customizationLabel": "Bridal Length"
+              },
+              "price": 179.99,
+              "quantity": 3,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "customizationLabel": "Bridal Length",
+              "bridalDeductedFrom": null,
+              "subtotal": 539.97,
+              "_id": "6a7f53b5ec37ef847977dfc7"
+            }
+          ],
+          "subtotal": 539.97,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 839.97,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/ajvtfmorbcu2chtjdta6.jpg",
+            "uploadedAt": "2026-08-14T17:43:17.222Z",
+            "verifiedAt": "2026-08-14T17:43:33.415Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/ajvtfmorbcu2chtjdta6.jpg",
+            "provider": "r2"
+          },
+          "status": "confirmed",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:43:33.415Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f53c5ec37ef847977dfff"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T17:43:33.417Z",
+              "_id": "6a7f53c5ec37ef847977e000"
+            }
+          ],
+          "orderId": "HBS-202608140005",
+          "createdAt": "2026-08-14T17:43:17.228Z",
+          "updatedAt": "2026-08-23T02:45:43.444Z",
+          "__v": 1,
+          "confirmedAt": "2026-08-14T17:43:33.417Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f8d06f4de7fde16048b51",
+        "originalDoc": {
+          "_id": "6a7f8d06f4de7fde16048b51",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a7f8d06f4de7fde16048b52"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a7f8d06f4de7fde16048b53"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 179.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "subtotal": 179.99,
+              "_id": "6a7f8d06f4de7fde16048b54"
+            }
+          ],
+          "subtotal": 239.97,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 539.97,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/tmclvjfe31pun6aptd5b.jpg",
+            "uploadedAt": "2026-08-14T21:47:50.161Z",
+            "key": "hbs-receipts/tmclvjfe31pun6aptd5b.jpg",
+            "provider": "r2"
+          },
+          "status": "cancelled",
+          "stockDeducted": true,
+          "stockRestored": true,
+          "statusHistory": [
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T21:53:49.477Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f8e6df4de7fde16048b9d"
+            },
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T21:53:49.479Z",
+              "_id": "6a7f8e6df4de7fde16048b9e"
+            }
+          ],
+          "orderId": "HBS-202608150001",
+          "createdAt": "2026-08-14T21:47:50.167Z",
+          "updatedAt": "2026-08-23T02:45:43.446Z",
+          "__v": 1,
+          "cancelledAt": "2026-08-14T21:53:49.479Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f8e9ff4de7fde1604916c",
+        "originalDoc": {
+          "_id": "6a7f8e9ff4de7fde1604916c",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a7f8e9ff4de7fde1604916d"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a7f8e9ff4de7fde1604916e"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 179.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "subtotal": 179.99,
+              "_id": "6a7f8e9ff4de7fde1604916f"
+            }
+          ],
+          "subtotal": 239.97,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 539.97,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/byrhr13pcxojrrpmtfno.jpg",
+            "uploadedAt": "2026-08-14T21:54:39.896Z",
+            "verifiedAt": "2026-08-14T21:54:54.856Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa",
+            "key": "hbs-receipts/byrhr13pcxojrrpmtfno.jpg",
+            "provider": "r2"
+          },
+          "status": "confirmed",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T21:54:54.856Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f8eaef4de7fde160491bd"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-14T21:54:54.857Z",
+              "_id": "6a7f8eaef4de7fde160491be"
+            }
+          ],
+          "orderId": "HBS-202608150002",
+          "createdAt": "2026-08-14T21:54:39.901Z",
+          "updatedAt": "2026-08-23T02:45:43.447Z",
+          "__v": 1,
+          "confirmedAt": "2026-08-14T21:54:54.857Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a7f8ee0f4de7fde1604972c",
+        "originalDoc": {
+          "_id": "6a7f8ee0f4de7fde1604972c",
+          "userId": "6a7f464158d52bcf0b815e5d",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "bcitgeek@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 179.99,
+              "quantity": 6,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "subtotal": 1079.94,
+              "_id": "6a7f8ee0f4de7fde1604972d"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 4,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 119.96,
+              "_id": "6a7f8ee0f4de7fde1604972e"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://res.cloudinary.com/ddnc1gkuw/image/upload/v1775271485/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 2,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 59.98,
+              "_id": "6a7f8ee0f4de7fde1604972f"
+            }
+          ],
+          "subtotal": 1259.88,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1559.88,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/pwokieegktigdkpryghy.jpg",
+            "uploadedAt": "2026-08-14T21:55:44.607Z",
+            "key": "hbs-receipts/pwokieegktigdkpryghy.jpg",
+            "provider": "r2"
+          },
+          "status": "cancelled",
+          "stockDeducted": true,
+          "stockRestored": true,
+          "statusHistory": [
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T21:56:02.325Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a7f8ef2f4de7fde1604986c"
+            },
+            {
+              "status": "cancelled",
+              "timestamp": "2026-08-14T21:56:02.326Z",
+              "_id": "6a7f8ef2f4de7fde1604986d"
+            }
+          ],
+          "orderId": "HBS-202608150003",
+          "createdAt": "2026-08-14T21:55:44.611Z",
+          "updatedAt": "2026-08-23T02:45:43.449Z",
+          "__v": 1,
+          "cancelledAt": "2026-08-14T21:56:02.326Z",
+          "isDeleted": false
+        }
+      },
+      {
+        "docId": "6a8cd1126d1acf90351d55ee",
+        "originalDoc": {
+          "_id": "6a8cd1126d1acf90351d55ee",
+          "userId": "698bb682539e99851da4bd1f",
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "03328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a8cd1126d1acf90351d55ef"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 179.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": null,
+              "selectedBridalLength": "bridal",
+              "bridalLengthPrice": 150,
+              "subtotal": 179.99,
+              "_id": "6a8cd1126d1acf90351d55f0"
+            },
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "tie",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a8cd1126d1acf90351d55f1"
+            }
+          ],
+          "subtotal": 239.97000000000003,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 539.97,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/20a79948-f196-4fce-8551-43a254a7a810.jpg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/20a79948-f196-4fce-8551-43a254a7a810.jpg",
+            "uploadedAt": "2026-08-24T23:17:38.103Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202608250001",
+          "createdAt": "2026-08-24T23:17:38.122Z",
+          "updatedAt": "2026-08-24T23:17:38.301Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a8e164a2fadd3680f21deb4",
+        "originalDoc": {
+          "_id": "6a8e164a2fadd3680f21deb4",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "698bb27b89084d5cc6826667",
+              "preMadeBundleId": null,
+              "productName": "Long Khimar with Slits",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+              "sku": "KHM-LNG-BLK",
+              "variantId": "black-one-size",
+              "variantSnapshot": {
+                "sku": "KHM-LNG-BLK",
+                "price": 29.99,
+                "image": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                "color": "Black",
+                "size": "One Size",
+                "specs": null,
+                "hasTieElastic": true,
+                "hasBridalLength": true,
+                "bridalLengthPrice": 150
+              },
+              "price": 29.99,
+              "quantity": 1,
+              "selectedColor": "Black",
+              "selectedSize": "One Size",
+              "selectedTieElastic": "elastic",
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 29.99,
+              "_id": "6a8e164a2fadd3680f21deb5"
+            }
+          ],
+          "subtotal": 29.99,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 329.99,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "verified",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/bf9d1a5b-1ee2-4c5c-9472-28c9d9a061ef.jpg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/bf9d1a5b-1ee2-4c5c-9472-28c9d9a061ef.jpg",
+            "uploadedAt": "2026-08-25T22:25:14.239Z",
+            "verifiedAt": "2026-08-25T22:26:10.003Z",
+            "verifiedBy": "698911cae223a0b96e32c1aa"
+          },
+          "status": "delivered",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-25T22:26:10.004Z",
+              "note": "Payment verified",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a8e16822fadd3680f21df14"
+            },
+            {
+              "status": "confirmed",
+              "timestamp": "2026-08-25T22:26:10.005Z",
+              "_id": "6a8e16822fadd3680f21df15"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-08-25T22:26:29.412Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a8e16952fadd3680f21df23"
+            },
+            {
+              "status": "processing",
+              "timestamp": "2026-08-25T22:26:29.412Z",
+              "_id": "6a8e16952fadd3680f21df24"
+            },
+            {
+              "status": "shipped",
+              "timestamp": "2026-08-25T22:26:35.660Z",
+              "note": "Tracking updated: 1342134234 (asdasd)",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a8e169b2fadd3680f21df34"
+            },
+            {
+              "status": "shipped",
+              "timestamp": "2026-08-25T22:26:35.661Z",
+              "_id": "6a8e169b2fadd3680f21df35"
+            },
+            {
+              "status": "delivered",
+              "timestamp": "2026-08-25T22:26:37.885Z",
+              "updatedBy": "698911cae223a0b96e32c1aa",
+              "_id": "6a8e169d2fadd3680f21df47"
+            },
+            {
+              "status": "delivered",
+              "timestamp": "2026-08-25T22:26:37.888Z",
+              "_id": "6a8e169d2fadd3680f21df48"
+            }
+          ],
+          "orderId": "HBS-202608260001",
+          "createdAt": "2026-08-25T22:25:14.246Z",
+          "updatedAt": "2026-08-25T22:26:37.887Z",
+          "__v": 4,
+          "confirmedAt": "2026-08-25T22:26:10.005Z",
+          "courier": "asdasd",
+          "shippedAt": "2026-08-25T22:26:35.661Z",
+          "trackingNumber": "1342134234",
+          "deliveredAt": "2026-08-25T22:26:37.888Z"
+        }
+      },
+      {
+        "docId": "6a8e18a12fadd3680f21e05b",
+        "originalDoc": {
+          "_id": "6a8e18a12fadd3680f21e05b",
+          "userId": null,
+          "customer": {
+            "name": "Owais Ansari",
+            "email": "hijabsbyshiza@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": "asdasd",
+            "streetNumber": "asd",
+            "nearestLandmark": "asd",
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": "asd",
+            "district": "ad",
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-SM-01",
+              "variantId": "color-1772506064071-0.4705651549965034-size-1772506064071-0.9689838199968343",
+              "variantSnapshot": {
+                "sku": "HBS-SM-01",
+                "price": 750,
+                "image": null,
+                "color": "Blue",
+                "size": "Small",
+                "specs": null,
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 750,
+              "quantity": 3,
+              "selectedColor": "Blue",
+              "selectedSize": "Small",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 2250,
+              "_id": "6a8e18a12fadd3680f21e05c"
+            }
+          ],
+          "subtotal": 2250,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 2550,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/86b3760d-0fcf-41cc-8f3c-e0b4c5a31948.jpg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/86b3760d-0fcf-41cc-8f3c-e0b4c5a31948.jpg",
+            "uploadedAt": "2026-08-25T22:35:13.947Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202608260002",
+          "createdAt": "2026-08-25T22:35:13.952Z",
+          "updatedAt": "2026-08-25T22:35:13.963Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a8e192a2fadd3680f21e0cf",
+        "originalDoc": {
+          "_id": "6a8e192a2fadd3680f21e0cf",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "query.hbs@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": "1231",
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-SM-01",
+              "variantId": "color-1772506064071-0.4705651549965034-size-1772506064071-0.9689838199968343",
+              "variantSnapshot": {
+                "sku": "HBS-SM-01",
+                "price": 750,
+                "image": null,
+                "color": "Blue",
+                "size": "Small",
+                "specs": null,
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 750,
+              "quantity": 2,
+              "selectedColor": "Blue",
+              "selectedSize": "Small",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 1500,
+              "_id": "6a8e192a2fadd3680f21e0d0"
+            }
+          ],
+          "subtotal": 1500,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1800,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/d2dfb2c3-e511-4bdb-93c8-935861d564c1.jpg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/d2dfb2c3-e511-4bdb-93c8-935861d564c1.jpg",
+            "uploadedAt": "2026-08-25T22:37:30.080Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202608260003",
+          "createdAt": "2026-08-25T22:37:30.085Z",
+          "updatedAt": "2026-08-25T22:37:30.102Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a8e1c7b2fadd3680f21e223",
+        "originalDoc": {
+          "_id": "6a8e1c7b2fadd3680f21e223",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "medeasebyheal@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-SM-01",
+              "variantId": "color-1772506064071-0.4705651549965034-size-1772506064071-0.9689838199968343",
+              "variantSnapshot": {
+                "sku": "HBS-SM-01",
+                "price": 750,
+                "image": null,
+                "color": "Blue",
+                "size": "Small",
+                "specs": null,
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 750,
+              "quantity": 1,
+              "selectedColor": "Blue",
+              "selectedSize": "Small",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 750,
+              "_id": "6a8e1c7b2fadd3680f21e224"
+            }
+          ],
+          "subtotal": 750,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1050,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/c434c7f8-f3ed-4996-93d2-9d690e54a7ac.jpg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/c434c7f8-f3ed-4996-93d2-9d690e54a7ac.jpg",
+            "uploadedAt": "2026-08-25T22:51:39.198Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202608260004",
+          "createdAt": "2026-08-25T22:51:39.202Z",
+          "updatedAt": "2026-08-25T22:51:39.213Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a9afbcce7df20511fa3602e",
+        "originalDoc": {
+          "_id": "6a9afbcce7df20511fa3602e",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "6979512c0e7e21b5e40f73f9",
+              "preMadeBundleId": null,
+              "productName": "Crinkle Silk Hijab Niqab Set",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/rbf7bx7r0mfa2gc4zeks.png",
+              "sku": "HBS-1993-002",
+              "variantId": "color-1786690339970-491-size-1786690477726-715",
+              "variantSnapshot": null,
+              "price": 1550,
+              "quantity": 1,
+              "selectedColor": "Burnt Rust",
+              "selectedSize": "HBS-Standard",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 1550,
+              "_id": "6a9afbcce7df20511fa3602f"
+            }
+          ],
+          "subtotal": 1550,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 1850,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/63337a4a-be1e-45c0-8671-4b078f3025f8.jpeg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/63337a4a-be1e-45c0-8671-4b078f3025f8.jpeg",
+            "uploadedAt": "2026-09-04T17:11:40.209Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202609040001",
+          "createdAt": "2026-09-04T17:11:40.226Z",
+          "updatedAt": "2026-09-04T17:11:40.322Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a9b03cb7f008c01d0183eec",
+        "originalDoc": {
+          "_id": "6a9b03cb7f008c01d0183eec",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-TEST-001",
+              "variantId": "color-1788543831417-838-size-1788543831417-236",
+              "variantName": "yellow / test",
+              "variantImage": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+              "variantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+              ],
+              "orderedVariantImage": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+              "orderedVariantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+              ],
+              "variantSnapshot": {
+                "sku": "HBS-TEST-001",
+                "price": 12,
+                "name": "yellow / test",
+                "image": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+                "images": [
+                  "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+                ],
+                "color": "yellow",
+                "size": "test",
+                "specs": {
+                  "features": [],
+                  "careInstructions": [],
+                  "tags": [],
+                  "specifications": []
+                },
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 12,
+              "quantity": 1,
+              "selectedColor": "yellow",
+              "selectedSize": "test",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 12,
+              "_id": "6a9b03cb7f008c01d0183eed"
+            },
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-TEST-001",
+              "variantId": "color-1788543792955-157-size-1788543807421-221",
+              "variantName": "red / test",
+              "variantImage": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+              "variantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+              ],
+              "orderedVariantImage": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+              "orderedVariantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+              ],
+              "variantSnapshot": {
+                "sku": "HBS-TEST-001",
+                "price": 12,
+                "name": "red / test",
+                "image": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+                "images": [
+                  "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+                ],
+                "color": "red",
+                "size": "test",
+                "specs": {
+                  "features": [],
+                  "careInstructions": [],
+                  "tags": [],
+                  "specifications": []
+                },
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 12,
+              "quantity": 1,
+              "selectedColor": "red",
+              "selectedSize": "test",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 12,
+              "_id": "6a9b03cb7f008c01d0183eee"
+            }
+          ],
+          "subtotal": 24,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 324,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/82418db3-44b0-48d2-919d-c044cd68ddba.jpeg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/82418db3-44b0-48d2-919d-c044cd68ddba.jpeg",
+            "uploadedAt": "2026-09-04T17:45:47.679Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202609040002",
+          "createdAt": "2026-09-04T17:45:47.687Z",
+          "updatedAt": "2026-09-04T17:45:47.705Z",
+          "__v": 0
+        }
+      },
+      {
+        "docId": "6a9b092c7f008c01d01840c2",
+        "originalDoc": {
+          "_id": "6a9b092c7f008c01d01840c2",
+          "userId": null,
+          "customer": {
+            "name": "maaz ansari",
+            "email": "owais.ansaricr7@gmail.com",
+            "phone": "+923328204381",
+            "alternatePhone": null,
+            "houseNumber": null,
+            "streetNumber": null,
+            "nearestLandmark": null,
+            "completeAddress": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "address": "b013 ramsha avenue block 13 gulistan e jauhar karachi",
+            "tehsil": null,
+            "district": null,
+            "city": "karachi",
+            "postalCode": "75500",
+            "specialInstructions": null
+          },
+          "items": [
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-TEST-001",
+              "variantId": "color-1788543792955-157-size-1788543807421-221",
+              "variantName": "red / test",
+              "variantImage": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+              "variantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+              ],
+              "orderedVariantImage": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+              "orderedVariantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+              ],
+              "variantSnapshot": {
+                "sku": "HBS-TEST-001",
+                "price": 12,
+                "name": "red / test",
+                "image": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+                "images": [
+                  "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg"
+                ],
+                "color": "red",
+                "size": "test",
+                "specs": {
+                  "features": [],
+                  "careInstructions": [],
+                  "tags": [],
+                  "specifications": []
+                },
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 12,
+              "quantity": 1,
+              "selectedColor": "red",
+              "selectedSize": "test",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 12,
+              "_id": "6a9b092c7f008c01d01840c3"
+            },
+            {
+              "productId": "697fe9b585c02a1ff3195cea",
+              "preMadeBundleId": null,
+              "productName": "Test Product",
+              "productImage": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "sku": "HBS-TEST-001",
+              "variantId": "color-1788543831417-838-size-1788543831417-236",
+              "variantName": "yellow / test",
+              "variantImage": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+              "variantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+              ],
+              "orderedVariantImage": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+              "orderedVariantImages": [
+                "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+              ],
+              "variantSnapshot": {
+                "sku": "HBS-TEST-001",
+                "price": 12,
+                "name": "yellow / test",
+                "image": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+                "images": [
+                  "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg"
+                ],
+                "color": "yellow",
+                "size": "test",
+                "specs": {
+                  "features": [],
+                  "careInstructions": [],
+                  "tags": [],
+                  "specifications": []
+                },
+                "hasTieElastic": false,
+                "hasBridalLength": false,
+                "bridalLengthPrice": 0
+              },
+              "price": 12,
+              "quantity": 1,
+              "selectedColor": "yellow",
+              "selectedSize": "test",
+              "selectedTieElastic": null,
+              "selectedBridalLength": null,
+              "bridalLengthPrice": 0,
+              "subtotal": 12,
+              "_id": "6a9b092c7f008c01d01840c4"
+            }
+          ],
+          "subtotal": 24,
+          "discount": 0,
+          "shipping": 300,
+          "tax": 0,
+          "total": 324,
+          "couponDiscount": 0,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "pending",
+          "paymentReceipt": {
+            "provider": "r2",
+            "key": "hbs-receipts/ac90fa54-925f-4605-9c43-590e8c3628da.jpeg",
+            "url": "https://images.hijabsbyshiza.com/hbs-receipts/ac90fa54-925f-4605-9c43-590e8c3628da.jpeg",
+            "uploadedAt": "2026-09-04T18:08:44.795Z"
+          },
+          "status": "received",
+          "stockDeducted": true,
+          "stockRestored": false,
+          "isDeleted": false,
+          "deletedAt": null,
+          "statusHistory": [],
+          "orderId": "HBS-202609040003",
+          "createdAt": "2026-09-04T18:08:44.800Z",
+          "updatedAt": "2026-09-04T18:08:44.811Z",
+          "__v": 0
+        }
+      }
+    ],
+    "products": [
+      {
+        "docId": "698bb27b89084d5cc6826651",
+        "originalDoc": {
+          "_id": "698bb27b89084d5cc6826651",
+          "name": "Embroidered Shayla",
+          "slug": "embroidered-shayla",
+          "description": "Elegant long shayla with subtle embroidered border. Lightweight and flowy, ideal for warm weather. Available in a range of neutral and jewel tones.",
+          "shortDescription": "Long shayla with embroidered border, lightweight.",
+          "categoryId": "507f1f77bcf86cd799439004",
+          "categoryPath": [
+            "507f1f77bcf86cd799439001",
+            "507f1f77bcf86cd799439004"
+          ],
+          "price": 600,
+          "originalPrice": 24.99,
+          "costPrice": 9,
+          "images": [
+            {
+              "url": "/uploads/shayla-emb-1.jpg",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "698bc80dbcd57cea3dc36ec4"
+            }
+          ],
+          "colors": [],
+          "sizes": [],
+          "variants": [
+            {
+              "colorId": "dusty-rose",
+              "color": "Dusty Rose",
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "one-size",
+                  "size": "One Size",
+                  "sku": "SHY-EMB-ROSE",
+                  "price": 600,
+                  "originalPrice": 650,
+                  "discount": 0,
+                  "stock": 21,
+                  "stockStatus": "in_stock",
+                  "isActive": true,
+                  "_id": "698bc80dbcd57cea3dc36ec6"
+                }
+              ],
+              "isActive": true,
+              "_id": "698bc80dbcd57cea3dc36ec5",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/yihkrstsemdoyxtp9emc.webp",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "698bc80dbcd57cea3dc36ecb",
+                  "key": "hbs-products/yihkrstsemdoyxtp9emc.webp",
+                  "provider": "r2"
+                }
+              ]
+            },
+            {
+              "colorId": "sage",
+              "color": "Sage",
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "one-size",
+                  "size": "One Size",
+                  "sku": "SHY-EMB-SAGE",
+                  "price": 19.99,
+                  "discount": 0,
+                  "stock": 30,
+                  "stockStatus": "in_stock",
+                  "isActive": true,
+                  "_id": "698bc80dbcd57cea3dc36ec8"
+                }
+              ],
+              "isActive": true,
+              "_id": "698bc80dbcd57cea3dc36ec7",
+              "images": []
+            },
+            {
+              "colorId": "charcoal",
+              "color": "Charcoal",
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "one-size",
+                  "size": "One Size",
+                  "sku": "SHY-EMB-CHAR",
+                  "price": 19.99,
+                  "discount": 0,
+                  "stock": 20,
+                  "stockStatus": "in_stock",
+                  "isActive": true,
+                  "_id": "698bc80dbcd57cea3dc36eca"
+                }
+              ],
+              "isActive": true,
+              "_id": "698bc80dbcd57cea3dc36ec9",
+              "images": []
+            }
+          ],
+          "stock": 71,
+          "sku": "SHY-EMB-01",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 10,
+          "features": [
+            "Embroidered border",
+            "Lightweight",
+            "Breathable",
+            "Versatile styling"
+          ],
+          "careInstructions": [
+            "Machine wash cold",
+            "Hang to dry",
+            "Cool iron if needed"
+          ],
+          "specifications": [
+            {
+              "key": "Material",
+              "value": "Chiffon with cotton border",
+              "_id": "698bb27b89084d5cc6826659"
+            },
+            {
+              "key": "Dimensions",
+              "value": "80 x 24 inches",
+              "_id": "698bb27b89084d5cc682665a"
+            }
+          ],
+          "metaTitle": "Embroidered Shayla - Hijabs by Shiza",
+          "metaDescription": "Elegant embroidered shayla in dusty rose, sage and charcoal.",
+          "tags": [
+            "shayla",
+            "embroidered",
+            "chiffon",
+            "elegant"
+          ],
+          "status": "active",
+          "isFeatured": false,
+          "isNewArrival": true,
+          "viewCount": 38,
+          "soldCount": 4,
+          "rating": 0,
+          "reviewCount": 0,
+          "isDeleted": false,
+          "deletedAt": null,
+          "__v": 7,
+          "createdAt": "2026-02-10T22:34:35.205Z",
+          "updatedAt": "2026-08-23T02:45:43.296Z",
+          "categories": [],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "698bb27b89084d5cc6826667",
+        "originalDoc": {
+          "_id": "698bb27b89084d5cc6826667",
+          "name": "Long Khimar with Slits",
+          "slug": "long-khimar-with-slits",
+          "description": "Elegant long khimar with side arm slits for ease of movement. Flowing silhouette in premium fabric. Ideal for prayer and daily wear.",
+          "shortDescription": "Long khimar with arm slits, flowing fit.",
+          "categoryId": "507f1f77bcf86cd799439002",
+          "categoryPath": [
+            "69acfd7976438f168c9bcd3b",
+            "69acfd7976438f168c9bcd3c",
+            "69acfd7976438f168c9bcd3d",
+            "69acfd7976438f168c9bcd3e"
+          ],
+          "price": 29.99,
+          "originalPrice": 35.99,
+          "costPrice": 14,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/h5mwofkqxp1togcjxzho.jpg",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "6a7f8c9cf4de7fde160481d4",
+              "key": "hbs-products/h5mwofkqxp1togcjxzho.jpg",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/dzqy7vdhgslvpi5iyc0z.jpg",
+              "isPrimary": false,
+              "order": 1,
+              "_id": "6a7f8c9cf4de7fde160481d5",
+              "key": "hbs-products/dzqy7vdhgslvpi5iyc0z.jpg",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/mhkv3cykyb66avsrjeok.jpg",
+              "isPrimary": false,
+              "order": 2,
+              "_id": "6a7f8c9cf4de7fde160481d6",
+              "key": "hbs-products/mhkv3cykyb66avsrjeok.jpg",
+              "provider": "r2"
+            }
+          ],
+          "colors": [],
+          "sizes": [],
+          "variants": [
+            {
+              "colorId": "black",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde1604819f",
+                  "key": "hbs-products/ziidi8klr8wf5c7fxq8r.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "one-size",
+                  "size": "One Size",
+                  "sku": "KHM-LNG-BLK",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 7,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": true,
+                  "tieStock": 0,
+                  "elasticStock": 2,
+                  "hasBridalLength": true,
+                  "bridalLengthPrice": 150,
+                  "bridalStock": 5,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481a0"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde1604819e"
+            },
+            {
+              "colorId": "taupe",
+              "color": "Taupe",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/xn64ibpmnkd5wfkhwxad.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481a2",
+                  "key": "hbs-products/xn64ibpmnkd5wfkhwxad.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "one-size",
+                  "size": "One Size",
+                  "sku": "KHM-LNG-TAU",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 28,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481a3"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481a1"
+            },
+            {
+              "colorId": "color-1772506326717-357",
+              "color": "asdas",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/hooulj79xan5m0y2c3rd.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481a5",
+                  "key": "hbs-products/hooulj79xan5m0y2c3rd.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": [],
+                "tags": [],
+                "specifications": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1772506349469-41",
+                  "size": "asdas",
+                  "price": 131123,
+                  "discount": 0,
+                  "stock": 0,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "sizeChartUrl": "https://images.hijabsbyshiza.com/hbs-products/mafwkiih7sq896kinnyq.jpg",
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481a6"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481a4"
+            },
+            {
+              "colorId": "color-1775270281344-326",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/wazqkjk5fwrkaubzgbnf.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481a8",
+                  "key": "hbs-products/wazqkjk5fwrkaubzgbnf.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270281344-469",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481a9"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481a7"
+            },
+            {
+              "colorId": "color-1775270283166-216",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/nnnpwx9qngnmnnzpm65s.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481ab",
+                  "key": "hbs-products/nnnpwx9qngnmnnzpm65s.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270283166-878",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481ac"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481aa"
+            },
+            {
+              "colorId": "color-1775270316527-273",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/qrhwogyhu0brp2khbqih.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481ae",
+                  "key": "hbs-products/qrhwogyhu0brp2khbqih.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270316527-159",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481af"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481ad"
+            },
+            {
+              "colorId": "color-1775270373828-761",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/oeitfzthei315z5hmpwi.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481b1",
+                  "key": "hbs-products/oeitfzthei315z5hmpwi.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270373828-464",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481b2"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481b0"
+            },
+            {
+              "colorId": "color-1775270378625-141",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/newyj33ikmipiyn5nsrb.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481b4",
+                  "key": "hbs-products/newyj33ikmipiyn5nsrb.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270378626-229",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481b5"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481b3"
+            },
+            {
+              "colorId": "color-1775270385478-306",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/pb00f2kd42eeik7ragtm.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481b7",
+                  "key": "hbs-products/pb00f2kd42eeik7ragtm.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270385478-988",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481b8"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481b6"
+            },
+            {
+              "colorId": "color-1775270390980-895",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/gebd0etiunup3loapure.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481ba",
+                  "key": "hbs-products/gebd0etiunup3loapure.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270390980-889",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481bb"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481b9"
+            },
+            {
+              "colorId": "color-1775270501488-194",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/wacjzuxk6ahfk1u8lgxf.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481bd",
+                  "key": "hbs-products/wacjzuxk6ahfk1u8lgxf.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270501488-898",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481be"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481bc"
+            },
+            {
+              "colorId": "color-1775270950872-274",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/pszsb8eihgjiwcne53on.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481c0",
+                  "key": "hbs-products/pszsb8eihgjiwcne53on.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270950872-729",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481c1"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481bf"
+            },
+            {
+              "colorId": "color-1775270959284-231",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/xpi5z5jvxkeywds8mv34.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481c3",
+                  "key": "hbs-products/xpi5z5jvxkeywds8mv34.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270959284-562",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481c4"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481c2"
+            },
+            {
+              "colorId": "color-1775270964601-691",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/nicwuzesawhd9ijyi3me.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481c6",
+                  "key": "hbs-products/nicwuzesawhd9ijyi3me.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270964601-608",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481c7"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481c5"
+            },
+            {
+              "colorId": "color-1775270969879-919",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/zy2foc1zjanfji81whej.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481c9",
+                  "key": "hbs-products/zy2foc1zjanfji81whej.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270969879-488",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481ca"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481c8"
+            },
+            {
+              "colorId": "color-1775270974124-118",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/isz5vmllvo7bgyt6gkyn.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481cc",
+                  "key": "hbs-products/isz5vmllvo7bgyt6gkyn.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270974124-518",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481cd"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481cb"
+            },
+            {
+              "colorId": "color-1775270978379-887",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/fc483urfplcpbczijhwa.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481cf",
+                  "key": "hbs-products/fc483urfplcpbczijhwa.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775270978379-432",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481d0"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481ce"
+            },
+            {
+              "colorId": "color-1775271054768-487",
+              "color": "Black",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/bxfb9qrgpmnvogvguxj1.jpg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a7f8c9cf4de7fde160481d2",
+                  "key": "hbs-products/bxfb9qrgpmnvogvguxj1.jpg",
+                  "provider": "r2"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775271054768-421",
+                  "size": "One Size",
+                  "price": 29.99,
+                  "discount": 0,
+                  "stock": 40,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a7f8c9cf4de7fde160481d3"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a7f8c9cf4de7fde160481d1"
+            }
+          ],
+          "stock": 635,
+          "sku": "KHM-LNG-01",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 10,
+          "features": [
+            "Arm slits",
+            "Extra length",
+            "Premium drape",
+            "Prayer-friendly"
+          ],
+          "careInstructions": [
+            "Machine wash cold",
+            "Hang to dry",
+            "Low iron"
+          ],
+          "specifications": [
+            {
+              "key": "Material",
+              "value": "Viscose Crepe",
+              "_id": "698bb27b89084d5cc682666d"
+            },
+            {
+              "key": "Length",
+              "value": "Approx. 65 inches",
+              "_id": "698bb27b89084d5cc682666e"
+            }
+          ],
+          "metaTitle": "Long Khimar with Slits",
+          "metaDescription": "Long khimar with side arm slits. Black and taupe.",
+          "tags": [
+            "khimar",
+            "long",
+            "slits",
+            "prayer"
+          ],
+          "status": "active",
+          "isFeatured": false,
+          "isNewArrival": true,
+          "viewCount": 125,
+          "soldCount": 18,
+          "rating": 0,
+          "reviewCount": 0,
+          "isDeleted": false,
+          "deletedAt": null,
+          "__v": 17,
+          "createdAt": "2026-02-10T22:34:35.205Z",
+          "updatedAt": "2026-11-01T18:24:48.399Z",
+          "categories": [
+            "69acfd7976438f168c9bcd3e"
+          ],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "696c50684415a09927af199a",
+        "originalDoc": {
+          "_id": "696c50684415a09927af199a",
+          "name": "Golden Leaf Foil Lawn Hijab",
+          "slug": "golden-leaf-foil-lawn-hijab",
+          "description": "If you're finding good formal hijabs with sheer lightweight lawn fabric for summers then WE GOT YOU! Golden embossed leaves spread all over the scarf to add a bling for your special occasions.",
+          "shortDescription": "Formal hijabs with sheer lightweight lawn fabric for summers. Golden embossed leaves spread all over the scarf to add a bling to your special occasions.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 650,
+          "originalPrice": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/jppcdgi814sqcrr8m4r7.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "696c50cd2bcff76889257998",
+              "key": "hbs-products/jppcdgi814sqcrr8m4r7.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Navy Blue",
+            "Teal Blue",
+            "Rose Pink",
+            "Light Pink",
+            "Mauve",
+            "Rust",
+            "Maroon",
+            "Dark Brown",
+            "Dark Green",
+            "Black",
+            "Grey",
+            "Mustard"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 95,
+          "sku": "HBS-GLF-001",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Sheer lightweight lawn fabric",
+            "Perfect for summers",
+            "Golden embossed leaves design",
+            "Formal hijab style",
+            "Soft viscose lawn material"
+          ],
+          "careInstructions": [
+            "Hand wash and hang dry",
+            "Don't iron from the gold foil side"
+          ],
+          "metaTitle": "Golden Leaf Foil Lawn Hijab - Formal Summer Hijabs",
+          "metaDescription": "Shop our golden leaf foil lawn hijabs. Sheer lightweight fabric perfect for summers with elegant golden embossed leaves design.",
+          "tags": [
+            "hijab",
+            "lawn",
+            "foil",
+            "golden",
+            "summer",
+            "formal",
+            "viscose"
+          ],
+          "status": "active",
+          "isFeatured": true,
+          "isNewArrival": true,
+          "viewCount": 50,
+          "soldCount": 5,
+          "rating": 0,
+          "reviewCount": 0,
+          "publishedAt": "2026-01-18T10:00:00.000Z",
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Soft viscose lawn"
+            },
+            {
+              "key": "Shape",
+              "value": "Long Rectangular"
+            },
+            {
+              "key": "Dimension",
+              "value": "71x30 inches (approximately)"
+            }
+          ],
+          "createdAt": "2026-01-18T10:00:00.000Z",
+          "updatedAt": "2026-08-23T02:45:43.344Z",
+          "__v": 3,
+          "shipping": {
+            "domestic": "Free shipping on orders over Rs. 5000",
+            "cod": "Cash on delivery available",
+            "delivery": "3-5 business days",
+            "returns": "7 days return policy"
+          },
+          "costPrice": 400,
+          "dimensions": {
+            "length": 71,
+            "width": 30,
+            "height": 1
+          },
+          "weight": 80,
+          "isDeleted": false,
+          "variants": [],
+          "categories": [],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "696c50684415a09927af199b",
+        "originalDoc": {
+          "_id": "696c50684415a09927af199b",
+          "name": "Gold Foil Lawn Hijabs",
+          "slug": "gold-foil-lawn-hijabs",
+          "description": "Super soft, non slippery, and breathable gold foil lawn hijabs. Perfect for everyday wear with elegant gold foil detailing.",
+          "shortDescription": "Super soft, non slippery, and breathable gold foil lawn hijabs. Perfect for everyday wear with elegant gold foil detailing.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 700,
+          "originalPrice": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/ksnemx6iwwr74ydnrlkp.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "696c50eb2bcff768892579ad",
+              "key": "hbs-products/ksnemx6iwwr74ydnrlkp.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Mauve",
+            "Tea Pink",
+            "Dark Gray",
+            "Vanilla",
+            "Navy Blue",
+            "Maroon",
+            "Light Gray",
+            "Mint",
+            "Teal"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 0,
+          "sku": "HBS-GFL-002",
+          "stockStatus": "out_of_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Super soft",
+            "Non slippery",
+            "Breathable",
+            "Viscose lawn material",
+            "Gold foil detailing"
+          ],
+          "careInstructions": [
+            "Mild ironing",
+            "Hand wash"
+          ],
+          "metaTitle": "Gold Foil Lawn Hijabs - Soft & Breathable",
+          "metaDescription": "Shop our gold foil lawn hijabs. Super soft, non slippery, and breathable - perfect for everyday wear.",
+          "tags": [
+            "hijab",
+            "lawn",
+            "foil",
+            "gold",
+            "viscose",
+            "breathable"
+          ],
+          "status": "active",
+          "isFeatured": true,
+          "isNewArrival": true,
+          "viewCount": 80,
+          "soldCount": 1,
+          "rating": 0,
+          "reviewCount": 0,
+          "publishedAt": "2026-01-18T10:00:00.000Z",
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Viscose Lawn"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimension",
+              "value": "72x32 inches"
+            }
+          ],
+          "createdAt": "2026-01-18T10:00:00.000Z",
+          "updatedAt": "2026-08-23T02:45:43.347Z",
+          "__v": 3,
+          "shipping": {
+            "domestic": "Free shipping on orders over Rs. 5000",
+            "cod": "Cash on delivery available",
+            "delivery": "3-5 business days",
+            "returns": "7 days return policy"
+          },
+          "costPrice": 450,
+          "dimensions": {
+            "length": 72,
+            "width": 32,
+            "height": 1
+          },
+          "weight": 85,
+          "isDeleted": false,
+          "variants": [],
+          "categories": [],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc4",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc4",
+          "name": "Pleated Lawn Hijabs",
+          "slug": "pleated-lawn-hijabs",
+          "description": "Introducing the best ever stuff for this scorching heat, crushed and super soft lawn hijabs. They are not see through yet breathable.\r\n750/- each\r\nPack of 4 in 2800/-\r\n✅ NO HIJAB PINS REQUIRED\r\n✅ NO IRONING REQUIRED",
+          "shortDescription": "Crushed and super soft lawn hijabs for scorching heat. Not see through yet breathable with no pins or ironing needed.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/lajsssywoymtbw3bvciv.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716db17dc9cbcafbf2387f",
+              "key": "hbs-products/lajsssywoymtbw3bvciv.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Mustard",
+            "Teal",
+            "Brown",
+            "Rust",
+            "Blood Red",
+            "Maroon",
+            "Red",
+            "Light Grey / Off White",
+            "Grey",
+            "Black",
+            "Pastel Pink",
+            "Dusty Pink",
+            "Vanilla",
+            "Navy Blue",
+            "Mauve",
+            "Powder Blue",
+            "Dark Green",
+            "Sage Green"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-PLH-001",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Crushed pleated texture",
+            "Super soft",
+            "Breathable",
+            "Not see through",
+            "No hijab pins required",
+            "No ironing required"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Pleated Lawn"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimensions",
+              "value": "74x32 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "pleated",
+            "summer"
+          ],
+          "status": "active",
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "rating": 0,
+          "reviewCount": 0,
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.350Z",
+          "viewCount": 6,
+          "__v": 3,
+          "metaDescription": "",
+          "metaTitle": "",
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "isOnSale": false,
+          "variants": [],
+          "categories": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc5",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc5",
+          "name": "Sequins Lawn Hijab",
+          "slug": "sequins-lawn-hijab",
+          "description": "Sequins in lines on both of the borders with fringes at two ends.\r\n✅ Lightweight\r\n✅ Breathable\r\n✅ Non-Slippery",
+          "shortDescription": "Sequins in lines on both borders with fringes at two ends. Lightweight, breathable, and non-slippery.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 650,
+          "originalPrice": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/npewzmtqguxt8v87v66w.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716dc27dc9cbcafbf238a9",
+              "key": "hbs-products/npewzmtqguxt8v87v66w.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Navy",
+            "Dark Brown",
+            "Skin",
+            "Apple Green",
+            "Burgundy",
+            "Blood Red",
+            "Dark Green",
+            "White",
+            "Silver",
+            "Magenta",
+            "Black",
+            "Mauve"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-SLH-002",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Sequins on borders",
+            "Fringes at both ends",
+            "Lightweight",
+            "Breathable",
+            "Non-slippery"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Lawn Viscose"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimensions",
+              "value": "71x32 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "sequins"
+          ],
+          "status": "active",
+          "__v": 3,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.352Z",
+          "viewCount": 1,
+          "variants": [],
+          "categories": [],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc6",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc6",
+          "name": "Polka Dot Pleated Lawn Hijabs",
+          "slug": "polka-dot-pleated-lawn-hijabs",
+          "description": "Crinkle lawn hijabs with foil dots overall.\r\n- Non slippery\r\n- No pins needed\r\n- No ironing",
+          "shortDescription": "Crinkle lawn hijabs with foil dots overall. Non slippery with no pins or ironing required.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 750,
+          "originalPrice": 800,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/wacw0tggtvggtaigpkxp.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716ddb7dc9cbcafbf238d4",
+              "key": "hbs-products/wacw0tggtvggtaigpkxp.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Black",
+            "Navy Blue",
+            "Vanilla",
+            "Powder Blue",
+            "Nude",
+            "Red",
+            "Maroon",
+            "Beige",
+            "Grey",
+            "Mauve",
+            "Baby Pink",
+            "Teal"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-PDP-003",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Foil dots overall",
+            "Non slippery",
+            "No pins needed",
+            "No ironing"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Crinkle Lawn"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimensions",
+              "value": "73x33 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "polka",
+            "foil"
+          ],
+          "status": "active",
+          "__v": 3,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.355Z",
+          "viewCount": 2,
+          "variants": [],
+          "categories": [],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc7",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc7",
+          "name": "Turkish Lawn Large",
+          "slug": "turkish-lawn-large",
+          "description": "Best choice for summers.",
+          "shortDescription": "Large Turkish lawn hijabs made for summer comfort.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 750,
+          "originalPrice": 800,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/skofe6qsgrhygrubs9xa.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716ded7dc9cbcafbf23900",
+              "key": "hbs-products/skofe6qsgrhygrubs9xa.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Shocking Pink",
+            "Black",
+            "Dark Beige",
+            "Teal",
+            "Sunflower",
+            "Royal Blue",
+            "Mustard",
+            "Dark Purple",
+            "Peachy Pink",
+            "Olive Green",
+            "Cyan",
+            "Dark Brown",
+            "Apple Green",
+            "Turquoise",
+            "Maroon",
+            "Pink",
+            "Pine",
+            "White",
+            "Baby Pink",
+            "Wine",
+            "Smoke Grey",
+            "Navy Blue",
+            "Dark Green",
+            "Blood Red",
+            "Red",
+            "Light Grey",
+            "Mauve"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-TLL-004",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Best choice for summers"
+          ],
+          "careInstructions": [
+            "Hand wash",
+            "Mild ironing"
+          ],
+          "specifications": [
+            {
+              "key": "Fabric",
+              "value": "Cotton Polyester Mix"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimensions",
+              "value": "74x36 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "turkish",
+            "summer"
+          ],
+          "status": "active",
+          "__v": 2,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.358Z",
+          "viewCount": 1,
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc8",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc8",
+          "name": "Crumpled Lawn Hijabs",
+          "slug": "crumpled-lawn-hijabs",
+          "description": "No need of iron, undercap, or hijab pins.\r\nCare tip:\r\n- Hand wash\r\n- Don't iron",
+          "shortDescription": "Crumpled lawn hijabs that need no ironing, undercap, or pins.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 700,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/rspr8qnkzq1jbp9jxqne.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716dfe7dc9cbcafbf2392c",
+              "key": "hbs-products/rspr8qnkzq1jbp9jxqne.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Mint",
+            "Mustard",
+            "Navy Blue",
+            "Maroon",
+            "Mauve",
+            "Vanilla",
+            "Dark Green",
+            "Baby Pink",
+            "Smokey Grey",
+            "Ginger",
+            "Sage",
+            "Black"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-CRL-005",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "No need of iron",
+            "No undercap needed",
+            "No hijab pins needed"
+          ],
+          "careInstructions": [
+            "Hand wash",
+            "Don't iron"
+          ],
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Lawn Viscose"
+            },
+            {
+              "key": "Dimensions",
+              "value": "80x27 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "crumpled"
+          ],
+          "status": "active",
+          "__v": 2,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.362Z",
+          "viewCount": 2,
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dc9",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dc9",
+          "name": "Self Viscose Jacquard Hijabs",
+          "slug": "self-viscose-jacquard-hijabs",
+          "description": "Silky jacquard texture.\r\n• Not see through\r\n• Suitable for all seasons\r\n• Non slippery",
+          "shortDescription": "Silky jacquard texture that is not see through, suitable for all seasons, and non slippery.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 700,
+          "originalPrice": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/asz1cf9ao3vhnhdplhgn.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716e107dc9cbcafbf23959",
+              "key": "hbs-products/asz1cf9ao3vhnhdplhgn.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Sky Blue",
+            "Navy Blue",
+            "Teal Blue",
+            "Green",
+            "Lilac",
+            "Baby Pink",
+            "Beige",
+            "Maroon",
+            "White",
+            "Gold"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-SVJ-006",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Silky jacquard texture",
+            "Not see through",
+            "Suitable for all seasons",
+            "Non slippery"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Fabric",
+              "value": "Viscose Jacquard"
+            },
+            {
+              "key": "Dimensions",
+              "value": "72x39 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "jacquard",
+            "viscose"
+          ],
+          "status": "active",
+          "__v": 2,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.364Z",
+          "viewCount": 3,
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dca",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dca",
+          "name": "Golden Embossed Hijabs",
+          "slug": "golden-embossed-hijabs",
+          "description": "Super soft and perfect for summer embossed with golden motif all over the hijab.\r\nCare tips:\r\n- Mild ironing from the back of the hijab (not from the embossed side)\r\n- Hand wash",
+          "shortDescription": "Super soft summer hijabs embossed with a golden motif all over.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 750,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/combapmxq9ilqrx8pndj.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716e247dc9cbcafbf23988",
+              "key": "hbs-products/combapmxq9ilqrx8pndj.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Navy Blue",
+            "Baby Pink",
+            "Mauve",
+            "Charcoal",
+            "Beige",
+            "Turquoise",
+            "Burgundy",
+            "Grey",
+            "Rust",
+            "White",
+            "Maroon"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-GEH-007",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Golden motif embossing",
+            "Super soft",
+            "Perfect for summer"
+          ],
+          "careInstructions": [
+            "Mild ironing from the back of the hijab (not from the embossed side)",
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Fabric",
+              "value": "Viscose Lawn"
+            },
+            {
+              "key": "Shape",
+              "value": "Rectangular"
+            },
+            {
+              "key": "Dimensions",
+              "value": "72x32 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "lawn",
+            "embossed"
+          ],
+          "status": "active",
+          "__v": 2,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.366Z",
+          "viewCount": 0,
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dcb",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dcb",
+          "name": "Viscose Modal Lawn Hijabs",
+          "slug": "viscose-modal-lawn-hijabs",
+          "description": "Your search for perfect non see through Modal Hijabs has ended here.\r\nBundle of 4 in 2700/- only.\r\nHBS Modal Hijabs are super soft, making them ideal for warmer weather.",
+          "shortDescription": "Perfect non see through modal hijabs that are super soft and ideal for warmer weather.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 700,
+          "originalPrice": 800,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/mguasnf1zffnose5adet.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716e397dc9cbcafbf239b7",
+              "key": "hbs-products/mguasnf1zffnose5adet.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Pink",
+            "Nude",
+            "Beige",
+            "Navy",
+            "Maroon",
+            "Skin",
+            "Blood Red",
+            "White",
+            "Black",
+            "Brown",
+            "Grey",
+            "Dark Green"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-VML-008",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Non see through",
+            "Super soft",
+            "Ideal for warmer weather",
+            "Bundle of 4 available"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Fabric",
+              "value": "Lawn Viscose"
+            },
+            {
+              "key": "Dimensions",
+              "value": "75x37.5 inches (approximately)"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "modal",
+            "lawn"
+          ],
+          "status": "active",
+          "__v": 2,
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.371Z",
+          "viewCount": 0,
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "69716b1ec90718c580569dcc",
+        "originalDoc": {
+          "_id": "69716b1ec90718c580569dcc",
+          "name": "Imported Large Modal Hijabs",
+          "slug": "imported-large-modal-hijabs",
+          "description": "Modal fabric is soft, breathable, and moisture-wicking. It’s lightweight, durable, and resists shrinking and fading, making it ideal for hijabs.",
+          "shortDescription": "Large imported modal hijabs with soft, breathable, moisture-wicking fabric.",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "696c44fe4415a09927af1991"
+          ],
+          "price": 850,
+          "originalPrice": 1200,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/xj7whqbohiqar1p2u1s1.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "69716e4c7dc9cbcafbf239e7",
+              "key": "hbs-products/xj7whqbohiqar1p2u1s1.png",
+              "provider": "r2"
+            }
+          ],
+          "colors": [
+            "Black",
+            "Off-White / Cream",
+            "True Red",
+            "Navy Blue",
+            "Mint Green",
+            "Sky Blue",
+            "Blush Pink",
+            "Rose Pink",
+            "Dusty Rose",
+            "Watermelon / Coral Pink",
+            "Orchid / Mauve",
+            "Muted Plum",
+            "Charcoal Grey",
+            "Mustard / Olive Gold",
+            "Sage Green",
+            "Pistachio Green",
+            "Dark Olive",
+            "Emerald / Forest Green",
+            "Pale Ivory",
+            "Sand / Beige",
+            "Taupe",
+            "Deep Blush",
+            "Mocha",
+            "Tan / Camel",
+            "Coffee Brown",
+            "Terracotta / Rust",
+            "Chocolate Brown",
+            "Burnt Sienna",
+            "Steel Blue",
+            "Royal Blue"
+          ],
+          "sizes": [
+            "One Size"
+          ],
+          "stock": 100,
+          "sku": "HBS-ILM-009",
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 20,
+          "features": [
+            "Soft and breathable",
+            "Moisture-wicking",
+            "Lightweight",
+            "Durable",
+            "Resists shrinking and fading"
+          ],
+          "careInstructions": [
+            "Hand wash"
+          ],
+          "specifications": [
+            {
+              "key": "Stuff",
+              "value": "Modal Fabric"
+            },
+            {
+              "key": "Dimensions",
+              "value": "78x36 inches"
+            }
+          ],
+          "tags": [
+            "hijab",
+            "modal",
+            "imported"
+          ],
+          "status": "active",
+          "isDeleted": false,
+          "isFeatured": false,
+          "isNewArrival": false,
+          "rating": 0,
+          "reviewCount": 0,
+          "soldCount": 0,
+          "updatedAt": "2026-08-23T02:45:43.373Z",
+          "viewCount": 3,
+          "__v": 2,
+          "metaDescription": "",
+          "metaTitle": "",
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "categories": [],
+          "isOnSale": false,
+          "variants": []
+        }
+      },
+      {
+        "docId": "697fe9b585c02a1ff3195cea",
+        "originalDoc": {
+          "_id": "697fe9b585c02a1ff3195cea",
+          "name": "Test Product",
+          "slug": "test-product",
+          "description": "Test Product",
+          "shortDescription": "Test Product",
+          "categoryId": "696c44fe4415a09927af1991",
+          "categoryPath": [
+            "69acfd7976438f168c9bcd31"
+          ],
+          "price": 12,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/anjtpcztwwmiuvppsnxa.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "6a9b036f7f008c01d0183e07"
+            }
+          ],
+          "colors": [],
+          "sizes": [],
+          "variants": [
+            {
+              "colorId": "color-1788543792955-157",
+              "color": "red",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/d28fd700-e696-4000-9281-c16beb14a5b2.jpeg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a9b036f7f008c01d0183e02"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": [],
+                "tags": [],
+                "specifications": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1788543807421-221",
+                  "size": "test",
+                  "price": 12,
+                  "discount": 0,
+                  "stock": 10,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a9b036f7f008c01d0183e03"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a9b036f7f008c01d0183e01"
+            },
+            {
+              "colorId": "color-1788543831417-838",
+              "color": "yellow",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/56fae697-9775-4691-a767-849a6e02db06.jpeg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a9b036f7f008c01d0183e05"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": [],
+                "tags": [],
+                "specifications": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1788543831417-236",
+                  "size": "test",
+                  "price": 12,
+                  "discount": 0,
+                  "stock": 10,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a9b036f7f008c01d0183e06"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a9b036f7f008c01d0183e04"
+            }
+          ],
+          "stock": 20,
+          "stockStatus": "in_stock",
+          "lowStockThreshold": 10,
+          "features": [],
+          "careInstructions": [],
+          "metaTitle": "TEST",
+          "metaDescription": "test",
+          "tags": [
+            "test",
+            "test",
+            "test",
+            "test"
+          ],
+          "status": "active",
+          "isFeatured": false,
+          "isNewArrival": false,
+          "viewCount": 152,
+          "soldCount": 25,
+          "rating": 0,
+          "reviewCount": 0,
+          "publishedAt": "2026-02-02T00:03:01.623Z",
+          "isDeleted": false,
+          "deletedAt": null,
+          "specifications": [],
+          "createdAt": "2026-02-02T00:03:01.631Z",
+          "updatedAt": "2026-09-04T18:08:44.810Z",
+          "__v": 13,
+          "sku": "HBS-TEST-001",
+          "categories": [
+            "69acfd7976438f168c9bcd31"
+          ],
+          "isOnSale": false
+        }
+      },
+      {
+        "docId": "69d08377cf7a2438a42bd79d",
+        "originalDoc": {
+          "_id": "69d08377cf7a2438a42bd79d",
+          "name": "test",
+          "slug": "test",
+          "description": "",
+          "shortDescription": "",
+          "categories": [
+            "69acfd7976438f168c9bcd31"
+          ],
+          "categoryPath": [
+            "69acfd7976438f168c9bcd31"
+          ],
+          "price": 12312,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-products/66234bd2-0b51-446e-a0dc-dd602e65e983.png",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "6a9b02167f008c01d0183afd"
+            }
+          ],
+          "colors": [],
+          "sizes": [],
+          "variants": [
+            {
+              "colorId": "color-1775272809387-858",
+              "color": "asdasd",
+              "images": [],
+              "specs": {
+                "features": [],
+                "careInstructions": [],
+                "tags": [],
+                "specifications": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1775272816192-574",
+                  "size": "asdasd",
+                  "price": 12312,
+                  "originalPrice": 1231231,
+                  "discount": 0,
+                  "stock": 0,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a9b02167f008c01d0183af9"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a9b02167f008c01d0183af8"
+            },
+            {
+              "colorId": "color-1788543497691-217",
+              "color": "asdasd",
+              "images": [
+                {
+                  "url": "https://images.hijabsbyshiza.com/hbs-products/a1426808-50ca-44b1-aebf-5f9d28bd5d52.jpeg",
+                  "isPrimary": true,
+                  "order": 0,
+                  "_id": "6a9b02167f008c01d0183afb"
+                }
+              ],
+              "specs": {
+                "features": [],
+                "careInstructions": [],
+                "tags": [],
+                "specifications": []
+              },
+              "sizes": [
+                {
+                  "sizeId": "size-1788543497691-349",
+                  "size": "asdasd",
+                  "price": 12312,
+                  "originalPrice": 1231231,
+                  "discount": 0,
+                  "stock": 0,
+                  "stockStatus": "in_stock",
+                  "hasTieElastic": false,
+                  "tieStock": 0,
+                  "elasticStock": 0,
+                  "hasBridalLength": false,
+                  "bridalLengthPrice": 0,
+                  "bridalStock": 0,
+                  "isActive": true,
+                  "_id": "6a9b02167f008c01d0183afc"
+                }
+              ],
+              "isActive": true,
+              "_id": "6a9b02167f008c01d0183afa"
+            }
+          ],
+          "stock": 0,
+          "sku": "",
+          "stockStatus": "out_of_stock",
+          "lowStockThreshold": 10,
+          "features": [],
+          "careInstructions": [],
+          "metaTitle": "",
+          "metaDescription": "",
+          "tags": [],
+          "status": "active",
+          "isFeatured": false,
+          "isNewArrival": false,
+          "isOnSale": false,
+          "viewCount": 7,
+          "soldCount": 0,
+          "rating": 0,
+          "reviewCount": 0,
+          "publishedAt": "2026-04-04T03:20:23.872Z",
+          "isDeleted": false,
+          "deletedAt": null,
+          "specifications": [],
+          "createdAt": "2026-04-04T03:20:23.882Z",
+          "updatedAt": "2026-09-04T17:38:30.660Z",
+          "__v": 3
+        }
+      }
+    ],
+    "herosliders": [
+      {
+        "docId": "69921b7b328d1a508a7fb72c",
+        "originalDoc": {
+          "_id": "69921b7b328d1a508a7fb72c",
+          "slides": [
+            {
+              "imageUrl": "https://images.hijabsbyshiza.com/hbs-hero/wg9epgboy0hwixoenefy.jpg",
+              "title": "Designed with intention. Worn with confidence. Where modest fashion meets effortless elegance.",
+              "subtitle": "Made to match your style",
+              "description": "From breathable daily hijabs to refined, statement abayas, every piece is thoughtfully selected for comfort, craftsmanship, and timeless style. Move through your day feeling polished, empowered, and completely yourself.",
+              "textPosition": "left",
+              "textColor": "#FFFFFF",
+              "textShadow": true,
+              "button": {
+                "text": "Explore the Collection",
+                "link": "#shop-categories",
+                "style": "primary",
+                "isVisible": true
+              },
+              "displayOrder": 0,
+              "isActive": true,
+              "overlayOpacity": 10,
+              "_id": "69921cdc819b6564e43cd66c",
+              "buttons": []
+            },
+            {
+              "imageUrl": "https://images.hijabsbyshiza.com/hbs-hero/usypqtn0h7q3oosoydct.jpg",
+              "title": "asdasa",
+              "subtitle": "sdasd",
+              "description": "asdasd",
+              "textPosition": "center",
+              "textColor": "#FFFFFF",
+              "textShadow": true,
+              "button": {
+                "text": "",
+                "link": "",
+                "style": "primary",
+                "isVisible": true
+              },
+              "displayOrder": 0,
+              "isActive": true,
+              "overlayOpacity": 60,
+              "_id": "69af8313a50cc4ac31130709",
+              "buttons": []
+            }
+          ],
+          "autoPlay": true,
+          "autoPlaySpeed": 5000,
+          "transitionSpeed": 800,
+          "showArrows": true,
+          "showDots": true,
+          "loop": true,
+          "isActive": true,
+          "updatedBy": "698911cae223a0b96e32c1aa",
+          "createdAt": "2026-02-15T19:16:11.494Z",
+          "updatedAt": "2026-08-23T02:45:43.457Z",
+          "__v": 0
+        }
+      }
+    ],
+    "testimonials": [
+      {
+        "docId": "6a8a57ed1270895df75830ec",
+        "originalDoc": {
+          "_id": "6a8a57ed1270895df75830ec",
+          "customerName": "test",
+          "customerImage": "https://images.hijabsbyshiza.com/hbs-testimonials/ac122b50-c8f9-43ab-862d-d8ca7cb4fd68.webp",
+          "rating": 5,
+          "testimonial": "tstes",
+          "isPublished": false,
+          "displayOrder": 1,
+          "createdAt": "2026-08-23T02:16:13.613Z",
+          "updatedAt": "2026-08-23T02:16:13.613Z",
+          "__v": 0
+        }
+      }
+    ],
+    "sitesettings": [
+      {
+        "docId": "699cdf6b50ad63ad65fe46a7",
+        "originalDoc": {
+          "_id": "699cdf6b50ad63ad65fe46a7",
+          "key": "general_settings",
+          "__v": 0,
+          "contentBlocks": {
+            "hijabNiqab": {
+              "title": "The Art of Hijab ",
+              "paragraphs": [
+                "Our hijab collection features a stunning array of colors, textures, and styles.",
+                "For those seeking complete coverage, our niqab collection offers comfort and elegance."
+              ],
+              "image": "https://images.hijabsbyshiza.com/hbs-content-blocks/bmawtlg5rkstl4fv7ri7.webp",
+              "primaryButtonText": "Shop Hijabs",
+              "primaryButtonUrl": "",
+              "secondaryButtonText": "Explore Niqabs",
+              "secondaryButtonUrl": ""
+            },
+            "elegance": {
+              "title": "Elegance in Modesty",
+              "paragraphs": [
+                "Discover the perfect blend of tradition and contemporary fashion.",
+                "Our abayas are crafted from premium fabrics that drape beautifully."
+              ],
+              "image": "https://images.hijabsbyshiza.com/hbs-content-blocks/bq8mh21nl1feoeuhw1la.jpg",
+              "primaryButtonText": "Shop Abayas",
+              "primaryButtonUrl": "",
+              "secondaryButtonText": "",
+              "secondaryButtonUrl": ""
+            }
+          },
+          "createdAt": "2026-02-23T23:14:51.193Z",
+          "email": {
+            "orderConfirmationEnabled": true,
+            "orderStatusUpdateEnabled": true
+          },
+          "footer": {
+            "paymentMethodImages": [],
+            "showSocialLinks": true
+          },
+          "instagramReels": [
+            {
+              "embedCode": "<blockquote class=\"instagram-media\" data-instgrm-permalink=\"https://www.instagram.com/reel/DSFzc7DDH30/?utm_source=ig_embed&amp;utm_campaign=loading\" data-instgrm-version=\"14\" style=\" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);\"><div style=\"padding:16px;\"> <a href=\"https://www.instagram.com/reel/DSFzc7DDH30/?utm_source=ig_embed&amp;utm_campaign=loading\" style=\" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;\" target=\"_blank\"> <div style=\" display: flex; flex-direction: row; align-items: center;\"> <div style=\"background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;\"></div> <div style=\"display: flex; flex-direction: column; flex-grow: 1; justify-content: center;\"> <div style=\" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;\"></div> <div style=\" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;\"></div></div></div><div style=\"padding: 19% 0;\"></div> <div style=\"display:block; height:50px; margin:0 auto 12px; width:50px;\"><svg width=\"50px\" height=\"50px\" viewBox=\"0 0 60 60\" version=\"1.1\" xmlns=\"https://www.w3.org/2000/svg\" xmlns:xlink=\"https://www.w3.org/1999/xlink\"><g stroke=\"none\" stroke-width=\"1\" fill=\"none\" fill-rule=\"evenodd\"><g transform=\"translate(-511.000000, -20.000000)\" fill=\"#000000\"><g><path d=\"M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631\"></path></g></g></g></svg></div><div style=\"padding-top: 8px;\"> <div style=\" color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;\">View this post on Instagram</div></div><div style=\"padding: 12.5% 0;\"></div> <div style=\"display: flex; flex-direction: row; margin-bottom: 14px; align-items: center;\"><div> <div style=\"background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(0px) translateY(7px);\"></div> <div style=\"background-color: #F4F4F4; height: 12.5px; transform: rotate(-45deg) translateX(3px) translateY(1px); width: 12.5px; flex-grow: 0; margin-right: 14px; margin-left: 2px;\"></div> <div style=\"background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(9px) translateY(-18px);\"></div></div><div style=\"margin-left: 8px;\"> <div style=\" background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 20px; width: 20px;\"></div> <div style=\" width: 0; height: 0; border-top: 2px solid transparent; border-left: 6px solid #f4f4f4; border-bottom: 2px solid transparent; transform: translateX(16px) translateY(-4px) rotate(30deg)\"></div></div><div style=\"margin-left: auto;\"> <div style=\" width: 0px; border-top: 8px solid #F4F4F4; border-right: 8px solid transparent; transform: translateY(16px);\"></div> <div style=\" background-color: #F4F4F4; flex-grow: 0; height: 12px; width: 16px; transform: translateY(-4px);\"></div> <div style=\" width: 0; height: 0; border-top: 8px solid #F4F4F4; border-left: 8px solid transparent; transform: translateY(-4px) translateX(8px);\"></div></div></div> <div style=\"display: flex; flex-direction: column; flex-grow: 1; justify-content: center; margin-bottom: 24px;\"> <div style=\" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 224px;\"></div> <div style=\" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 144px;\"></div></div></a><p style=\" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin-bottom:0; margin-top:8px; overflow:hidden; padding:8px 0 7px; text-align:center; text-overflow:ellipsis; white-space:nowrap;\"><a href=\"https://www.instagram.com/reel/DSFzc7DDH30/?utm_source=ig_embed&amp;utm_campaign=loading\" style=\" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;\" target=\"_blank\">A post shared by Muhammad Owais Ansari (@owaissansariii)</a></p></div></blockquote> <script async src=\"//www.instagram.com/embed.js\"></script>",
+              "displayOrder": 0,
+              "isVisible": true,
+              "_id": "699ce4eaf1541edd7ff26db3"
+            }
+          ],
+          "isActive": true,
+          "maintenanceMode": {
+            "allowedIPs": [],
+            "isEnabled": false
+          },
+          "newsTicker": {
+            "isEnabled": true,
+            "items": []
+          },
+          "seo": {
+            "metaKeywords": []
+          },
+          "shipping": {
+            "codAvailableCities": []
+          },
+          "updatedAt": "2026-08-23T02:45:43.453Z",
+          "updatedBy": "698911cae223a0b96e32c1aa",
+          "marketingBanner": {
+            "isEnabled": true,
+            "image": "https://images.hijabsbyshiza.com/hbs-marketing/hajgxqqobgwopxwhsqff.png",
+            "title": "",
+            "subtitle": "",
+            "buttonText": "",
+            "buttonUrl": "",
+            "backgroundColor": "#ffffff"
+          }
+        }
+      }
+    ],
+    "heros": [
+      {
+        "docId": "69921cdc819b6564e43cd66c",
+        "originalDoc": {
+          "_id": "69921cdc819b6564e43cd66c",
+          "imageUrl": "https://images.hijabsbyshiza.com/hbs-hero/wg9epgboy0hwixoenefy.jpg",
+          "title": "Designed with intention. Worn with confidence. Where modest fashion meets effortless elegance.",
+          "subtitle": "Made to match your style",
+          "description": "From breathable daily hijabs to refined, statement abayas, every piece is thoughtfully selected for comfort, craftsmanship, and timeless style. Move through your day feeling polished, empowered, and completely yourself.",
+          "button": {
+            "text": "Explore the Collection",
+            "link": "#shop-categories"
+          },
+          "secondaryButton": {
+            "text": "Our Story",
+            "link": "/about"
+          },
+          "textPosition": "left",
+          "overlayOpacity": 10,
+          "imageFadeIn": true,
+          "imageFadeInDuration": 800,
+          "imageFadeInDelay": 0,
+          "imageHoverScale": 1.05,
+          "isActive": true,
+          "createdAt": "2026-02-15T19:22:04.185Z",
+          "updatedAt": "2026-08-23T02:45:43.461Z",
+          "__v": 0,
+          "updatedBy": "698911cae223a0b96e32c1aa"
+        }
+      }
+    ],
+    "premadebundles": [
+      {
+        "docId": "69892edcbad937ccc3bc255a",
+        "originalDoc": {
+          "_id": "69892edcbad937ccc3bc255a",
+          "name": "Pack of 4",
+          "slug": "pack-of-4",
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-bundles/ootkn07ufdenm6r3594p.webp",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "698bce801ab2a437c280bd74",
+              "key": "hbs-bundles/ootkn07ufdenm6r3594p.webp",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-pre-made-bundles/ycnzdyg7dkqf3bweuvxt.webp",
+              "isPrimary": false,
+              "order": 1,
+              "_id": "698bce841ab2a437c280bd75",
+              "key": "hbs-pre-made-bundles/ycnzdyg7dkqf3bweuvxt.webp",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-pre-made-bundles/ptsyiyewsmsr56ygysss.png",
+              "isPrimary": false,
+              "order": 2,
+              "_id": "698bce841ab2a437c280bd76",
+              "key": "hbs-pre-made-bundles/ptsyiyewsmsr56ygysss.png",
+              "provider": "r2"
+            }
+          ],
+          "price": 2000,
+          "originalPrice": 1000,
+          "status": "active",
+          "isDeleted": true,
+          "deletedAt": "2026-02-11T00:34:32.807Z",
+          "createdAt": "2026-02-09T00:48:28.709Z",
+          "updatedAt": "2026-08-23T02:45:43.401Z",
+          "__v": 1,
+          "careInstructions": [],
+          "description": "",
+          "displayOrder": 0,
+          "features": [],
+          "isFeatured": false,
+          "isNewArrival": false,
+          "metaDescription": "",
+          "metaTitle": "",
+          "rating": 0,
+          "reviewCount": 0,
+          "shortDescription": "",
+          "soldCount": 0,
+          "specifications": [],
+          "tags": [],
+          "viewCount": 0,
+          "isOnSale": false,
+          "stock": 0
+        }
+      },
+      {
+        "docId": "698bcdbac07f9f8539b427bb",
+        "originalDoc": {
+          "_id": "698bcdbac07f9f8539b427bb",
+          "name": "Starter Hijab Bundle",
+          "slug": "starter-hijab-bundle",
+          "shortDescription": "Everything you need to start: 2 hijabs and a pin set.",
+          "description": "Our best-selling starter bundle includes two versatile hijabs in neutral tones and a set of hijab pins. Perfect for everyday wear and easy to mix with your wardrobe.",
+          "price": 3499,
+          "originalPrice": 4299,
+          "compareAtPrice": 4299,
+          "costPrice": 1800,
+          "images": [
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-pre-made-bundles/grgfqggjuybggstbewws.webp",
+              "isPrimary": true,
+              "order": 0,
+              "_id": "698bd3ab1fbef53e1e2b2572",
+              "key": "hbs-pre-made-bundles/grgfqggjuybggstbewws.webp",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-pre-made-bundles/mbot0gnjjzgvqxudnrom.png",
+              "isPrimary": false,
+              "order": 1,
+              "_id": "698bd3ab1fbef53e1e2b2573",
+              "key": "hbs-pre-made-bundles/mbot0gnjjzgvqxudnrom.png",
+              "provider": "r2"
+            },
+            {
+              "url": "https://images.hijabsbyshiza.com/hbs-pre-made-bundles/ykzdtr48ajvakytlti2u.webp",
+              "isPrimary": false,
+              "order": 2,
+              "_id": "698bd3ab1fbef53e1e2b2574",
+              "key": "hbs-pre-made-bundles/ykzdtr48ajvakytlti2u.webp",
+              "provider": "r2"
+            }
+          ],
+          "features": [
+            "2 premium hijabs",
+            "Hijab pin set",
+            "Neutral colors",
+            "Gift-ready packaging"
+          ],
+          "careInstructions": [
+            "Machine wash cold",
+            "Tumble dry low",
+            "Do not bleach"
+          ],
+          "specifications": [
+            {
+              "key": "Contents",
+              "value": "2 Hijabs + Pin Set",
+              "_id": "698bd3ab1fbef53e1e2b2570"
+            },
+            {
+              "key": "Fabric",
+              "value": "Viscose Blend",
+              "_id": "698bd3ab1fbef53e1e2b2571"
+            }
+          ],
+          "weight": 0.3,
+          "dimensions": {
+            "length": 30,
+            "width": 25,
+            "height": 5
+          },
+          "shipping": {
+            "domestic": "Free shipping on orders over PKR 5000",
+            "cod": "Cash on Delivery available",
+            "delivery": "3-5 business days",
+            "returns": "Easy returns within 7 days"
+          },
+          "metaTitle": "Starter Hijab Bundle - Best Value",
+          "metaDescription": "Starter hijab bundle with 2 hijabs and pins. Perfect for beginners.",
+          "tags": [
+            "bundle",
+            "starter",
+            "hijab",
+            "gift"
+          ],
+          "status": "active",
+          "displayOrder": 1,
+          "isFeatured": true,
+          "isNewArrival": true,
+          "viewCount": 0,
+          "soldCount": 2,
+          "rating": 0,
+          "reviewCount": 0,
+          "publishedAt": "2025-01-01T00:00:00.000Z",
+          "__v": 2,
+          "isDeleted": false,
+          "updatedAt": "2026-08-23T02:45:43.404Z",
+          "stock": 8,
+          "isOnSale": false
+        }
+      }
+    ],
+    "bundlecategories": [
+      {
+        "docId": "698bb2b455c89df5650105fc",
+        "originalDoc": {
+          "_id": "698bb2b455c89df5650105fc",
+          "name": "Hijab Bundle Box",
+          "slug": "hijab-bundle-box",
+          "description": "Hijab Bundle Box",
+          "thumbnail": "https://images.hijabsbyshiza.com/hbs-bundle-categories/ljbhqmd7crjwspahlhct.webp",
+          "coverImage": "https://images.hijabsbyshiza.com/hbs-bundle-categories/stcaesmnbjxrpeobwygn.png",
+          "displayOrder": 0,
+          "status": "active",
+          "createdAt": "2026-02-10T22:35:32.461Z",
+          "updatedAt": "2026-08-23T02:45:43.395Z",
+          "__v": 0
+        }
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import uploadService from '../services/upload.service.js';
 import { runCloudinaryToR2Migration, runDualR2UrlMigration } from '../services/migration.service.js';
-import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
+import { generateR2Url, resolveImageUrl, extractImageKey } from '../utils/imageUrl.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -16,12 +16,21 @@ export const uploadSingleImage = asyncHandler(async (req, res, next) => {
   const folder = req.body.folder || 'hbs-uploads';
 
   const uploadResult = await uploadService.uploadSingle(req.file, folder);
-  const { url, key, publicId, provider } = uploadResult;
+  const { url, key, publicId, provider, objectKey } = uploadResult;
   const resolvedUrl = resolveImageUrl(url) || url;
   const r2Url = uploadResult.r2Url ? (resolveImageUrl(uploadResult.r2Url) || uploadResult.r2Url) : resolvedUrl;
+  const canonicalKey = objectKey || key || extractImageKey(resolvedUrl);
 
   res.status(200).json(
-    new ApiResponse(200, { provider, url: resolvedUrl, r2Url, key, publicId }, 'Image uploaded successfully')
+    new ApiResponse(200, {
+      provider: provider || 'r2',
+      url: resolvedUrl,
+      imageUrl: resolvedUrl,
+      r2Url,
+      key: canonicalKey,
+      objectKey: canonicalKey,
+      publicId
+    }, 'Image uploaded successfully')
   );
 });
 

@@ -5,7 +5,23 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
-import { resolveImageUrl } from '../utils/imageUrl.js';
+import { resolveImageUrl, extractImageKey } from '../utils/imageUrl.js';
+
+const normalizeReview = (review) => {
+  if (!review) return review;
+  const r = typeof review.toObject === 'function' ? review.toObject() : { ...review };
+  if (Array.isArray(r.r2Images) && r.r2Images.length > 0) {
+    r.images = r.r2Images.map(img => resolveImageUrl(img) || img);
+  } else if (Array.isArray(r.images)) {
+    r.images = r.images.map(img => resolveImageUrl(img) || img);
+  }
+  r.r2Images = r.images;
+  r.imageUrls = r.images;
+  if (!r.imageObjectKeys || r.imageObjectKeys.length === 0) {
+    r.imageObjectKeys = (r.images || []).map(extractImageKey);
+  }
+  return r;
+};
 
 // @route   GET /api/reviews/product/:productId
 // @desc    Get reviews for a product
@@ -59,7 +75,7 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
 
   res.json(
     new ApiResponse(200, {
-      reviews,
+      reviews: reviews.map(normalizeReview),
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -112,15 +128,22 @@ export const createReview = asyncHandler(async (req, res, next) => {
   // Handle image uploads
   let images = [];
   let r2Images = [];
+  let imageUrls = [];
+  let imageObjectKeys = [];
   if (req.files && req.files.length > 0) {
     const uploadRes = await uploadService.uploadMultiple(req.files, 'hbs-reviews');
     images = uploadRes.map(item => {
-      const raw = typeof item === 'string' ? item : item.url;
+      const raw = typeof item === 'string' ? item : (item.url || item.r2Url);
       return resolveImageUrl(raw) || raw;
     });
     r2Images = uploadRes.map(item => {
       const raw = typeof item === 'object' && item.r2Url ? item.r2Url : (typeof item === 'string' ? item : item.url);
       return resolveImageUrl(raw) || raw;
+    });
+    imageUrls = [...r2Images];
+    imageObjectKeys = uploadRes.map((item, idx) => {
+      if (typeof item === 'object' && (item.objectKey || item.key)) return item.objectKey || item.key;
+      return extractImageKey(imageUrls[idx]);
     });
   }
 
@@ -134,6 +157,8 @@ export const createReview = asyncHandler(async (req, res, next) => {
     comment,
     images,
     r2Images,
+    imageUrls,
+    imageObjectKeys,
     isVerifiedPurchase
   });
 
@@ -144,7 +169,7 @@ export const createReview = asyncHandler(async (req, res, next) => {
     .populate('userId', 'fullName');
 
   res.status(201).json(
-    new ApiResponse(201, { review: populatedReview }, 'Review submitted successfully. It will be published after moderation.')
+    new ApiResponse(201, { review: normalizeReview(populatedReview) }, 'Review submitted successfully. It will be published after moderation.')
   );
 });
 
@@ -238,7 +263,7 @@ export const moderateReview = asyncHandler(async (req, res, next) => {
   }
 
   res.json(
-    new ApiResponse(200, { review }, 'Review moderated successfully')
+    new ApiResponse(200, { review: normalizeReview(review) }, 'Review moderated successfully')
   );
 });
 
@@ -261,7 +286,7 @@ export const getPendingReviews = asyncHandler(async (req, res) => {
 
   res.json(
     new ApiResponse(200, {
-      reviews,
+      reviews: reviews.map(normalizeReview),
       pagination: {
         page: Number(page),
         limit: Number(limit),

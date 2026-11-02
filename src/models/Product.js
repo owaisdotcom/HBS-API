@@ -33,11 +33,23 @@ const productSchema = new mongoose.Schema({
   originalPrice: Number,
   costPrice: Number,
   
+  // Top-level shortcuts
+  thumbnail: String,
+  thumbnailImageUrl: String,
+  thumbnailR2Url: String,
+  thumbnailObjectKey: String,
+  image: String,
+  imageImageUrl: String,
+  imageR2Url: String,
+  imageObjectKey: String,
+
   // Images
   images: [{
-    provider: { type: String, enum: ['cloudinary', 'r2'] },
+    provider: { type: String, enum: ['cloudinary', 'r2'], default: 'r2' },
     key: String,
+    objectKey: String,
     url: String,
+    imageUrl: String,
     r2Url: String,
     publicId: String,
     alt: String,
@@ -57,9 +69,11 @@ const productSchema = new mongoose.Schema({
     colorId: { type: String, required: true, index: true }, // Unique ID for this color variant
     color: { type: String, required: true }, // Color name
     images: [{
-      provider: { type: String, enum: ['cloudinary', 'r2'] },
+      provider: { type: String, enum: ['cloudinary', 'r2'], default: 'r2' },
       key: String,
+      objectKey: String,
       url: String,
+      imageUrl: String,
       r2Url: String,
       publicId: String,
       alt: String,
@@ -94,7 +108,9 @@ const productSchema = new mongoose.Schema({
         bridalStock: { type: Number, min: [0, 'Bridal stock cannot be negative'], default: 0 },
         // Optional per-size size chart image URL
         sizeChartUrl: { type: String },
+        sizeChartImageUrl: { type: String },
         sizeChartR2Url: { type: String },
+        sizeChartObjectKey: { type: String },
       weight: Number,
       isActive: { type: Boolean, default: true }
     }],

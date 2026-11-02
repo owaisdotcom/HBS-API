@@ -3,7 +3,25 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
-import { resolveImageUrl } from '../utils/imageUrl.js';
+import { resolveImageUrl, extractImageKey } from '../utils/imageUrl.js';
+
+const normalizeTestimonial = (testimonial) => {
+  if (!testimonial) return testimonial;
+  const t = typeof testimonial.toObject === 'function' ? testimonial.toObject() : { ...testimonial };
+  const raw = t.customerImageR2Url || t.customerImageUrl || t.customerImage || t.r2Url || t.imageUrl;
+  if (raw) {
+    const url = resolveImageUrl(raw) || raw;
+    const key = t.customerImageObjectKey || t.objectKey || extractImageKey(url);
+    t.customerImage = url;
+    t.customerImageUrl = url;
+    t.customerImageR2Url = url;
+    t.customerImageObjectKey = key;
+    t.imageUrl = url;
+    t.r2Url = url;
+    t.objectKey = key;
+  }
+  return t;
+};
 
 // @route   GET /api/homepage/testimonials
 // @desc    Get published testimonials for homepage
@@ -13,7 +31,7 @@ export const getPublishedTestimonials = asyncHandler(async (req, res) => {
     .sort({ displayOrder: 1, createdAt: -1 })
     .lean();
   res.json(
-    new ApiResponse(200, { testimonials }, 'Testimonials retrieved successfully')
+    new ApiResponse(200, { testimonials: testimonials.map(normalizeTestimonial) }, 'Testimonials retrieved successfully')
   );
 });
 
@@ -23,7 +41,7 @@ export const getPublishedTestimonials = asyncHandler(async (req, res) => {
 export const getAllTestimonials = asyncHandler(async (req, res) => {
   const testimonials = await Testimonial.find().sort({ displayOrder: 1, createdAt: -1 }).lean();
   res.json(
-    new ApiResponse(200, { testimonials }, 'Testimonials retrieved successfully')
+    new ApiResponse(200, { testimonials: testimonials.map(normalizeTestimonial) }, 'Testimonials retrieved successfully')
   );
 });
 
@@ -36,7 +54,7 @@ export const getTestimonialById = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Testimonial not found', 404));
   }
   res.json(
-    new ApiResponse(200, { testimonial }, 'Testimonial retrieved successfully')
+    new ApiResponse(200, { testimonial: normalizeTestimonial(testimonial) }, 'Testimonial retrieved successfully')
   );
 });
 
@@ -62,14 +80,20 @@ export const createTestimonial = asyncHandler(async (req, res, next) => {
   };
   if (req.file) {
     const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
-    const rawImg = typeof resImg === 'string' ? resImg : resImg?.url;
-    payload.customerImage = resolveImageUrl(rawImg) || rawImg;
-    payload.customerImageR2Url = typeof resImg === 'object' && resImg?.r2Url ? (resolveImageUrl(resImg.r2Url) || resImg.r2Url) : payload.customerImage;
-    payload.r2Url = payload.customerImageR2Url;
+    const rawImg = typeof resImg === 'string' ? resImg : (resImg?.url || resImg?.r2Url);
+    const finalUrl = resolveImageUrl(rawImg) || rawImg;
+    const objectKey = typeof resImg === 'object' && (resImg?.objectKey || resImg?.key) ? (resImg.objectKey || resImg.key) : extractImageKey(finalUrl);
+    payload.customerImage = finalUrl;
+    payload.customerImageUrl = finalUrl;
+    payload.customerImageR2Url = finalUrl;
+    payload.customerImageObjectKey = objectKey;
+    payload.imageUrl = finalUrl;
+    payload.r2Url = finalUrl;
+    payload.objectKey = objectKey;
   }
   const created = await Testimonial.create(payload);
   res.status(201).json(
-    new ApiResponse(201, { testimonial: created }, 'Testimonial created successfully')
+    new ApiResponse(201, { testimonial: normalizeTestimonial(created) }, 'Testimonial created successfully')
   );
 });
 
@@ -91,14 +115,20 @@ export const updateTestimonial = asyncHandler(async (req, res, next) => {
   if (body.displayOrder !== undefined) testimonial.displayOrder = Number(body.displayOrder) ?? 0;
   if (req.file) {
     const resImg = await uploadService.uploadSingle(req.file, 'hbs-testimonials');
-    const rawImg = typeof resImg === 'string' ? resImg : resImg?.url;
-    testimonial.customerImage = resolveImageUrl(rawImg) || rawImg;
-    testimonial.customerImageR2Url = typeof resImg === 'object' && resImg?.r2Url ? (resolveImageUrl(resImg.r2Url) || resImg.r2Url) : testimonial.customerImage;
-    testimonial.r2Url = testimonial.customerImageR2Url;
+    const rawImg = typeof resImg === 'string' ? resImg : (resImg?.url || resImg?.r2Url);
+    const finalUrl = resolveImageUrl(rawImg) || rawImg;
+    const objectKey = typeof resImg === 'object' && (resImg?.objectKey || resImg?.key) ? (resImg.objectKey || resImg.key) : extractImageKey(finalUrl);
+    testimonial.customerImage = finalUrl;
+    testimonial.customerImageUrl = finalUrl;
+    testimonial.customerImageR2Url = finalUrl;
+    testimonial.customerImageObjectKey = objectKey;
+    testimonial.imageUrl = finalUrl;
+    testimonial.r2Url = finalUrl;
+    testimonial.objectKey = objectKey;
   }
   await testimonial.save();
   res.json(
-    new ApiResponse(200, { testimonial }, 'Testimonial updated successfully')
+    new ApiResponse(200, { testimonial: normalizeTestimonial(testimonial) }, 'Testimonial updated successfully')
   );
 });
 

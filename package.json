@@ -11,7 +11,8 @@
     "seed:data": "node src/utils/seedData.js",
     "seed:terms": "node src/utils/seedTermsConditions.js",
     "migrate:r2": "node src/scripts/migrateCloudinaryToR2.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:revert": "node -r dotenv/config test-revert-payment.js",
+    "test": "node -r dotenv/config test-revert-payment.js"
   },
   "keywords": [
     "ecommerce",

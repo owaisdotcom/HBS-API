@@ -27,9 +27,11 @@ const preMadeBundleSchema = new mongoose.Schema({
 
   // Images
   images: [{
-    provider: { type: String, enum: ['cloudinary', 'r2'] },
+    provider: { type: String, enum: ['cloudinary', 'r2'], default: 'r2' },
     key: String,
+    objectKey: String,
     url: String,
+    imageUrl: String,
     r2Url: String,
     alt: String,
     isPrimary: { type: Boolean, default: false },

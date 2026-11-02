@@ -3,13 +3,47 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
-import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
+import { generateR2Url, resolveImageUrl, extractImageKey } from '../utils/imageUrl.js';
 
 const resolveSlug = (id) => {
   if (id.match(/^[0-9a-fA-F]{24}$/)) {
     return PreMadeBundle.findOne({ _id: id, isDeleted: { $ne: true } });
   }
   return PreMadeBundle.findOne({ slug: id, isDeleted: { $ne: true } });
+};
+
+const normalizeBundle = (bundle) => {
+  if (!bundle) return bundle;
+  const b = bundle.toObject ? bundle.toObject() : { ...bundle };
+  if (Array.isArray(b.images)) {
+    b.images = b.images.map((img) => {
+      if (!img) return img;
+      if (typeof img === 'string') {
+        const canonical = resolveImageUrl(img) || img;
+        const key = extractImageKey(canonical);
+        return {
+          provider: 'r2',
+          key,
+          objectKey: key,
+          url: canonical,
+          imageUrl: canonical,
+          r2Url: canonical
+        };
+      }
+      const canonical = resolveImageUrl(img.r2Url) || resolveImageUrl(img.url) || img.url;
+      const key = img.objectKey || img.key || extractImageKey(canonical);
+      return {
+        ...img,
+        provider: img.provider || 'r2',
+        key,
+        objectKey: key,
+        url: canonical,
+        imageUrl: canonical,
+        r2Url: canonical
+      };
+    });
+  }
+  return b;
 };
 
 // @route   GET /api/pre-made-bundles
@@ -20,8 +54,9 @@ export const listPreMadeBundles = asyncHandler(async (req, res) => {
   const query = { isDeleted: { $ne: true } };
   if (includeInactive !== 'true') query.status = status;
   const bundles = await PreMadeBundle.find(query).sort('displayOrder createdAt');
+  const normalizedBundles = bundles.map(normalizeBundle);
   res.json(
-    new ApiResponse(200, { preMadeBundles: bundles }, 'Pre-made bundles retrieved successfully')
+    new ApiResponse(200, { preMadeBundles: normalizedBundles }, 'Pre-made bundles retrieved successfully')
   );
 });
 
@@ -34,7 +69,7 @@ export const getPreMadeBundle = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Pre-made bundle not found', 404));
   }
   res.json(
-    new ApiResponse(200, { preMadeBundle: bundle }, 'Pre-made bundle retrieved successfully')
+    new ApiResponse(200, { preMadeBundle: normalizeBundle(bundle) }, 'Pre-made bundle retrieved successfully')
   );
 });
 
@@ -81,12 +116,21 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
   if (req.files?.length) {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     images = uploadResults.map((item, i) => {
-      const rawUrl = typeof item === 'string' ? item : item.url;
+      const rawUrl = typeof item === 'string' ? item : (item.url || item.r2Url);
       const url = resolveImageUrl(rawUrl) || rawUrl;
       const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
-      const key = typeof item === 'object' ? item.key : undefined;
-      return { provider, key, url, r2Url, order: i, isPrimary: i === 0 };
+      const key = typeof item === 'object' && (item.objectKey || item.key) ? (item.objectKey || item.key) : extractImageKey(url);
+      return {
+        provider,
+        key,
+        objectKey: key,
+        url,
+        imageUrl: url,
+        r2Url,
+        order: i,
+        isPrimary: i === 0
+      };
     });
   }
 
@@ -120,7 +164,7 @@ export const createPreMadeBundle = asyncHandler(async (req, res, next) => {
 
   const bundle = await PreMadeBundle.create(payload);
   res.status(201).json(
-    new ApiResponse(201, { preMadeBundle: bundle }, 'Pre-made bundle created successfully')
+    new ApiResponse(201, { preMadeBundle: normalizeBundle(bundle) }, 'Pre-made bundle created successfully')
   );
 });
 
@@ -164,15 +208,17 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
   // Images: existingImages (JSON array with url, order) + new uploads
   if (parsed.existingImages !== undefined && Array.isArray(parsed.existingImages)) {
     bundle.images = parsed.existingImages.map((img, i) => {
-      const rawUrl = typeof img === 'string' ? img : img.url;
+      const rawUrl = typeof img === 'string' ? img : (img.url || img.r2Url);
       const url = resolveImageUrl(rawUrl) || rawUrl;
       const r2Url = typeof img === 'object' && img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
       const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
-      const key = typeof img === 'object' ? img.key : undefined;
+      const key = typeof img === 'object' && (img.objectKey || img.key) ? (img.objectKey || img.key) : extractImageKey(url);
       return {
         provider,
         key,
+        objectKey: key,
         url,
+        imageUrl: url,
         r2Url,
         alt: typeof img === 'object' ? img.alt : undefined,
         isPrimary: i === 0,
@@ -184,18 +230,27 @@ export const updatePreMadeBundle = asyncHandler(async (req, res, next) => {
     const uploadResults = await uploadService.uploadMultiple(req.files, 'hbs-pre-made-bundles');
     const startOrder = (bundle.images || []).length;
     uploadResults.forEach((item, i) => {
-      const rawUrl = typeof item === 'string' ? item : item.url;
+      const rawUrl = typeof item === 'string' ? item : (item.url || item.r2Url);
       const url = resolveImageUrl(rawUrl) || rawUrl;
       const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
-      const key = typeof item === 'object' ? item.key : undefined;
-      bundle.images.push({ provider, key, url, r2Url, order: startOrder + i, isPrimary: bundle.images.length === 0 && i === 0 });
+      const key = typeof item === 'object' && (item.objectKey || item.key) ? (item.objectKey || item.key) : extractImageKey(url);
+      bundle.images.push({
+        provider,
+        key,
+        objectKey: key,
+        url,
+        imageUrl: url,
+        r2Url,
+        order: startOrder + i,
+        isPrimary: bundle.images.length === 0 && i === 0
+      });
     });
   }
 
   await bundle.save();
   res.json(
-    new ApiResponse(200, { preMadeBundle: bundle }, 'Pre-made bundle updated successfully')
+    new ApiResponse(200, { preMadeBundle: normalizeBundle(bundle) }, 'Pre-made bundle updated successfully')
   );
 });
 

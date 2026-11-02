@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import PreMadeBundle from '../models/PreMadeBundle.js';
@@ -8,7 +9,13 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
-import { generateR2Url, resolveImageUrl } from '../utils/imageUrl.js';
+import {
+  generateR2Url,
+  resolveImageUrl,
+  extractImageKey,
+  normalizeImageStringArray,
+  normalizeSingleImageUrl
+} from '../utils/imageUrl.js';
 import { syncCheckoutDetailsWithUser } from './auth.controller.js';
 import cacheService from '../services/cache.service.js';
 import rateLimiterService from '../services/rateLimiter.service.js';
@@ -23,8 +30,10 @@ import {
   sendOrderCancelledEmail
 } from '../services/email.service.js';
 
-const recomputeProductStock = async (productId) => {
-  const product = await Product.findById(productId, 'variants').lean();
+const recomputeProductStock = async (productId, session = null) => {
+  const q = Product.findById(productId, 'variants');
+  if (session) q.session(session);
+  const product = await q.lean();
   if (!product) return;
   let totalStock = 0;
   for (const colorVariant of (product.variants || [])) {
@@ -36,36 +45,44 @@ const recomputeProductStock = async (productId) => {
       const sizeStock = hasCust ? (tie + elastic + bridal) : (Number(size.stock) || 0);
       totalStock += sizeStock;
 
+      const opts = {
+        arrayFilters: [{ 'c.colorId': colorVariant.colorId }, { 's.sizeId': size.sizeId }],
+        ...(session ? { session } : {})
+      };
       await Product.updateOne(
         { _id: productId },
         { $set: { 'variants.$[c].sizes.$[s].stock': sizeStock } },
-        { arrayFilters: [{ 'c.colorId': colorVariant.colorId }, { 's.sizeId': size.sizeId }] }
+        opts
       );
     }
   }
-  await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
+  const finalOpts = session ? { session } : {};
+  await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } }, finalOpts);
 };
 
 /**
- * Deduct stock for a single order item (called once when order is created).
+ * Deduct stock for a single order item (called once when order is created or rejection reverted).
  * Returns the productId string if a product was touched, null for bundles.
  */
-const deductOrderItem = async (item) => {
+const deductOrderItem = async (item, session = null) => {
+  const opts = session ? { session } : {};
   // Pre-made bundle
   if (item.preMadeBundleId) {
     await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
       $inc: { stock: -item.quantity, soldCount: item.quantity }
-    });
+    }, opts);
     return null;
   }
   if (!item.productId) return null;
 
   if (item.variantId) {
-    const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
+    const q = Product.findOne({ _id: item.productId }, { variants: 1 });
+    if (session) q.session(session);
+    const prod = await q.lean();
     if (prod && Array.isArray(prod.variants)) {
       let colorId = null, sizeId = null, targetSize = null;
       for (const v of prod.variants) {
-        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
         if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
       }
       if (colorId != null && sizeId != null && targetSize != null) {
@@ -83,10 +100,14 @@ const deductOrderItem = async (item) => {
         if (item.selectedBridalLength === 'bridal') {
           incFields['variants.$[c].sizes.$[s].bridalStock'] = -qty;
         }
+        const updateOpts = {
+          arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }],
+          ...(session ? { session } : {})
+        };
         await Product.updateOne(
           { _id: item.productId },
           { $inc: incFields },
-          { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+          updateOpts
         );
         return item.productId.toString();
       }
@@ -96,7 +117,7 @@ const deductOrderItem = async (item) => {
   // Fallback: legacy/non-variant product
   await Product.findByIdAndUpdate(item.productId, {
     $inc: { stock: -item.quantity, soldCount: item.quantity }
-  });
+  }, opts);
   return item.productId.toString();
 };
 
@@ -104,21 +125,24 @@ const deductOrderItem = async (item) => {
  * Restore stock for a single order item (called once when order is cancelled/rejected).
  * Mirrors deductOrderItem exactly. Returns productId string or null.
  */
-const restoreOrderItem = async (item) => {
+const restoreOrderItem = async (item, session = null) => {
+  const opts = session ? { session } : {};
   if (item.preMadeBundleId) {
     await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
       $inc: { stock: item.quantity, soldCount: -item.quantity }
-    });
+    }, opts);
     return null;
   }
   if (!item.productId) return null;
 
   if (item.variantId) {
-    const prod = await Product.findOne({ _id: item.productId }, { variants: 1 }).lean();
+    const q = Product.findOne({ _id: item.productId }, { variants: 1 });
+    if (session) q.session(session);
+    const prod = await q.lean();
     if (prod && Array.isArray(prod.variants)) {
       let colorId = null, sizeId = null, targetSize = null;
       for (const v of prod.variants) {
-        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId);
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
         if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
       }
       if (colorId != null && sizeId != null && targetSize != null) {
@@ -135,10 +159,14 @@ const restoreOrderItem = async (item) => {
         if (item.selectedBridalLength === 'bridal') {
           incFields['variants.$[c].sizes.$[s].bridalStock'] = qty;
         }
+        const updateOpts = {
+          arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }],
+          ...(session ? { session } : {})
+        };
         await Product.updateOne(
           { _id: item.productId },
           { $inc: incFields },
-          { arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }] }
+          updateOpts
         );
         return item.productId.toString();
       }
@@ -147,9 +175,161 @@ const restoreOrderItem = async (item) => {
 
   await Product.findByIdAndUpdate(item.productId, {
     $inc: { stock: item.quantity, soldCount: -item.quantity }
-  });
+  }, opts);
   return item.productId.toString();
 };
+
+/**
+ * Verify sufficient stock is available before re-deducting stock for an order.
+ * Checks pre-made bundles, product variants, customization stock (tie/elastic/bridal), and regular products.
+ * Aggregates quantities if the same item/variant appears multiple times in the order.
+ */
+const verifySufficientStockForOrder = async (order, session = null) => {
+  const bundleDemands = new Map();
+  const productVariantDemands = new Map();
+  const simpleProductDemands = new Map();
+
+  for (const item of (order.items || [])) {
+    const qty = Math.max(1, Number(item.quantity) || 1);
+
+    if (item.preMadeBundleId) {
+      const bId = item.preMadeBundleId.toString();
+      const existing = bundleDemands.get(bId) || { id: item.preMadeBundleId, name: item.productName || 'Bundle', qty: 0 };
+      existing.qty += qty;
+      bundleDemands.set(bId, existing);
+      continue;
+    }
+
+    if (item.productId) {
+      const pId = item.productId.toString();
+      if (item.variantId) {
+        const key = `${pId}:::${item.variantId}:::${item.selectedTieElastic || ''}:::${item.selectedBridalLength || ''}`;
+        const existing = productVariantDemands.get(key) || {
+          productId: item.productId,
+          variantId: item.variantId,
+          productName: item.productName || 'Product',
+          tieElastic: item.selectedTieElastic,
+          bridalLength: item.selectedBridalLength,
+          qty: 0
+        };
+        existing.qty += qty;
+        productVariantDemands.set(key, existing);
+      } else {
+        const existing = simpleProductDemands.get(pId) || { productId: item.productId, name: item.productName || 'Product', qty: 0 };
+        existing.qty += qty;
+        simpleProductDemands.set(pId, existing);
+      }
+    }
+  }
+
+  // Check pre-made bundles
+  for (const demand of bundleDemands.values()) {
+    const q = PreMadeBundle.findById(demand.id);
+    if (session) q.session(session);
+    const bundle = await q.lean();
+    if (!bundle) {
+      return { ok: false, message: `Pre-made bundle "${demand.name}" is no longer available` };
+    }
+    const currentStock = Number(bundle.stock) ?? 0;
+    if (currentStock < demand.qty) {
+      return {
+        ok: false,
+        message: `Insufficient stock for bundle "${bundle.name}". Available: ${currentStock}, requested: ${demand.qty}`
+      };
+    }
+  }
+
+  // Check simple products
+  for (const demand of simpleProductDemands.values()) {
+    const q = Product.findById(demand.productId);
+    if (session) q.session(session);
+    const prod = await q.lean();
+    if (!prod || prod.isDeleted) {
+      return { ok: false, message: `Product "${demand.name}" is no longer available` };
+    }
+    const currentStock = Number(prod.stock) ?? 0;
+    if (currentStock < demand.qty) {
+      return {
+        ok: false,
+        message: `Insufficient stock for "${prod.name}". Available: ${currentStock}, requested: ${demand.qty}`
+      };
+    }
+  }
+
+  // Check variant products
+  for (const demand of productVariantDemands.values()) {
+    const q = Product.findById(demand.productId);
+    if (session) q.session(session);
+    const prod = await q.lean();
+    if (!prod || prod.isDeleted) {
+      return { ok: false, message: `Product "${demand.productName}" is no longer available` };
+    }
+
+    let targetSize = null;
+    let targetColor = null;
+    if (Array.isArray(prod.variants)) {
+      for (const v of prod.variants) {
+        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === demand.variantId || sz.sizeId === demand.variantId);
+        if (s) {
+          targetColor = v;
+          targetSize = s;
+          break;
+        }
+      }
+    }
+
+    if (!targetSize) {
+      const currentStock = Number(prod.stock) ?? 0;
+      if (currentStock < demand.qty) {
+        return {
+          ok: false,
+          message: `Insufficient stock for "${prod.name}". Available: ${currentStock}, requested: ${demand.qty}`
+        };
+      }
+      continue;
+    }
+
+    const sizeStock = Number(targetSize.stock) ?? 0;
+    if (sizeStock < demand.qty) {
+      const label = `${prod.name} (${targetColor?.color || ''} - ${targetSize.size || ''})`.trim();
+      return {
+        ok: false,
+        message: `Insufficient stock for "${label}". Available: ${sizeStock}, requested: ${demand.qty}`
+      };
+    }
+
+    if (demand.tieElastic === 'tie') {
+      const tieStock = Number(targetSize.tieStock) ?? 0;
+      if (tieStock < demand.qty) {
+        return {
+          ok: false,
+          message: `Insufficient stock for "${prod.name}" Tie customization. Available: ${tieStock}, requested: ${demand.qty}`
+        };
+      }
+    } else if (demand.tieElastic === 'elastic') {
+      const elasticStock = Number(targetSize.elasticStock) ?? 0;
+      if (elasticStock < demand.qty) {
+        return {
+          ok: false,
+          message: `Insufficient stock for "${prod.name}" Elastic customization. Available: ${elasticStock}, requested: ${demand.qty}`
+        };
+      }
+    }
+
+    if (demand.bridalLength === 'bridal') {
+      const bridalStock = Number(targetSize.bridalStock) ?? 0;
+      if (bridalStock < demand.qty) {
+        return {
+          ok: false,
+          message: `Insufficient stock for "${prod.name}" Bridal Length option. Available: ${bridalStock}, requested: ${demand.qty}`
+        };
+      }
+    }
+  }
+
+  return { ok: true };
+};
+
 
 /**
  * Idempotent stock restoration for a full order.
@@ -524,9 +704,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         .join(' / ') || item.selectedColor || colorV?.color || null;
 
       const rawMainImg = productMainImage || resolvedVariantImg || '';
-      const mainImg = resolveImageUrl(rawMainImg) || rawMainImg;
-      const finalVariantImg = resolveImageUrl(resolvedVariantImg) || resolvedVariantImg;
-      const resolvedVariantImages = (finalVariantImages || []).map(img => resolveImageUrl(img) || img);
+      const mainImg = normalizeSingleImageUrl(rawMainImg) || '';
+      const finalVariantImg = normalizeSingleImageUrl(resolvedVariantImg) || null;
+      const resolvedVariantImages = normalizeImageStringArray(finalVariantImages);
 
       orderItems.push({
         productId: product._id,
@@ -549,8 +729,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
           sku: chosenVariant?.sku || product.sku || null,
           price: chosenVariant?.price || effectiveUnitPrice,
           name: variantName,
-          image: resolvedVariantImg,
-          images: finalVariantImages,
+          image: finalVariantImg,
+          images: resolvedVariantImages,
           color: chosenVariant?.color || item.selectedColor || null,
           size: chosenVariant?.size || item.selectedSize || null,
           specs: chosenVariant?.specs || colorV?.specs || null,
@@ -608,9 +788,10 @@ export const createOrder = asyncHandler(async (req, res, next) => {
 
     // Upload receipt to cloud
     const receiptRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
-    const receiptUrl = typeof receiptRes === 'string' ? receiptRes : receiptRes?.url;
+    const rawReceiptUrl = typeof receiptRes === 'string' ? receiptRes : receiptRes?.url;
+    const canonicalReceiptUrl = resolveImageUrl(rawReceiptUrl) || rawReceiptUrl;
     const receiptProvider = typeof receiptRes === 'object' && receiptRes?.provider ? receiptRes.provider : 'r2';
-    const receiptKey = typeof receiptRes === 'object' ? receiptRes?.key : undefined;
+    const receiptKey = typeof receiptRes === 'object' ? (receiptRes?.objectKey || receiptRes?.key) : extractImageKey(canonicalReceiptUrl);
     const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
 
     // Create order
@@ -650,9 +831,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       paymentReceipt: {
         provider: receiptProvider,
         key: receiptKey,
+        objectKey: receiptKey,
         publicId: receiptPublicId,
-        url: resolveImageUrl(receiptUrl) || receiptUrl,
-        r2Url: resolveImageUrl(receiptUrl) || receiptUrl,
+        url: canonicalReceiptUrl,
+        imageUrl: canonicalReceiptUrl,
+        r2Url: canonicalReceiptUrl,
         uploadedAt: new Date()
       },
       paymentStatus: 'pending'
@@ -746,6 +929,25 @@ const normalizeOrderShipping = (orderObj) => {
   return orderObj;
 };
 
+/** Helper: normalize payment receipt to canonical Cloudflare R2 development URLs */
+export const normalizeOrderReceipt = (orderObj) => {
+  if (!orderObj) return orderObj;
+  if (orderObj.paymentReceipt) {
+    const pr = orderObj.paymentReceipt;
+    const rawUrl = pr.url || pr.imageUrl || pr.r2Url;
+    if (rawUrl) {
+      const canonical = resolveImageUrl(rawUrl) || rawUrl;
+      pr.url = canonical;
+      pr.imageUrl = canonical;
+      pr.r2Url = canonical;
+      if (!pr.objectKey && (pr.key || canonical)) {
+        pr.objectKey = pr.key || extractImageKey(canonical);
+      }
+    }
+  }
+  return orderObj;
+};
+
 // @route   GET /api/orders
 // @desc    Get all orders (Admin) or user orders
 // @access  Private
@@ -826,7 +1028,7 @@ export const getOrders = asyncHandler(async (req, res) => {
 
   const ordersWithWeight = await Promise.all(
     orders.map(async (o) => {
-      const normalized = normalizeOrderShipping({ ...o });
+      const normalized = normalizeOrderReceipt(normalizeOrderShipping({ ...o }));
       const totalWeight = await computeOrderTotalWeight(normalized, productMap, bundleMap);
       return { ...normalized, totalWeight };
     })
@@ -877,7 +1079,7 @@ export const getOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Not authorized to access this order', 403));
   }
 
-  const orderObj = normalizeOrderShipping(order.toObject ? order.toObject() : order);
+  const orderObj = normalizeOrderReceipt(normalizeOrderShipping(order.toObject ? order.toObject() : order));
   const totalWeight = await computeOrderTotalWeight(orderObj);
   orderObj.totalWeight = totalWeight;
 
@@ -1007,17 +1209,20 @@ export const uploadReceipt = asyncHandler(async (req, res, next) => {
 
   // Upload receipt to cloud
   const uploadRes = await uploadService.uploadSingle(req.file, 'hbs-receipts');
-  const receiptUrl = typeof uploadRes === 'string' ? uploadRes : uploadRes?.url;
+  const rawReceiptUrl = typeof uploadRes === 'string' ? uploadRes : uploadRes?.url;
+  const canonicalReceiptUrl = resolveImageUrl(rawReceiptUrl) || rawReceiptUrl;
   const receiptProvider = typeof uploadRes === 'object' && uploadRes?.provider ? uploadRes.provider : 'r2';
-  const receiptKey = typeof uploadRes === 'object' ? uploadRes?.key : undefined;
+  const receiptKey = typeof uploadRes === 'object' ? (uploadRes?.objectKey || uploadRes?.key) : extractImageKey(canonicalReceiptUrl);
   const receiptPublicId = typeof uploadRes === 'object' ? uploadRes?.publicId : undefined;
 
   order.paymentReceipt = {
     provider: receiptProvider,
     key: receiptKey,
+    objectKey: receiptKey,
     publicId: receiptPublicId,
-    url: resolveImageUrl(receiptUrl) || receiptUrl,
-    r2Url: resolveImageUrl(receiptUrl) || receiptUrl,
+    url: canonicalReceiptUrl,
+    imageUrl: canonicalReceiptUrl,
+    r2Url: canonicalReceiptUrl,
     uploadedAt: new Date()
   };
 
@@ -1045,13 +1250,15 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('No receipt uploaded for this order', 400));
   }
 
-  // Reject on cancelled order: allow as no-op (ensure paymentStatus = failed, already cancelled)
+  // Reject on cancelled order: allow as idempotent no-op (ensure paymentStatus = failed, already cancelled)
   if (order.status === 'cancelled') {
     if (isVerified) {
       return next(new ApiError('Cannot verify payment for a cancelled order', 400));
     }
-    order.paymentStatus = 'failed';
-    await order.save();
+    if (order.paymentStatus !== 'failed') {
+      await Order.updateOne({ _id: order._id }, { $set: { paymentStatus: 'failed' } });
+      order.paymentStatus = 'failed';
+    }
     return res.json(
       new ApiResponse(200, { order }, 'Payment already rejected for this order')
     );
@@ -1060,59 +1267,92 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
   const previousPaymentStatus = order.paymentStatus;
   const previousOrderStatus = order.status;
 
+  // Idempotency: If payment is already verified and verify requested again
+  if (isVerified && previousPaymentStatus === 'verified') {
+    return res.json(
+      new ApiResponse(200, { order }, 'Payment already verified for this order')
+    );
+  }
+
+  // Idempotency: If payment already failed and order cancelled, and reject requested again
+  if (!isVerified && previousPaymentStatus === 'failed' && previousOrderStatus === 'cancelled') {
+    return res.json(
+      new ApiResponse(200, { order }, 'Payment already rejected for this order')
+    );
+  }
+
+  const updateFields = {};
+  const pushFields = {};
+  const adminId = req.admin?.id || req.admin?._id;
+
   if (isVerified) {
-    order.paymentStatus = 'verified';
-    order.paymentReceipt.verifiedAt = new Date();
-    order.paymentReceipt.verifiedBy = req.admin.id;
+    updateFields.paymentStatus = 'verified';
+    updateFields['paymentReceipt.verifiedAt'] = order.paymentReceipt.verifiedAt || new Date();
+    if (adminId) {
+      updateFields['paymentReceipt.verifiedBy'] = adminId;
+    }
 
     // Auto-update order status to confirmed if still in received
     if (order.status === 'received') {
-      order.status = 'confirmed';
-      order.statusHistory.push({
+      updateFields.status = 'confirmed';
+      updateFields.confirmedAt = order.confirmedAt || new Date();
+      pushFields.statusHistory = {
         status: 'confirmed',
         note: 'Payment verified',
-        updatedBy: req.admin.id,
+        updatedBy: adminId,
         timestamp: new Date()
-      });
+      };
     }
   } else {
     // Reject payment and cancel the order
-    order.paymentStatus = 'failed';
-
     if (['shipped', 'remain_undelivered', 'delivered'].includes(order.status)) {
       return next(new ApiError('Cannot reject payment for shipped or delivered orders', 400));
     }
 
+    updateFields.paymentStatus = 'failed';
+
     if (order.status !== 'cancelled') {
-      order.status = 'cancelled';
-      order.cancelledAt = new Date();
-      order.statusHistory.push({
+      updateFields.status = 'cancelled';
+      updateFields.cancelledAt = order.cancelledAt || new Date();
+      pushFields.statusHistory = {
         status: 'cancelled',
         note: 'Payment rejected',
-        updatedBy: req.admin.id,
+        updatedBy: adminId,
         timestamp: new Date()
-      });
+      };
     }
   }
 
-  await order.save();
+  const mongoUpdate = { $set: updateFields };
+  if (Object.keys(pushFields).length > 0) {
+    mongoUpdate.$push = pushFields;
+  }
+
+  // Use targeted update so payment verification only writes required fields and does not fail on unrelated product image metadata
+  const updatedOrder = await Order.findByIdAndUpdate(
+    order._id,
+    mongoUpdate,
+    { new: true, runValidators: false }
+  );
+
+  const finalOrder = updatedOrder || order;
 
   // Restore stock on payment rejection — guarded by stockDeducted/stockRestored flags
-  if (!isVerified && order.status === 'cancelled') {
-    await restoreAllStock(order);
+  if (!isVerified && finalOrder.status === 'cancelled') {
+    await restoreAllStock(finalOrder);
   }
 
   // Send email notification only if state changed to prevent duplicate customer emails
   if (isVerified && previousPaymentStatus !== 'verified') {
-    sendOrderConfirmedEmail(order).catch(err => console.error('Failed to send order confirmed email:', err.message));
+    sendOrderConfirmedEmail(finalOrder).catch(err => console.error('Failed to send order confirmed email:', err.message));
   } else if (!isVerified && previousOrderStatus !== 'cancelled') {
-    sendOrderCancelledEmail(order, 'Payment receipt rejected').catch(err => console.error('Failed to send order cancelled email:', err.message));
+    sendOrderCancelledEmail(finalOrder, 'Payment receipt rejected').catch(err => console.error('Failed to send order cancelled email:', err.message));
   }
 
   res.json(
     new ApiResponse(
       200,
-      { order },
+      { order: finalOrder },
       isVerified ? 'Payment verified successfully' : 'Payment rejected and order cancelled'
     )
   );
@@ -1235,4 +1475,228 @@ export const softDeleteOrder = asyncHandler(async (req, res, next) => {
     new ApiResponse(200, { orderId: order.orderId }, 'Order soft deleted successfully')
   );
 });
+
+/**
+ * Helper to check whether MongoDB transactions are supported in the current environment
+ * (Transactions require a Replica Set or Sharded cluster).
+ */
+const supportsTransactions = () => {
+  try {
+    const topology = mongoose.connection?.client?.topology?.description;
+    if (!topology) return false;
+    const type = topology.type;
+    return type === 'ReplicaSetWithPrimary' || type === 'Sharded';
+  } catch (_) {
+    return false;
+  }
+};
+
+// @route   POST /api/admin/orders/:orderId/revert-payment-rejection
+// @desc    Revert payment rejection and return order to pending verification
+// @access  Private (Admin)
+export const revertPaymentRejection = asyncHandler(async (req, res, next) => {
+  const orderIdentifier = (req.params.orderId || req.params.id || '').trim();
+  const reason = (req.body.reason || '').trim();
+
+  if (!reason) {
+    return next(new ApiError('Reason is required to revert payment rejection', 400));
+  }
+
+  if (!orderIdentifier) {
+    return next(new ApiError('Order ID is required', 400));
+  }
+
+  // 1. Distributed/memory lock to prevent race conditions & duplicate executions
+  const lockKey = `order_revert_rejection_${orderIdentifier}`;
+  const lockAcquired = await rateLimiterService.acquireLock(lockKey, 20);
+  if (!lockAcquired) {
+    return next(new ApiError('A reversal operation is already in progress for this order. Please wait a moment.', 409));
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(orderIdentifier) && /^[0-9a-fA-F]{24}$/.test(orderIdentifier);
+    const query = isObjectId ? { $or: [{ _id: orderIdentifier }, { orderId: orderIdentifier }] } : { orderId: orderIdentifier };
+
+    const order = await Order.findOne(query);
+
+    if (!order) {
+      return next(new ApiError('Order not found', 404));
+    }
+
+    // 2. Eligibility checks
+    if (order.isDeleted) {
+      return next(new ApiError('Cannot revert payment rejection for a deleted order', 400));
+    }
+
+    if (order.paymentStatus !== 'failed') {
+      return next(new ApiError(
+        `Payment is not in rejected/failed state (current payment status: "${order.paymentStatus}"). Only orders with rejected payments can be reverted.`,
+        400
+      ));
+    }
+
+    if (order.status !== 'cancelled') {
+      return next(new ApiError(
+        `Order is not cancelled (current status: "${order.status}"). Only cancelled orders whose payments were rejected can be reverted.`,
+        400
+      ));
+    }
+
+    if (!order.paymentReceipt || (!order.paymentReceipt.url && !order.paymentReceipt.imageUrl && !order.paymentReceipt.key)) {
+      return next(new ApiError('Order does not have a payment receipt to revert verification for', 400));
+    }
+
+    // Verify cancellation was caused by payment rejection
+    const statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+    const hasRejectionEntry = statusHistory.some(
+      (h) => h.status === 'cancelled' && (
+        (h.note && /payment.*reject|reject.*payment|receipt.*reject/i.test(h.note))
+      )
+    );
+
+    const lastCancellationWithNote = [...statusHistory]
+      .reverse()
+      .find((h) => h.status === 'cancelled' && h.note);
+
+    if (lastCancellationWithNote && !/payment.*reject|reject.*payment|receipt.*reject/i.test(lastCancellationWithNote.note)) {
+      return next(new ApiError(
+        `Order was cancelled for an unrelated reason ("${lastCancellationWithNote.note}"). Reverting payment rejection is not allowed.`,
+        400
+      ));
+    }
+
+    if (!hasRejectionEntry && (!lastCancellationWithNote || !/payment.*reject|reject.*payment|receipt.*reject/i.test(lastCancellationWithNote.note))) {
+      return next(new ApiError(
+        'This order was not cancelled due to payment rejection and cannot be restored via this endpoint',
+        400
+      ));
+    }
+
+    // 3. Determine target pre-rejection status in order lifecycle
+    let targetStatus = 'received';
+    for (let i = statusHistory.length - 1; i >= 0; i--) {
+      const entry = statusHistory[i];
+      if (entry && entry.status && entry.status !== 'cancelled') {
+        targetStatus = entry.status;
+        break;
+      }
+    }
+    // In order lifecycle, an awaiting-verification order cannot be confirmed, processing, shipped, etc.
+    if (['confirmed', 'processing', 'shipped', 'remain_undelivered', 'delivered'].includes(targetStatus)) {
+      targetStatus = 'received';
+    }
+
+    // 4. Inventory Handling
+    // If stock was restored during rejection/cancellation, deduct it again to reserve it
+    // If stock was not restored, do not deduct it again
+    const stockWasRestored = Boolean(order.stockRestored);
+
+    if (stockWasRestored) {
+      const stockCheck = await verifySufficientStockForOrder(order);
+      if (!stockCheck.ok) {
+        return next(new ApiError(`Insufficient inventory to revert rejection: ${stockCheck.message}`, 400));
+      }
+    }
+
+    // 5. Atomic execution with transaction support (where supported)
+    let session = null;
+    const useTransaction = supportsTransactions();
+    if (useTransaction) {
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      } catch (txStartErr) {
+        if (session) {
+          try { await session.endSession(); } catch (_) { }
+          session = null;
+        }
+      }
+    }
+
+    const deductedItems = [];
+    const touchedProductIds = new Set();
+
+    try {
+      if (stockWasRestored) {
+        for (const item of order.items) {
+          const pId = await deductOrderItem(item, session);
+          deductedItems.push(item);
+          if (pId) touchedProductIds.add(pId);
+        }
+        for (const productId of touchedProductIds) {
+          await recomputeProductStock(productId, session);
+        }
+        order.stockRestored = false;
+        order.stockDeducted = true;
+      }
+
+      // Restore payment and order status
+      order.paymentStatus = 'pending';
+      order.status = targetStatus;
+      order.cancelledAt = null;
+
+      // Add status history entry recording reversal
+      order.statusHistory.push({
+        status: targetStatus,
+        timestamp: new Date(),
+        note: `Payment rejection reverted: ${reason}`,
+        updatedBy: req.admin?._id || req.admin?.id
+      });
+
+      const saveOpts = session ? { session } : {};
+      await order.save(saveOpts);
+
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
+      }
+    } catch (saveError) {
+      if (session && session.inTransaction()) {
+        try { await session.abortTransaction(); } catch (_) { }
+      } else if (!session && stockWasRestored && deductedItems.length > 0) {
+        // Compensating rollback for standalone database
+        try {
+          for (const item of deductedItems) {
+            await restoreOrderItem(item);
+          }
+          for (const productId of touchedProductIds) {
+            await recomputeProductStock(productId);
+          }
+        } catch (compensateErr) {
+          console.error('Failed to rollback deducted items on standalone db:', compensateErr);
+        }
+      }
+      throw saveError;
+    } finally {
+      if (session) {
+        try { await session.endSession(); } catch (_) { }
+      }
+    }
+
+    // Flush cache so admin dashboard updates immediately
+    cacheService.flushAll();
+
+    // 6. Response
+    res.status(200).json(
+      new ApiResponse(200, {
+        orderId: order.orderId,
+        orderMongoId: order._id,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        inventoryReservation: {
+          action: stockWasRestored ? 're_deducted' : 'unchanged',
+          stockRestored: order.stockRestored,
+          stockDeducted: order.stockDeducted,
+          details: stockWasRestored
+            ? 'Stock successfully re-deducted and reserved for this order'
+            : 'Stock was not previously restored; inventory remained reserved'
+        },
+        order
+      }, 'Payment rejection reverted successfully. Order returned to pending verification.')
+    );
+  } finally {
+    await rateLimiterService.releaseLock(lockKey);
+  }
+});
+
+
 

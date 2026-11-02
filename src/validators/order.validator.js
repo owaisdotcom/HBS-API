@@ -115,3 +115,12 @@ export const updateOrderStatusValidator = [
     .trim()
 ];
 
+export const revertPaymentRejectionValidator = [
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('Reason is required and cannot be empty')
+    .isLength({ min: 3, max: 500 })
+    .withMessage('Reason must be between 3 and 500 characters')
+];
+

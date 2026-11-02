@@ -9,7 +9,14 @@ import asyncHandler from '../utils/asyncHandler.js';
 import uploadService from '../services/upload.service.js';
 import { sendWishlistRestockEmail } from '../services/email.service.js';
 import cacheService from '../services/cache.service.js';
-import { generateR2Url, generateCustomDomainUrl, resolveImageUrl } from '../utils/imageUrl.js';
+import {
+  generateR2Url,
+  generateCustomDomainUrl,
+  resolveImageUrl,
+  extractImageKey,
+  normalizeProductImageUrls,
+  normalizeProductList
+} from '../utils/imageUrl.js';
 
 const LISTING_PROJECTION = '_id name slug price originalPrice images categories stock availableStock status rating reviewCount isFeatured isNewArrival createdAt publishedAt variants';
 
@@ -190,8 +197,9 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     const reserved = reservationMap.get(product._id.toString()) || 0;
     const availableStock = Math.max(product.stock - reserved, 0);
     const prodObj = product.toObject ? product.toObject() : product;
+    const normalizedProd = normalizeProductImageUrls(prodObj);
     return {
-      ...prodObj,
+      ...normalizedProd,
       availableStock,
       reservedStock: reserved,
       variantCount: calculateVariantCount(prodObj.variants)
@@ -259,10 +267,12 @@ export const getProduct = asyncHandler(async (req, res, next) => {
   const reserved = reservationMap.get(product._id.toString()) || 0;
   const availableStock = Math.max((product.stock || 0) - reserved, 0);
 
+  const normalizedProduct = normalizeProductImageUrls(product);
+
   res.json(
     new ApiResponse(200, {
       product: {
-        ...product,
+        ...normalizedProduct,
         availableStock,
         reservedStock: reserved
       }
@@ -377,13 +387,15 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       const url = resolveImageUrl(rawUrl) || rawUrl;
       const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
-      const key = typeof item === 'object' ? item.key : undefined;
+      const key = typeof item === 'object' ? (item.objectKey || item.key) : extractImageKey(url);
       const publicId = typeof item === 'object' ? item.publicId : undefined;
       return {
         provider,
         key,
+        objectKey: key,
         publicId,
         url,
+        imageUrl: url,
         r2Url,
         isPrimary: index === 0,
         order: index
@@ -433,7 +445,15 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           const rawUrl = typeof item === 'string' ? item : item.url;
           const url = resolveImageUrl(rawUrl) || rawUrl;
           const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
-          return { url, r2Url };
+          const key = typeof item === 'object' ? (item.objectKey || item.key) : extractImageKey(url);
+          return {
+            provider: 'r2',
+            key,
+            objectKey: key,
+            url,
+            imageUrl: url,
+            r2Url
+          };
         })
         .filter(Boolean);
 
@@ -442,10 +462,24 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           const rawUrl = typeof entry === 'string' ? entry : entry.url;
           const url = resolveImageUrl(rawUrl) || rawUrl;
           const r2Url = typeof entry === 'object' && entry.r2Url ? (resolveImageUrl(entry.r2Url) || entry.r2Url) : url;
-          return { url, r2Url, isPrimary: idx === 0 && imagesFromFiles.length === 0, order: idx };
+          const key = typeof entry === 'object' ? (entry.objectKey || entry.key) : extractImageKey(url);
+          return {
+            provider: 'r2',
+            key,
+            objectKey: key,
+            url,
+            imageUrl: url,
+            r2Url,
+            isPrimary: idx === 0 && imagesFromFiles.length === 0,
+            order: idx
+          };
         }),
         ...imagesFromFiles.map((entry, idx) => ({
+          provider: 'r2',
+          key: entry.key,
+          objectKey: entry.objectKey,
           url: entry.url,
+          imageUrl: entry.url,
           r2Url: entry.r2Url || entry.url,
           isPrimary: existingUrls.length === 0 && idx === 0,
           order: existingUrls.length + idx
@@ -488,8 +522,11 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
           if (size) {
             const resolvedSizeUrl = resolveImageUrl(url) || url;
+            const sizeKey = extractImageKey(resolvedSizeUrl);
             size.sizeChartUrl = resolvedSizeUrl;
+            size.sizeChartImageUrl = resolvedSizeUrl;
             size.sizeChartR2Url = resolvedSizeUrl;
+            size.sizeChartObjectKey = sizeKey;
           }
         }
       });
@@ -662,16 +699,19 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       productId: product._id.toString()
     });
     uploadedNewImages = uploadResults.map((item, index) => {
-      const url = typeof item === 'string' ? item : item.url;
-      const r2Url = typeof item === 'object' && item.r2Url ? item.r2Url : generateR2Url(url);
+      const rawUrl = typeof item === 'string' ? item : item.url;
+      const url = resolveImageUrl(rawUrl) || rawUrl;
+      const r2Url = typeof item === 'object' && item.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
       const provider = typeof item === 'object' && item.provider ? item.provider : 'r2';
-      const key = typeof item === 'object' ? item.key : undefined;
+      const key = typeof item === 'object' ? (item.objectKey || item.key) : extractImageKey(url);
       const publicId = typeof item === 'object' ? item.publicId : undefined;
       return {
         provider,
         key,
+        objectKey: key,
         publicId,
         url,
+        imageUrl: url,
         r2Url,
         fileIndex: index
       };
@@ -688,9 +728,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       const url = resolveImageUrl(rawUrl) || rawUrl;
       const r2Url = typeof img === 'object' && img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
       const provider = typeof img === 'object' && img.provider ? img.provider : 'r2';
-      const key = typeof img === 'object' ? img.key : undefined;
+      const key = typeof img === 'object' ? (img.objectKey || img.key) : extractImageKey(url);
       const publicId = typeof img === 'object' ? img.publicId : undefined;
-      imageMap.push({ provider, key, publicId, url, r2Url, order: img.order, type: 'existing' });
+      imageMap.push({ provider, key, objectKey: key, publicId, url, imageUrl: url, r2Url, order: img.order, type: 'existing' });
     });
 
     // Add new images with their order
@@ -699,11 +739,14 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       if (newImage) {
         const url = resolveImageUrl(newImage.url) || newImage.url;
         const r2Url = newImage.r2Url ? (resolveImageUrl(newImage.r2Url) || newImage.r2Url) : url;
+        const key = newImage.objectKey || newImage.key || extractImageKey(url);
         imageMap.push({
           provider: newImage.provider,
-          key: newImage.key,
+          key,
+          objectKey: key,
           publicId: newImage.publicId,
           url,
+          imageUrl: url,
           r2Url,
           order: orderInfo.order,
           type: 'new'
@@ -717,11 +760,14 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       .map((img, index) => {
         const url = resolveImageUrl(img.url) || img.url;
         const r2Url = img.r2Url ? (resolveImageUrl(img.r2Url) || img.r2Url) : url;
+        const key = img.objectKey || img.key || extractImageKey(url);
         return {
-          provider: img.provider,
-          key: img.key,
+          provider: img.provider || 'r2',
+          key,
+          objectKey: key,
           publicId: img.publicId,
           url,
+          imageUrl: url,
           r2Url,
           isPrimary: index === 0,
           order: index
@@ -789,6 +835,35 @@ if (updateFields.variants && typeof updateFields.variants === 'string') {
   }
 }
 
+// Normalize variants and their images if provided
+if (Array.isArray(updateFields.variants)) {
+  updateFields.variants = updateFields.variants.map(v => {
+    if (!v) return v;
+    const variant = { ...v };
+    if (Array.isArray(variant.images)) {
+      variant.images = variant.images.map((item, idx) => {
+        if (!item) return null;
+        const rawUrl = typeof item === 'string' ? item : item?.url;
+        const url = resolveImageUrl(rawUrl) || rawUrl;
+        const r2Url = typeof item === 'object' && item?.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
+        const key = typeof item === 'object' ? (item?.objectKey || item?.key || extractImageKey(url)) : extractImageKey(url);
+        return {
+          provider: typeof item === 'object' && item?.provider ? item.provider : 'r2',
+          key,
+          objectKey: key,
+          publicId: typeof item === 'object' ? item?.publicId : undefined,
+          url,
+          imageUrl: url,
+          r2Url,
+          isPrimary: typeof item === 'object' && item?.isPrimary !== undefined ? item.isPrimary : idx === 0,
+          order: typeof item === 'object' && item?.order !== undefined ? item.order : idx
+        };
+      }).filter(Boolean);
+    }
+    return variant;
+  });
+}
+
 // Derive product stock from all sizes across all color variants
 if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
   updateFields.stock = updateFields.variants.reduce((sum, colorVariant) => {
@@ -805,6 +880,35 @@ if (Array.isArray(updateFields.variants) && updateFields.variants.length > 0) {
     }, 0);
     return sum + sizesStock;
   }, 0);
+}
+
+// Normalize images if provided directly as JSON / array without shouldUpdateImages
+if (updateFields.images && typeof updateFields.images === 'string') {
+  try {
+    updateFields.images = JSON.parse(updateFields.images);
+  } catch (e) { }
+}
+if (!shouldUpdateImages && Array.isArray(updateFields.images)) {
+  updateFields.images = updateFields.images.map((item, index) => {
+    if (!item) return null;
+    const rawUrl = typeof item === 'string' ? item : item?.url;
+    const url = resolveImageUrl(rawUrl) || rawUrl;
+    const r2Url = typeof item === 'object' && item?.r2Url ? (resolveImageUrl(item.r2Url) || item.r2Url) : url;
+    const provider = typeof item === 'object' && item?.provider ? item.provider : 'r2';
+    const key = typeof item === 'object' ? (item?.objectKey || item?.key || extractImageKey(url)) : extractImageKey(url);
+    const publicId = typeof item === 'object' ? item?.publicId : undefined;
+    return {
+      provider,
+      key,
+      objectKey: key,
+      publicId,
+      url,
+      imageUrl: url,
+      r2Url,
+      isPrimary: typeof item === 'object' && item?.isPrimary !== undefined ? item.isPrimary : index === 0,
+      order: typeof item === 'object' && item?.order !== undefined ? item.order : index
+    };
+  }).filter(Boolean);
 }
 
 // Convert boolean strings from FormData
@@ -901,17 +1005,37 @@ if (req.body.variantImageMap && Array.isArray(product.variants) && product.varia
     const { colorId, fileIndexes = [], existingUrls = [] } = mapping;
     const imagesForVariant = [];
     existingUrls.forEach((entry, idx) => {
-      const rawUrl = typeof entry === 'string' ? entry : entry.url;
+      const rawUrl = typeof entry === 'string' ? entry : entry?.url;
       const url = resolveImageUrl(rawUrl) || rawUrl;
-      const r2Url = typeof entry === 'object' && entry.r2Url ? (resolveImageUrl(entry.r2Url) || entry.r2Url) : url;
-      imagesForVariant.push({ url, r2Url, isPrimary: idx === 0 && fileIndexes.length === 0, order: imagesForVariant.length });
+      const r2Url = typeof entry === 'object' && entry?.r2Url ? (resolveImageUrl(entry.r2Url) || entry.r2Url) : url;
+      const key = typeof entry === 'object' ? (entry?.objectKey || entry?.key || extractImageKey(url)) : extractImageKey(url);
+      imagesForVariant.push({
+        provider: 'r2',
+        key,
+        objectKey: key,
+        url,
+        imageUrl: url,
+        r2Url,
+        isPrimary: idx === 0 && fileIndexes.length === 0,
+        order: imagesForVariant.length
+      });
     });
     (fileIndexes || []).forEach((fi) => {
       const rawUrl = newImagesByFileIndex[fi];
       if (rawUrl) {
         const url = resolveImageUrl(rawUrl) || rawUrl;
         const r2Url = newR2ImagesByFileIndex[fi] ? (resolveImageUrl(newR2ImagesByFileIndex[fi]) || newR2ImagesByFileIndex[fi]) : url;
-        imagesForVariant.push({ url, r2Url, isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0, order: imagesForVariant.length });
+        const key = extractImageKey(url);
+        imagesForVariant.push({
+          provider: 'r2',
+          key,
+          objectKey: key,
+          url,
+          imageUrl: url,
+          r2Url,
+          isPrimary: existingUrls.length === 0 && imagesForVariant.length === 0,
+          order: imagesForVariant.length
+        });
       }
     });
     const colorVariant = product.variants.find(v => v.colorId === colorId);
@@ -946,12 +1070,15 @@ if (req.body.sizeChartMap && Array.isArray(product.variants) && product.variants
     const r2Url = (fileIndex != null && newR2ImagesByFileIndex[fileIndex])
       ? (resolveImageUrl(newR2ImagesByFileIndex[fileIndex]) || newR2ImagesByFileIndex[fileIndex])
       : resolvedUrl;
+    const sizeKey = extractImageKey(resolvedUrl);
     const colorVariant = product.variants.find(v => v.colorId === colorId);
     if (colorVariant && Array.isArray(colorVariant.sizes)) {
       const size = colorVariant.sizes.find(s => s.sizeId === sizeId);
       if (size) {
         size.sizeChartUrl = resolvedUrl;
+        size.sizeChartImageUrl = resolvedUrl;
         size.sizeChartR2Url = r2Url;
+        size.sizeChartObjectKey = sizeKey;
       }
     }
   });
@@ -1061,7 +1188,7 @@ if (shouldUpdateImages && previousImages && previousImages.length > 0) {
 }
 
 res.json(
-  new ApiResponse(200, { product }, 'Product updated successfully')
+  new ApiResponse(200, { product: normalizeProductImageUrls(product) }, 'Product updated successfully')
 );
 });
 
@@ -1153,16 +1280,18 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
+  const normalized = normalizeProductList(products);
+
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
   if (!isBypassCache) {
-    cacheService.set(cacheKey, products, 60);
+    cacheService.set(cacheKey, normalized, 60);
   }
 
   res.json(
-    new ApiResponse(200, { products }, 'Featured products retrieved')
+    new ApiResponse(200, { products: normalized }, 'Featured products retrieved')
   );
 });
 
@@ -1199,16 +1328,18 @@ export const getNewArrivals = asyncHandler(async (req, res) => {
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
+  const normalized = normalizeProductList(products);
+
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
   if (!isBypassCache) {
-    cacheService.set(cacheKey, products, 60);
+    cacheService.set(cacheKey, normalized, 60);
   }
 
   res.json(
-    new ApiResponse(200, { products }, 'New arrivals retrieved')
+    new ApiResponse(200, { products: normalized }, 'New arrivals retrieved')
   );
 });
 
@@ -1256,10 +1387,11 @@ export const getRelatedProducts = asyncHandler(async (req, res, next) => {
     .populate('categories', 'name slug')
     .select(LISTING_PROJECTION);
 
-  cacheService.set(cacheKey, relatedProducts, 120);
+  const normalizedRelated = normalizeProductList(relatedProducts);
+  cacheService.set(cacheKey, normalizedRelated, 120);
 
   res.json(
-    new ApiResponse(200, { products: relatedProducts }, 'Related products retrieved')
+    new ApiResponse(200, { products: normalizedRelated }, 'Related products retrieved')
   );
 });
 

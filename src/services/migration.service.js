@@ -8,6 +8,7 @@ import HeroSlider from '../models/HeroSlider.js';
 import Hero from '../models/Hero.js';
 import Testimonial from '../models/Testimonial.js';
 import Review from '../models/Review.js';
+import { executeLegacyR2Migration } from './legacyMigration.service.js';
 import {
   getR2PublicUrl,
   getCustomDomain,
@@ -404,6 +405,17 @@ function processDualUrlField(doc, urlField, r2UrlField, stats, colStats) {
     doc[urlField] = newCustomUrl;
   }
 
+  if (urlField === 'thumbnail') {
+    doc.thumbnailImageUrl = newR2Url;
+    doc.thumbnailObjectKey = key;
+  } else if (urlField === 'coverImage') {
+    doc.coverImageUrl = newR2Url;
+    doc.coverImageObjectKey = key;
+  } else if (urlField === 'customerImage') {
+    doc.customerImageUrl = newR2Url;
+    doc.customerImageObjectKey = key;
+  }
+
   stats.migratedCount++;
   colStats.migrated++;
   return true;
@@ -447,7 +459,9 @@ function processDualImageObject(imgObj, stats, colStats) {
   if (typeof imgObj === 'object') {
     imgObj.r2Url = newR2Url;
     imgObj.url = newCustomUrl;
+    imgObj.imageUrl = newR2Url;
     imgObj.key = key;
+    imgObj.objectKey = key;
     imgObj.provider = 'r2';
   }
 
@@ -510,380 +524,38 @@ function processDualStringArray(doc, arrayField, r2ArrayField, stats, colStats) 
  * @param {boolean} [options.dryRun=false] - If true, previews changes without writing to database.
  * @returns {Promise<object>} Detailed migration result and statistics
  */
-export async function runDualR2UrlMigration({ dryRun = false } = {}) {
-  const customDomain = getCustomDomain();
-  const r2DevDomain = getR2DevDomain();
+export async function runDualR2UrlMigration({ dryRun = false, forceAll = false } = {}) {
+  const result = await executeLegacyR2Migration({ dryRun, verifyR2: !forceAll, forceAll });
 
-  const stats = {
-    totalImagesFound: 0,
-    migratedCount: 0,
-    alreadyMigratedCount: 0,
-    skippedCount: 0,
-    failedCount: 0
-  };
-
-  const createColStat = () => ({
-    scanned: 0,
-    totalImages: 0,
-    migrated: 0,
-    alreadyMigrated: 0,
-    skipped: 0,
-    failed: 0,
-    updated: 0
-  });
-
-  const details = {
-    products: createColStat(),
-    categories: createColStat(),
-    bundleCategories: createColStat(),
-    preMadeBundles: createColStat(),
-    orders: createColStat(),
-    siteSettings: createColStat(),
-    heroSliders: createColStat(),
-    heroes: createColStat(),
-    testimonials: createColStat(),
-    reviews: createColStat()
-  };
-
-  // 1. Products
-  try {
-    const products = await Product.find({});
-    details.products.scanned = products.length;
-    for (const product of products) {
-      let isModified = false;
-      try {
-        if (Array.isArray(product.images)) {
-          product.images.forEach(img => {
-            if (processDualImageObject(img, stats, details.products)) {
-              isModified = true;
-            }
-          });
-        }
-
-        if (Array.isArray(product.variants)) {
-          product.variants.forEach(variant => {
-            if (Array.isArray(variant.images)) {
-              variant.images.forEach(vImg => {
-                if (processDualImageObject(vImg, stats, details.products)) {
-                  isModified = true;
-                }
-              });
-            }
-            if (Array.isArray(variant.sizes)) {
-              variant.sizes.forEach(size => {
-                if (processDualUrlField(size, 'sizeChartUrl', 'sizeChartR2Url', stats, details.products)) {
-                  isModified = true;
-                }
-              });
-            }
-          });
-        }
-
-        if (isModified) {
-          details.products.updated++;
-          if (!dryRun) await product.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating product ${product._id}:`, err);
-        details.products.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying products for migration:', err);
+  // Map result to structure expected by R2Migration.jsx
+  const details = {};
+  for (const [col, s] of Object.entries(result.collections || {})) {
+    details[col] = {
+      scanned: s.scannedDocs,
+      totalImages: s.legacyUrlsFound,
+      migrated: s.urlsMigrated,
+      alreadyMigrated: 0,
+      skipped: s.urlsSkipped,
+      failed: 0,
+      updated: s.modifiedDocs
+    };
   }
-
-  // 2. Categories
-  try {
-    const categories = await Category.find({});
-    details.categories.scanned = categories.length;
-    for (const cat of categories) {
-      let isModified = false;
-      try {
-        if (processDualUrlField(cat, 'thumbnail', 'thumbnailR2Url', stats, details.categories)) {
-          isModified = true;
-        }
-        if (processDualUrlField(cat, 'coverImage', 'coverImageR2Url', stats, details.categories)) {
-          isModified = true;
-        }
-        if (isModified) {
-          details.categories.updated++;
-          if (!dryRun) await cat.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating category ${cat._id}:`, err);
-        details.categories.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying categories for migration:', err);
-  }
-
-  // 3. Bundle Categories
-  try {
-    const bundleCategories = await BundleCategory.find({});
-    details.bundleCategories.scanned = bundleCategories.length;
-    for (const bCat of bundleCategories) {
-      let isModified = false;
-      try {
-        if (processDualUrlField(bCat, 'thumbnail', 'thumbnailR2Url', stats, details.bundleCategories)) {
-          isModified = true;
-        }
-        if (processDualUrlField(bCat, 'coverImage', 'coverImageR2Url', stats, details.bundleCategories)) {
-          isModified = true;
-        }
-        if (isModified) {
-          details.bundleCategories.updated++;
-          if (!dryRun) await bCat.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating bundleCategory ${bCat._id}:`, err);
-        details.bundleCategories.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying bundleCategories for migration:', err);
-  }
-
-  // 4. PreMadeBundles
-  try {
-    const bundles = await PreMadeBundle.find({});
-    details.preMadeBundles.scanned = bundles.length;
-    for (const bundle of bundles) {
-      let isModified = false;
-      try {
-        if (Array.isArray(bundle.images)) {
-          bundle.images.forEach(img => {
-            if (processDualImageObject(img, stats, details.preMadeBundles)) {
-              isModified = true;
-            }
-          });
-        }
-        if (isModified) {
-          details.preMadeBundles.updated++;
-          if (!dryRun) await bundle.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating preMadeBundle ${bundle._id}:`, err);
-        details.preMadeBundles.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying preMadeBundles for migration:', err);
-  }
-
-  // 5. Orders
-  try {
-    const orders = await Order.find({});
-    details.orders.scanned = orders.length;
-    for (const order of orders) {
-      let isModified = false;
-      try {
-        if (order.paymentReceipt && processDualUrlField(order.paymentReceipt, 'url', 'r2Url', stats, details.orders)) {
-          isModified = true;
-        }
-        if (Array.isArray(order.items)) {
-          order.items.forEach(item => {
-            if (processDualUrlField(item, 'productImage', 'productImageR2Url', stats, details.orders)) {
-              isModified = true;
-            }
-            if (processDualUrlField(item, 'variantImage', 'variantImageR2Url', stats, details.orders)) {
-              isModified = true;
-            }
-            if (processDualUrlField(item, 'orderedVariantImage', 'orderedVariantImageR2Url', stats, details.orders)) {
-              isModified = true;
-            }
-            if (processDualStringArray(item, 'variantImages', 'variantR2Images', stats, details.orders)) {
-              isModified = true;
-            }
-            if (processDualStringArray(item, 'orderedVariantImages', 'orderedVariantR2Images', stats, details.orders)) {
-              isModified = true;
-            }
-          });
-        }
-        if (isModified) {
-          details.orders.updated++;
-          if (!dryRun) await order.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating order ${order._id}:`, err);
-        details.orders.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying orders for migration:', err);
-  }
-
-  // 6. SiteSettings
-  try {
-    const settings = await SiteSetting.find({});
-    details.siteSettings.scanned = settings.length;
-    for (const setting of settings) {
-      let isModified = false;
-      try {
-        if (processDualUrlField(setting, 'logo', 'logoR2Url', stats, details.siteSettings)) {
-          isModified = true;
-        }
-        if (processDualUrlField(setting, 'favicon', 'faviconR2Url', stats, details.siteSettings)) {
-          isModified = true;
-        }
-        if (setting.seo && processDualUrlField(setting.seo, 'ogImage', 'ogImageR2Url', stats, details.siteSettings)) {
-          isModified = true;
-        }
-        if (setting.contentBlocks) {
-          if (setting.contentBlocks.hijabNiqab && processDualUrlField(setting.contentBlocks.hijabNiqab, 'image', 'imageR2Url', stats, details.siteSettings)) {
-            isModified = true;
-          }
-          if (setting.contentBlocks.elegance && processDualUrlField(setting.contentBlocks.elegance, 'image', 'imageR2Url', stats, details.siteSettings)) {
-            isModified = true;
-          }
-        }
-        if (setting.marketingBanner && processDualUrlField(setting.marketingBanner, 'image', 'imageR2Url', stats, details.siteSettings)) {
-          isModified = true;
-        }
-        if (setting.footer && processDualStringArray(setting.footer, 'paymentMethodImages', 'paymentMethodR2Images', stats, details.siteSettings)) {
-          isModified = true;
-        }
-        if (isModified) {
-          details.siteSettings.updated++;
-          if (!dryRun) await setting.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating siteSetting ${setting._id}:`, err);
-        details.siteSettings.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying siteSettings for migration:', err);
-  }
-
-  // 7. HeroSliders
-  try {
-    const sliders = await HeroSlider.find({});
-    details.heroSliders.scanned = sliders.length;
-    for (const slider of sliders) {
-      let isModified = false;
-      try {
-        if (Array.isArray(slider.slides)) {
-          slider.slides.forEach(slide => {
-            if (processDualUrlField(slide, 'imageUrl', 'imageUrlR2Url', stats, details.heroSliders)) {
-              slide.r2Url = slide.imageUrlR2Url;
-              isModified = true;
-            }
-            if (slide.image) {
-              ['desktop', 'tablet', 'mobile'].forEach(dev => {
-                if (processDualUrlField(slide.image, dev, `${dev}R2Url`, stats, details.heroSliders)) {
-                  isModified = true;
-                }
-              });
-            }
-          });
-        }
-        if (isModified) {
-          details.heroSliders.updated++;
-          if (!dryRun) await slider.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating heroSlider ${slider._id}:`, err);
-        details.heroSliders.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying heroSliders for migration:', err);
-  }
-
-  // 8. Heroes
-  try {
-    const heroes = await Hero.find({});
-    details.heroes.scanned = heroes.length;
-    for (const hero of heroes) {
-      let isModified = false;
-      try {
-        if (processDualUrlField(hero, 'imageUrl', 'imageUrlR2Url', stats, details.heroes)) {
-          hero.r2Url = hero.imageUrlR2Url;
-          isModified = true;
-        }
-        if (isModified) {
-          details.heroes.updated++;
-          if (!dryRun) await hero.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating hero ${hero._id}:`, err);
-        details.heroes.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying heroes for migration:', err);
-  }
-
-  // 9. Testimonials
-  try {
-    const testimonials = await Testimonial.find({});
-    details.testimonials.scanned = testimonials.length;
-    for (const item of testimonials) {
-      let isModified = false;
-      try {
-        if (processDualUrlField(item, 'customerImage', 'customerImageR2Url', stats, details.testimonials)) {
-          item.r2Url = item.customerImageR2Url;
-          isModified = true;
-        }
-        if (isModified) {
-          details.testimonials.updated++;
-          if (!dryRun) await item.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating testimonial ${item._id}:`, err);
-        details.testimonials.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying testimonials for migration:', err);
-  }
-
-  // 10. Reviews
-  try {
-    const reviews = await Review.find({});
-    details.reviews.scanned = reviews.length;
-    for (const review of reviews) {
-      let isModified = false;
-      try {
-        if (processDualStringArray(review, 'images', 'r2Images', stats, details.reviews)) {
-          isModified = true;
-        }
-        if (isModified) {
-          details.reviews.updated++;
-          if (!dryRun) await review.save();
-        }
-      } catch (err) {
-        console.error(`Error migrating review ${review._id}:`, err);
-        details.reviews.failed++;
-        stats.failedCount++;
-      }
-    }
-  } catch (err) {
-    console.error('Error querying reviews for migration:', err);
-  }
-
-  const totalUpdatedDocs = Object.values(details).reduce((sum, col) => sum + col.updated, 0);
 
   return {
-    dryRun,
-    customDomain,
-    r2DevDomain,
-    totalImagesFound: stats.totalImagesFound,
-    migratedCount: stats.migratedCount,
-    alreadyMigratedCount: stats.alreadyMigratedCount,
-    skippedCount: stats.skippedCount,
-    failedCount: stats.failedCount,
-    totalUpdatedDocs,
-    details
+    dryRun: result.dryRun,
+    customDomain: result.r2BaseUrl,
+    r2DevDomain: result.r2BaseUrl,
+    totalImagesFound: result.totalLegacyUrlsFound,
+    migratedCount: result.totalUrlsMigrated,
+    totalReplacedUrls: result.totalUrlsMigrated,
+    alreadyMigratedCount: 0,
+    skippedCount: result.totalUrlsSkipped,
+    failedCount: 0,
+    totalUpdatedDocs: result.totalDocumentsModified,
+    details,
+    backupFile: result.backupFile,
+    backupId: result.backupId,
+    skippedItems: result.skippedItems,
+    migratedItems: result.migratedItems
   };
 }

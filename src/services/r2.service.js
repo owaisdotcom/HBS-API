@@ -117,7 +117,9 @@ class R2Service {
       return {
         provider: 'r2',
         key,
+        objectKey: key,
         url: finalUrl,
+        imageUrl: finalUrl,
         r2Url
       };
     } catch (error) {

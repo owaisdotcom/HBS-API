@@ -5,11 +5,12 @@ import {
   updateOrderStatus,
   verifyPayment,
   getOrderStats,
-  softDeleteOrder
+  softDeleteOrder,
+  revertPaymentRejection
 } from '../controllers/order.controller.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
 import validate from '../middleware/validate.middleware.js';
-import { updateOrderStatusValidator } from '../validators/order.validator.js';
+import { updateOrderStatusValidator, revertPaymentRejectionValidator } from '../validators/order.validator.js';
 
 const router = express.Router();
 
@@ -21,6 +22,8 @@ router.put('/:id/status', protectAdmin, updateOrderStatusValidator, validate, up
 router.put('/:id/verify-payment', protectAdmin, verifyPayment);
 router.delete('/:id', protectAdmin, softDeleteOrder);
 router.put('/:id/soft-delete', protectAdmin, softDeleteOrder);
+router.post('/:orderId/revert-payment-rejection', protectAdmin, revertPaymentRejectionValidator, validate, revertPaymentRejection);
+
 
 export default router;
 
