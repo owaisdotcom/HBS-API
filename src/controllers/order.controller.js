@@ -419,27 +419,20 @@ export const DELIVERY_OPTIONS = {
     name: 'TCS Express Delivery',
     shortName: 'TCS Express',
     courier: 'TCS Express',
-    fee: 500,
-    estimatedDeliveryTime: '2 to 3 working days',
-    isDefault: false
-  },
-  other_couriers: {
-    id: 'other_couriers',
-    name: 'Other Couriers (Trax, PostEx, etc.)',
-    shortName: 'Other Couriers',
-    courier: 'Other Couriers (Trax, PostEx, etc.)',
-    fee: 300,
-    estimatedDeliveryTime: '4 to 7 working days',
-    isDefault: true
+    fee: 350,
+    estimatedDeliveryTime: '2 to 4 working days',
+    isDefault: true,
+    badgeText: 'Standard',
+    description: 'Order processing time 24-48 hours after order placement.'
   }
 };
 
 export const resolveDeliveryOption = (optionKey) => {
   const normalizedKey = (optionKey || '').trim().toLowerCase();
-  if (normalizedKey === 'tcs_express' || normalizedKey === 'tcs' || normalizedKey === 'tcs express') {
-    return DELIVERY_OPTIONS.tcs_express;
+  if (DELIVERY_OPTIONS[normalizedKey]) {
+    return DELIVERY_OPTIONS[normalizedKey];
   }
-  return DELIVERY_OPTIONS.other_couriers;
+  return DELIVERY_OPTIONS.tcs_express;
 };
 
 // @route   POST /api/orders

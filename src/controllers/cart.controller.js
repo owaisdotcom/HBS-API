@@ -53,8 +53,8 @@ async function buildCartResponse(cart) {
       bundleRule: rule && computed.bundleApplied ? { ruleQuantity: rule.ruleQuantity, ruleDiscountAmount: rule.ruleDiscountAmount } : null
     });
   }
-  const shipping = (cart?.items && cart.items.length > 0) ? 300 : 0;
-  const shippingIfBoughtSeparately = (cart?.items && cart.items.length > 0) ? 300 : 0;
+  const shipping = (cart?.items && cart.items.length > 0) ? 350 : 0;
+  const shippingIfBoughtSeparately = (cart?.items && cart.items.length > 0) ? 350 : 0;
   const total = subtotal + shipping;
   const totalIfBoughtSeparately = subtotalIfBoughtSeparately + shippingIfBoughtSeparately;
   const itemCount = cart.items.reduce((s, i) => s + (i.quantity || 1), 0);
