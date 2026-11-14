@@ -26,6 +26,8 @@ const allowedOrigins = new Set(
     'http://localhost:5173',
     'http://localhost:5174',
     'https://hbs-api-three.vercel.app',
+    'https://hbs-api-ten.vercel.app',
+
     process.env.FRONTEND_URL
   ].filter(Boolean)
 );
@@ -37,7 +39,7 @@ const isAllowedOrigin = (origin) => {
     if (host.endsWith('vercel.app') || host.endsWith('hijabsbyshiza.com') || host === 'localhost') {
       return true;
     }
-  } catch (_) {}
+  } catch (_) { }
   return false;
 };
 
