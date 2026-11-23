@@ -180,153 +180,459 @@ const restoreOrderItem = async (item, session = null) => {
 };
 
 /**
- * Verify sufficient stock is available before re-deducting stock for an order.
- * Checks pre-made bundles, product variants, customization stock (tie/elastic/bridal), and regular products.
- * Aggregates quantities if the same item/variant appears multiple times in the order.
+ * Comprehensive stock validation for an arbitrary list of order/cart items.
+ * Validates pre-made bundles, products, variants, and customization options (tie/elastic/bridal).
+ * Aggregates demand across multiple occurrences of the same SKU/variant/customization.
+ * Returns: { valid: boolean, errors: Array<{ productId, variantId, preMadeBundleId, productName, variantLabel, availableStock, requestedQuantity, isOutOfStock, message }> }
  */
-const verifySufficientStockForOrder = async (order, session = null) => {
+export const checkItemsStock = async (items = [], session = null) => {
+  const errors = [];
   const bundleDemands = new Map();
-  const productVariantDemands = new Map();
   const simpleProductDemands = new Map();
+  // Map keyed by `${productId}:::${colorId || color}:::${sizeId || size}`
+  const variantSizeDemands = new Map();
 
-  for (const item of (order.items || [])) {
+  for (const item of items) {
     const qty = Math.max(1, Number(item.quantity) || 1);
 
-    if (item.preMadeBundleId) {
-      const bId = item.preMadeBundleId.toString();
-      const existing = bundleDemands.get(bId) || { id: item.preMadeBundleId, name: item.productName || 'Bundle', qty: 0 };
+    const bId = item.preMadeBundleId?._id || item.preMadeBundleId;
+    if (bId) {
+      const key = bId.toString();
+      const existing = bundleDemands.get(key) || {
+        id: bId,
+        name: item.productName || item.name || 'Bundle',
+        qty: 0,
+        item
+      };
       existing.qty += qty;
-      bundleDemands.set(bId, existing);
+      bundleDemands.set(key, existing);
       continue;
     }
 
-    if (item.productId) {
-      const pId = item.productId.toString();
-      if (item.variantId) {
-        const key = `${pId}:::${item.variantId}:::${item.selectedTieElastic || ''}:::${item.selectedBridalLength || ''}`;
-        const existing = productVariantDemands.get(key) || {
-          productId: item.productId,
-          variantId: item.variantId,
-          productName: item.productName || 'Product',
-          tieElastic: item.selectedTieElastic,
-          bridalLength: item.selectedBridalLength,
-          qty: 0
+    const pId = item.productId?._id || item.productId || item.product?._id || item.product?.id;
+    if (pId) {
+      const productIdStr = pId.toString();
+      const variantId = item.variantId || null;
+
+      if (variantId || item.selectedColor || item.selectedSize) {
+        // We will resolve the actual variant / size on the product model
+        const key = `${productIdStr}:::${variantId || ''}:::${item.selectedColor || ''}:::${item.selectedSize || ''}`;
+        const existing = variantSizeDemands.get(key) || {
+          productId: pId,
+          variantId,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
+          productName: item.productName || item.product?.name || item.name || 'Product',
+          tieDemand: 0,
+          elasticDemand: 0,
+          bridalDemand: 0,
+          totalQty: 0,
+          item
+        };
+        existing.totalQty += qty;
+        if (item.selectedTieElastic === 'tie') {
+          existing.tieDemand += qty;
+        } else if (item.selectedTieElastic === 'elastic') {
+          existing.elasticDemand += qty;
+        }
+        if (item.selectedBridalLength === 'bridal') {
+          existing.bridalDemand += qty;
+        }
+        variantSizeDemands.set(key, existing);
+      } else {
+        const existing = simpleProductDemands.get(productIdStr) || {
+          productId: pId,
+          name: item.productName || item.product?.name || item.name || 'Product',
+          qty: 0,
+          item
         };
         existing.qty += qty;
-        productVariantDemands.set(key, existing);
-      } else {
-        const existing = simpleProductDemands.get(pId) || { productId: item.productId, name: item.productName || 'Product', qty: 0 };
-        existing.qty += qty;
-        simpleProductDemands.set(pId, existing);
+        simpleProductDemands.set(productIdStr, existing);
       }
     }
   }
 
-  // Check pre-made bundles
+  // 1. Verify pre-made bundles
   for (const demand of bundleDemands.values()) {
     const q = PreMadeBundle.findById(demand.id);
     if (session) q.session(session);
     const bundle = await q.lean();
-    if (!bundle) {
-      return { ok: false, message: `Pre-made bundle "${demand.name}" is no longer available` };
+
+    if (!bundle || bundle.status === 'inactive') {
+      errors.push({
+        preMadeBundleId: demand.id,
+        productId: null,
+        variantId: null,
+        productName: demand.name,
+        variantLabel: demand.name,
+        availableStock: 0,
+        requestedQuantity: demand.qty,
+        isOutOfStock: true,
+        message: `Pre-made bundle "${demand.name}" is no longer available.`
+      });
+      continue;
     }
-    const currentStock = Number(bundle.stock) ?? 0;
-    if (currentStock < demand.qty) {
-      return {
-        ok: false,
-        message: `Insufficient stock for bundle "${bundle.name}". Available: ${currentStock}, requested: ${demand.qty}`
-      };
+
+    const availableStock = Number(bundle.stock) ?? 0;
+    if (availableStock <= 0) {
+      errors.push({
+        preMadeBundleId: bundle._id,
+        productId: null,
+        variantId: null,
+        productName: bundle.name,
+        variantLabel: bundle.name,
+        availableStock: 0,
+        requestedQuantity: demand.qty,
+        isOutOfStock: true,
+        message: `Bundle "${bundle.name}" is out of stock.`
+      });
+    } else if (availableStock < demand.qty) {
+      errors.push({
+        preMadeBundleId: bundle._id,
+        productId: null,
+        variantId: null,
+        productName: bundle.name,
+        variantLabel: bundle.name,
+        availableStock,
+        requestedQuantity: demand.qty,
+        isOutOfStock: false,
+        message: `Only ${availableStock} available for bundle "${bundle.name}". Requested: ${demand.qty}.`
+      });
     }
   }
 
-  // Check simple products
+  // 2. Verify simple products (without variants)
   for (const demand of simpleProductDemands.values()) {
     const q = Product.findById(demand.productId);
     if (session) q.session(session);
     const prod = await q.lean();
+
     if (!prod || prod.isDeleted) {
-      return { ok: false, message: `Product "${demand.name}" is no longer available` };
+      errors.push({
+        productId: demand.productId,
+        variantId: null,
+        preMadeBundleId: null,
+        productName: demand.name,
+        variantLabel: demand.name,
+        availableStock: 0,
+        requestedQuantity: demand.qty,
+        isOutOfStock: true,
+        message: `Product "${demand.name}" is no longer available.`
+      });
+      continue;
     }
-    const currentStock = Number(prod.stock) ?? 0;
-    if (currentStock < demand.qty) {
-      return {
-        ok: false,
-        message: `Insufficient stock for "${prod.name}". Available: ${currentStock}, requested: ${demand.qty}`
-      };
+
+    const availableStock = Number(prod.stock) ?? 0;
+    if (availableStock <= 0 || prod.stockStatus === 'out_of_stock') {
+      errors.push({
+        productId: prod._id,
+        variantId: null,
+        preMadeBundleId: null,
+        productName: prod.name,
+        variantLabel: prod.name,
+        availableStock: 0,
+        requestedQuantity: demand.qty,
+        isOutOfStock: true,
+        message: `"${prod.name}" is out of stock.`
+      });
+    } else if (availableStock < demand.qty) {
+      errors.push({
+        productId: prod._id,
+        variantId: null,
+        preMadeBundleId: null,
+        productName: prod.name,
+        variantLabel: prod.name,
+        availableStock,
+        requestedQuantity: demand.qty,
+        isOutOfStock: false,
+        message: `Only ${availableStock} available for "${prod.name}". Requested: ${demand.qty}.`
+      });
     }
   }
 
-  // Check variant products
-  for (const demand of productVariantDemands.values()) {
+  // 3. Verify variant products
+  // To aggregate accurately by physical size, group demands by resolved physical size
+  const physicalSizeDemands = new Map();
+
+  for (const demand of variantSizeDemands.values()) {
     const q = Product.findById(demand.productId);
     if (session) q.session(session);
     const prod = await q.lean();
+
     if (!prod || prod.isDeleted) {
-      return { ok: false, message: `Product "${demand.productName}" is no longer available` };
+      errors.push({
+        productId: demand.productId,
+        variantId: demand.variantId,
+        preMadeBundleId: null,
+        productName: demand.productName,
+        variantLabel: demand.productName,
+        availableStock: 0,
+        requestedQuantity: demand.totalQty,
+        isOutOfStock: true,
+        message: `Product "${demand.productName}" is no longer available.`
+      });
+      continue;
     }
 
-    let targetSize = null;
-    let targetColor = null;
-    if (Array.isArray(prod.variants)) {
-      for (const v of prod.variants) {
-        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === demand.variantId || sz.sizeId === demand.variantId);
-        if (s) {
-          targetColor = v;
-          targetSize = s;
-          break;
+    let colorV = null;
+    let sizeV = null;
+
+    if (Array.isArray(prod.variants) && prod.variants.length > 0) {
+      if (demand.variantId) {
+        for (const v of prod.variants) {
+          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === demand.variantId || sz.sizeId === demand.variantId);
+          if (s) {
+            colorV = v;
+            sizeV = s;
+            break;
+          }
+        }
+        if (!colorV) {
+          colorV = prod.variants.find(v => v.colorId === demand.variantId || v.color === demand.variantId);
+          if (colorV) {
+            sizeV = (colorV.sizes || []).find(sz => sz.size === demand.selectedSize || sz.sizeId === demand.selectedSize) || colorV.sizes?.[0] || null;
+          }
+        }
+      }
+
+      if (!colorV && demand.selectedColor) {
+        colorV = prod.variants.find(v =>
+          v.color?.trim().toLowerCase() === demand.selectedColor?.trim().toLowerCase() ||
+          v.colorId?.trim().toLowerCase() === demand.selectedColor?.trim().toLowerCase()
+        );
+        if (colorV) {
+          if (demand.selectedSize) {
+            sizeV = (colorV.sizes || []).find(sz =>
+              sz.size?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase() ||
+              sz.sizeId?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase()
+            );
+          }
+          if (!sizeV) {
+            sizeV = colorV.sizes?.[0] || null;
+          }
         }
       }
     }
 
-    if (!targetSize) {
-      const currentStock = Number(prod.stock) ?? 0;
-      if (currentStock < demand.qty) {
-        return {
-          ok: false,
-          message: `Insufficient stock for "${prod.name}". Available: ${currentStock}, requested: ${demand.qty}`
-        };
+    if (!sizeV) {
+      // Fallback to product-level stock if variant size not resolved
+      const availableStock = Number(prod.stock) ?? 0;
+      if (availableStock <= 0 || prod.stockStatus === 'out_of_stock') {
+        errors.push({
+          productId: prod._id,
+          variantId: demand.variantId,
+          preMadeBundleId: null,
+          productName: prod.name,
+          variantLabel: prod.name,
+          availableStock: 0,
+          requestedQuantity: demand.totalQty,
+          isOutOfStock: true,
+          message: `"${prod.name}" is out of stock.`
+        });
+      } else if (availableStock < demand.totalQty) {
+        errors.push({
+          productId: prod._id,
+          variantId: demand.variantId,
+          preMadeBundleId: null,
+          productName: prod.name,
+          variantLabel: prod.name,
+          availableStock,
+          requestedQuantity: demand.totalQty,
+          isOutOfStock: false,
+          message: `Only ${availableStock} available for "${prod.name}". Requested: ${demand.totalQty}.`
+        });
       }
       continue;
     }
 
-    const sizeStock = Number(targetSize.stock) ?? 0;
-    if (sizeStock < demand.qty) {
-      const label = `${prod.name} (${targetColor?.color || ''} - ${targetSize.size || ''})`.trim();
-      return {
-        ok: false,
-        message: `Insufficient stock for "${label}". Available: ${sizeStock}, requested: ${demand.qty}`
-      };
+    // Physical size unique key
+    const physicalKey = `${prod._id.toString()}:::${colorV?.colorId || colorV?.color || 'default'}:::${sizeV.sizeId || sizeV.size || 'default'}`;
+    const variantLabel = `${prod.name} (${colorV?.color || ''}${sizeV.size ? ' / ' + sizeV.size : ''})`.trim();
+
+    const existing = physicalSizeDemands.get(physicalKey) || {
+      product: prod,
+      colorV,
+      sizeV,
+      variantLabel,
+      variantId: demand.variantId,
+      totalQty: 0,
+      tieDemand: 0,
+      elasticDemand: 0,
+      bridalDemand: 0
+    };
+
+    existing.totalQty += demand.totalQty;
+    existing.tieDemand += demand.tieDemand;
+    existing.elasticDemand += demand.elasticDemand;
+    existing.bridalDemand += demand.bridalDemand;
+    physicalSizeDemands.set(physicalKey, existing);
+  }
+
+  // Validate aggregated demands against physical size and customization stock
+  for (const phys of physicalSizeDemands.values()) {
+    const { product, sizeV, variantLabel, variantId, totalQty, tieDemand, elasticDemand, bridalDemand } = phys;
+    const sizeStock = Number(sizeV.stock) ?? 0;
+
+    if (sizeStock <= 0 || sizeV.isActive === false) {
+      errors.push({
+        productId: product._id,
+        variantId,
+        preMadeBundleId: null,
+        productName: product.name,
+        variantLabel,
+        availableStock: 0,
+        requestedQuantity: totalQty,
+        isOutOfStock: true,
+        message: `"${variantLabel}" is out of stock.`
+      });
+      continue;
     }
 
-    if (demand.tieElastic === 'tie') {
-      const tieStock = Number(targetSize.tieStock) ?? 0;
-      if (tieStock < demand.qty) {
-        return {
-          ok: false,
-          message: `Insufficient stock for "${prod.name}" Tie customization. Available: ${tieStock}, requested: ${demand.qty}`
-        };
-      }
-    } else if (demand.tieElastic === 'elastic') {
-      const elasticStock = Number(targetSize.elasticStock) ?? 0;
-      if (elasticStock < demand.qty) {
-        return {
-          ok: false,
-          message: `Insufficient stock for "${prod.name}" Elastic customization. Available: ${elasticStock}, requested: ${demand.qty}`
-        };
+    if (totalQty > sizeStock) {
+      errors.push({
+        productId: product._id,
+        variantId,
+        preMadeBundleId: null,
+        productName: product.name,
+        variantLabel,
+        availableStock: sizeStock,
+        requestedQuantity: totalQty,
+        isOutOfStock: false,
+        message: `Only ${sizeStock} available for "${variantLabel}". Requested: ${totalQty}.`
+      });
+      continue;
+    }
+
+    // Check tie stock if requested
+    if (tieDemand > 0) {
+      const tieStock = Number(sizeV.tieStock) ?? 0;
+      if (tieStock <= 0) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Tie`,
+          availableStock: 0,
+          requestedQuantity: tieDemand,
+          isOutOfStock: true,
+          message: `Tie option for "${variantLabel}" is out of stock.`
+        });
+      } else if (tieDemand > tieStock) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Tie`,
+          availableStock: tieStock,
+          requestedQuantity: tieDemand,
+          isOutOfStock: false,
+          message: `Only ${tieStock} available for "${variantLabel}" (Tie option). Requested: ${tieDemand}.`
+        });
       }
     }
 
-    if (demand.bridalLength === 'bridal') {
-      const bridalStock = Number(targetSize.bridalStock) ?? 0;
-      if (bridalStock < demand.qty) {
-        return {
-          ok: false,
-          message: `Insufficient stock for "${prod.name}" Bridal Length option. Available: ${bridalStock}, requested: ${demand.qty}`
-        };
+    // Check elastic stock if requested
+    if (elasticDemand > 0) {
+      const elasticStock = Number(sizeV.elasticStock) ?? 0;
+      if (elasticStock <= 0) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Elastic`,
+          availableStock: 0,
+          requestedQuantity: elasticDemand,
+          isOutOfStock: true,
+          message: `Elastic option for "${variantLabel}" is out of stock.`
+        });
+      } else if (elasticDemand > elasticStock) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Elastic`,
+          availableStock: elasticStock,
+          requestedQuantity: elasticDemand,
+          isOutOfStock: false,
+          message: `Only ${elasticStock} available for "${variantLabel}" (Elastic option). Requested: ${elasticDemand}.`
+        });
+      }
+    }
+
+    // Check bridal stock if requested
+    if (bridalDemand > 0) {
+      const bridalStock = Number(sizeV.bridalStock) ?? 0;
+      if (bridalStock <= 0) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Bridal Length`,
+          availableStock: 0,
+          requestedQuantity: bridalDemand,
+          isOutOfStock: true,
+          message: `Bridal Length option for "${variantLabel}" is out of stock.`
+        });
+      } else if (bridalDemand > bridalStock) {
+        errors.push({
+          productId: product._id,
+          variantId,
+          preMadeBundleId: null,
+          productName: product.name,
+          variantLabel: `${variantLabel} - Bridal Length`,
+          availableStock: bridalStock,
+          requestedQuantity: bridalDemand,
+          isOutOfStock: false,
+          message: `Only ${bridalStock} available for "${variantLabel}" (Bridal Length option). Requested: ${bridalDemand}.`
+        });
       }
     }
   }
 
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * Public controller to validate stock for a list of items before checkout or order placement.
+ * @route POST /api/orders/validate-stock
+ */
+export const validateStockItems = asyncHandler(async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(200, { valid: true, errors: [] }, 'No items to validate')
+    );
+  }
+
+  const result = await checkItemsStock(items);
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      result,
+      result.valid ? 'All items in stock' : 'Some items are out of stock or have insufficient inventory'
+    )
+  );
+});
+
+/**
+ * Verify sufficient stock is available before re-deducting stock for an order reversal.
+ */
+const verifySufficientStockForOrder = async (order, session = null) => {
+  const result = await checkItemsStock(order.items || [], session);
+  if (!result.valid) {
+    return {
+      ok: false,
+      message: result.errors[0]?.message || 'Insufficient stock'
+    };
+  }
   return { ok: true };
 };
 
@@ -504,6 +810,13 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       }
     }
 
+    // Verify sufficient stock across all items upfront (including variant aggregation & customizations)
+    const stockVerification = await checkItemsStock(items);
+    if (!stockVerification.valid) {
+      const topError = stockVerification.errors[0];
+      return next(new ApiError(topError?.message || 'Insufficient stock for one or more items', 400));
+    }
+
     // Validate and calculate totals
     let subtotal = 0;
     const orderItems = [];
@@ -517,7 +830,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         const qty = Math.max(1, Number(item.quantity) || 1);
         const bundleStock = Number(bundle.stock) ?? 0;
         if (bundleStock < qty) {
-          return next(new ApiError(`Insufficient stock for ${bundle.name}. Available: ${bundleStock}, requested: ${qty}`, 400));
+          return next(new ApiError(`Insufficient stock for bundle "${bundle.name}". Available: ${bundleStock}, requested: ${qty}`, 400));
         }
         const itemSubtotal = bundle.price * qty;
         subtotal += itemSubtotal;
@@ -611,43 +924,41 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       if (sizeV) {
         const variantStock = Number(sizeV.stock) || 0;
         const requestedQty = Number(item.quantity) || 0;
+        const variantLabel = `${product.name} (${colorV?.color || ''}${sizeV.size ? ' / ' + sizeV.size : ''})`.trim();
         if (variantStock < requestedQty) {
-          return next(new ApiError(`Insufficient stock for ${product.name} (variant). Available: ${variantStock}, requested: ${requestedQty}`, 400));
+          return next(new ApiError(`Insufficient stock for "${variantLabel}". Available: ${variantStock}, requested: ${requestedQty}`, 400));
         }
 
-        // Check Customization options requirement (Tie, Elastic, or Bridal Length)
-        const hasCustomizations = sizeV.hasTieElastic || sizeV.hasBridalLength;
-        if (hasCustomizations) {
+        // Check Customization options requirement (Tie or Elastic)
+        if (sizeV.hasTieElastic) {
           const hasTieSelection = item.selectedTieElastic && ['tie', 'elastic'].includes(item.selectedTieElastic);
-          const hasBridalSelection = item.selectedBridalLength === 'bridal';
-
-          if (!hasTieSelection && !hasBridalSelection) {
-            return next(new ApiError(`Please select a customization option (Tie, Elastic, or Bridal Length) for ${product.name}`, 400));
+          if (!hasTieSelection) {
+            return next(new ApiError(`Please select a customization option (Tie or Elastic) for ${product.name}`, 400));
           }
+        }
 
-          if (item.selectedTieElastic === 'tie') {
-            const tieStock = Number(sizeV.tieStock) || 0;
-            if (tieStock < requestedQty) {
-              return next(new ApiError(`Tie option for ${product.name} is out of stock. Available: ${tieStock}, requested: ${requestedQty}`, 400));
-            }
-          } else if (item.selectedTieElastic === 'elastic') {
-            const elasticStock = Number(sizeV.elasticStock) || 0;
-            if (elasticStock < requestedQty) {
-              return next(new ApiError(`Elastic option for ${product.name} is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
-            }
+        if (item.selectedTieElastic === 'tie') {
+          const tieStock = Number(sizeV.tieStock) || 0;
+          if (tieStock < requestedQty) {
+            return next(new ApiError(`Tie option for "${variantLabel}" is out of stock. Available: ${tieStock}, requested: ${requestedQty}`, 400));
           }
-          if (item.selectedBridalLength === 'bridal') {
-            const bridalStock = Number(sizeV.bridalStock) || 0;
-            if (bridalStock < requestedQty) {
-              return next(new ApiError(`Bridal Length option for ${product.name} is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
-            }
+        } else if (item.selectedTieElastic === 'elastic') {
+          const elasticStock = Number(sizeV.elasticStock) || 0;
+          if (elasticStock < requestedQty) {
+            return next(new ApiError(`Elastic option for "${variantLabel}" is out of stock. Available: ${elasticStock}, requested: ${requestedQty}`, 400));
+          }
+        }
+        if (item.selectedBridalLength === 'bridal') {
+          const bridalStock = Number(sizeV.bridalStock) || 0;
+          if (bridalStock < requestedQty) {
+            return next(new ApiError(`Bridal Length option for "${variantLabel}" is out of stock. Available: ${bridalStock}, requested: ${requestedQty}`, 400));
           }
         }
       } else {
         const productStock = Number(product.stock) || 0;
         const requestedQty = Number(item.quantity) || 0;
         if (productStock < requestedQty) {
-          return next(new ApiError(`Insufficient stock for ${product.name}. Available: ${productStock}, requested: ${requestedQty}`, 400));
+          return next(new ApiError(`Insufficient stock for "${product.name}". Available: ${productStock}, requested: ${requestedQty}`, 400));
         }
       }
 

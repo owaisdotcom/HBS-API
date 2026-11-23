@@ -7,7 +7,8 @@ import {
   uploadReceipt,
   verifyPayment,
   cancelOrder,
-  getOrderStats
+  getOrderStats,
+  validateStockItems
 } from '../controllers/order.controller.js';
 import { protect, optionalAuth } from '../middleware/auth.middleware.js';
 import { protectAdmin } from '../middleware/admin.middleware.js';
@@ -47,6 +48,7 @@ const parseOrderBody = (req, _res, next) => {
 import { checkoutLimiter } from '../middleware/rateLimiter.middleware.js';
 
 // Public/User routes
+router.post('/validate-stock', optionalAuth, validateStockItems);
 router.post('/', checkoutLimiter, optionalAuth, uploadReceiptSingle, parseOrderBody, createOrderValidator, validate, createOrder);
 router.get('/', protect, getOrders);
 router.get('/:id', optionalAuth, getOrder);

@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
+import sharp from 'sharp';
 import { getR2PublicUrl, extractImageKey, resolveImageUrl } from '../utils/imageUrl.js';
 
 class R2Service {
@@ -114,13 +115,43 @@ class R2Service {
       const r2Url = `${r2DevUrl}/${key}`;
       console.log(`[R2][UPLOAD_SUCCESS] requestId=${requestId} key=${key} url=${finalUrl} r2Url=${r2Url}`);
 
+      // Concurrently generate and upload standard WebP variants (thumbnail, listing, detail)
+      const variants = {};
+      if (contentType.startsWith('image/') && !contentType.includes('svg') && !contentType.includes('gif')) {
+        try {
+          const variantConfigs = [
+            { name: 'thumbnail', width: 300, height: 375 },
+            { name: 'listing', width: 500, height: 625 },
+            { name: 'detail', width: 900, height: 1125 },
+          ];
+          for (const vc of variantConfigs) {
+            const variantBuffer = await sharp(file.buffer, { failOnError: false })
+              .resize(vc.width, vc.height, { fit: 'cover', withoutEnlargement: true })
+              .webp({ quality: 82, effort: 4 })
+              .toBuffer();
+            const variantKey = `${prefix}/variants/${vc.name}/${uniqueId}.webp`;
+            await client.send(new PutObjectCommand({
+              Bucket: bucketName,
+              Key: variantKey,
+              Body: variantBuffer,
+              ContentType: 'image/webp',
+              CacheControl: 'public, max-age=31536000, immutable'
+            }));
+            variants[vc.name] = `${r2DevUrl}/${variantKey}`;
+          }
+        } catch (variantErr) {
+          console.warn(`[R2][VARIANT_WARN] requestId=${requestId} key=${key} could not generate all variants:`, variantErr.message);
+        }
+      }
+
       return {
         provider: 'r2',
         key,
         objectKey: key,
         url: finalUrl,
         imageUrl: finalUrl,
-        r2Url
+        r2Url,
+        variants
       };
     } catch (error) {
       console.error(`[R2][UPLOAD_FAIL] requestId=${requestId} key=${key} error=${error.name || error.message}`);

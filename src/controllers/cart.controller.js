@@ -424,7 +424,18 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
       }
 
       const reservedByOthers = await getReservedQuantity(item.productId, req.user.id, item.variantId || null);
-      const availableForUser = Math.max((chosenVariant?.stock ?? product.stock) - reservedByOthers, 0);
+      let maxStock = chosenVariant?.stock ?? product.stock;
+      if (sizeV) {
+        if (item.selectedTieElastic === 'tie' && sizeV.tieStock !== undefined) {
+          maxStock = Math.min(maxStock, Number(sizeV.tieStock) || 0);
+        } else if (item.selectedTieElastic === 'elastic' && sizeV.elasticStock !== undefined) {
+          maxStock = Math.min(maxStock, Number(sizeV.elasticStock) || 0);
+        }
+        if (item.selectedBridalLength === 'bridal' && sizeV.bridalStock !== undefined) {
+          maxStock = Math.min(maxStock, Number(sizeV.bridalStock) || 0);
+        }
+      }
+      const availableForUser = Math.max(maxStock - reservedByOthers, 0);
       if (quantity > availableForUser) {
         return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
       }

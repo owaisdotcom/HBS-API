@@ -18,6 +18,7 @@ import bundleCategoryRoutes from './bundleCategory.routes.js';
 import preMadeBundleRoutes from './preMadeBundle.routes.js';
 
 import { uploadSingleImage, proxyImage } from '../controllers/upload.controller.js';
+import { optimizeImage } from '../controllers/imageOptimize.controller.js';
 import { noCache, staticCache } from '../middleware/cache.middleware.js';
 import { productSearchLimiter } from '../middleware/rateLimiter.middleware.js';
 
@@ -26,6 +27,10 @@ const router = express.Router();
 // Public Image Proxy (CORS-friendly image fetching for canvas cropper, rate-limited)
 router.get('/proxy-image', productSearchLimiter, proxyImage);
 router.get('/upload/proxy-image', productSearchLimiter, proxyImage);
+
+// High-Performance On-Demand Image Optimization Endpoint (WebP variants: thumbnail, listing, detail)
+router.get('/images/optimize', optimizeImage);
+router.get('/upload/optimize-image', optimizeImage);
 
 // Stock-sensitive routes (Always get fresh data, no stale stock cache)
 router.use('/products', noCache, productRoutes);
