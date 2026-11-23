@@ -217,146 +217,170 @@ export const addToCart = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Product not found', 404));
   }
 
-  // If variantId provided, validate variant stock/price
-  // variantId format: `${colorId}-${sizeId}` (colorId/sizeId may contain hyphens, e.g. dusty-rose, one-size)
+  // If variantId or variant attributes provided, validate variant stock/price
   let chosenColorVariant = null;
   let chosenSize = null;
-  if (variantId && Array.isArray(product.variants)) {
-    for (const v of product.variants) {
-      if (v.isActive === false) continue;
-      const size = (v.sizes || []).find(s => `${v.colorId}-${s.sizeId}` === variantId && s.isActive !== false);
-      if (size) {
-        chosenColorVariant = v;
-        chosenSize = size;
-        break;
-      }
-    }
-    if (!chosenColorVariant || !chosenSize) {
-      return next(new ApiError('Color variant not found', 404));
-    }
-    let optionStock = chosenSize.stock;
-    if (selectedTieElastic === 'tie') {
-      optionStock = Number(chosenSize.tieStock) || 0;
-    } else if (selectedTieElastic === 'elastic') {
-      optionStock = Number(chosenSize.elasticStock) || 0;
-    }
-    if (selectedBridalLength === 'bridal') {
-      const bStock = Number(chosenSize.bridalStock) || 0;
-      if (selectedTieElastic) {
-        optionStock = Math.min(optionStock, bStock);
-      } else {
-        optionStock = bStock;
-      }
-    }
-    if (optionStock < quantity || optionStock === 0) {
-      return next(new ApiError('Selected option is out of stock or insufficient quantity', 400));
-    }
-  } else {
-    // Check stock for product-level (fallback)
-    if (product.stockStatus === 'out_of_stock' || product.stock < quantity) {
-      return next(new ApiError('Product is out of stock or insufficient quantity', 400));
-    }
-  }
-
-  const MAX_RETRIES = 3;
-  let cart;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      cart = await Cart.findOne({ userId: req.user.id });
-
-      if (!cart) {
-        cart = await Cart.create({
-          userId: req.user.id,
-          items: []
-        });
-      }
-
-      const reservedByOthers = await getReservedQuantity(productId, req.user.id, variantId || null);
-      const availableForUser = Math.max((chosenSize?.stock ?? product.stock) - reservedByOthers, 0);
-      const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
-
-      // Check if product already in cart (with same variant)
-      const existingItemIndex = cart.items.findIndex(
-        item => item.productId?.toString() === productId &&
-                item.selectedColor === selectedColor &&
-                item.selectedSize === selectedSize &&
-                item.variantId === (variantId || null) &&
-                (item.selectedTieElastic || null) === (selectedTieElastic || null) &&
-                (item.selectedBridalLength || null) === (selectedBridalLength || null)
-      );
-
-      const variantImgUrl = selectedImage || chosenColorVariant?.images?.find(i => i.isPrimary)?.url || chosenColorVariant?.images?.[0]?.url || null;
-
-      if (existingItemIndex > -1) {
-        const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-        if (newQuantity > availableForUser) {
-          return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
-        }
-        cart.items[existingItemIndex].quantity = newQuantity;
-        cart.items[existingItemIndex].price = chosenSize ? (chosenSize.price ?? product.price) : product.price;
-        cart.items[existingItemIndex].selectedTieElastic = selectedTieElastic || null;
-        cart.items[existingItemIndex].selectedBridalLength = selectedBridalLength || null;
-        cart.items[existingItemIndex].bridalLengthPrice = Number(bridalLengthPrice) || 0;
-        if (variantImgUrl) {
-          cart.items[existingItemIndex].selectedImage = variantImgUrl;
-          if (cart.items[existingItemIndex].variantSnapshot) {
-            cart.items[existingItemIndex].variantSnapshot.image = variantImgUrl;
+        if (Array.isArray(product.variants) && product.variants.length > 0) {
+          if (variantId) {
+            for (const v of product.variants) {
+              if (v.isActive === false) continue;
+              const size = (v.sizes || []).find(s => `${v.colorId}-${s.sizeId}` === variantId && s.isActive !== false);
+              if (size) {
+                chosenColorVariant = v;
+                chosenSize = size;
+                break;
+              }
+            }
           }
-        }
-        cart.items[existingItemIndex].reservedUntil = reservationUntil;
-      } else {
-        if (quantity > availableForUser) {
-          return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
-        }
-        const itemToPush = {
-          productId,
-          quantity,
-          price: chosenSize ? (chosenSize.price ?? product.price) : product.price,
-          selectedColor: selectedColor || (chosenColorVariant?.color || null),
-          selectedSize: selectedSize || (chosenSize?.size || null),
-          selectedImage: variantImgUrl,
-          selectedTieElastic: selectedTieElastic || null,
-          selectedBridalLength: selectedBridalLength || null,
-          bridalLengthPrice: Number(bridalLengthPrice) || 0,
-          addedAt: new Date(),
-          reservedUntil: reservationUntil,
-          variantId: variantId || null,
-          variantSnapshot: (chosenColorVariant && chosenSize) ? {
-            sku: chosenSize.sku || null,
-            price: chosenSize.price || null,
-            image: variantImgUrl || chosenColorVariant.images?.[0]?.url || null,
-            color: chosenColorVariant.color || null,
-            size: chosenSize.size || null,
-            specs: chosenColorVariant.specs || null,
-            hasTieElastic: chosenSize.hasTieElastic || false,
-            hasBridalLength: chosenSize.hasBridalLength || false,
-            bridalLengthPrice: chosenSize.bridalLengthPrice || 0
-          } : null
-        };
+            if (!chosenColorVariant && selectedColor) {
+              chosenColorVariant = product.variants.find(v =>
+                v.isActive !== false &&
+                (v.color?.trim().toLowerCase() === selectedColor?.trim().toLowerCase() ||
+                  v.colorId?.trim().toLowerCase() === selectedColor?.trim().toLowerCase())
+              );
+              if (chosenColorVariant) {
+                chosenSize = (chosenColorVariant.sizes || []).find(s =>
+                  s.isActive !== false &&
+                  (s.size?.trim().toLowerCase() === selectedSize?.trim().toLowerCase() ||
+                    s.sizeId?.trim().toLowerCase() === selectedSize?.trim().toLowerCase())
+                ) || chosenColorVariant.sizes?.[0];
+              }
+            }
+              if (!chosenColorVariant && product.variants.length === 1) {
+                chosenColorVariant = product.variants[0];
+                chosenSize = (chosenColorVariant.sizes || []).find(s =>
+                  s.isActive !== false &&
+                  (s.size?.trim().toLowerCase() === selectedSize?.trim().toLowerCase() ||
+                    s.sizeId?.trim().toLowerCase() === selectedSize?.trim().toLowerCase())
+                ) || chosenColorVariant.sizes?.[0];
+              }
+                  if (chosenSize) {
+                    let optionStock = Number(chosenSize.stock) || 0;
+                    if (selectedTieElastic === 'tie') {
+                      optionStock = Number(chosenSize.tieStock) || 0;
+                    } else if (selectedTieElastic === 'elastic') {
+                      optionStock = Number(chosenSize.elasticStock) || 0;
+                    }
+                    if (selectedBridalLength === 'bridal') {
+                      const bStock = Number(chosenSize.bridalStock) || 0;
+                      if (selectedTieElastic) {
+                        optionStock = Math.min(optionStock, bStock);
+                      } else {
+                        optionStock = bStock;
+                      }
+                    }
+                    if (optionStock < quantity || optionStock === 0) {
+                      return next(new ApiError('Selected option is out of stock or insufficient quantity', 400));
+                    }
+                  } else if (variantId) {
+                    return next(new ApiError('Color variant not found', 404));
+                  }
+                } else {
+                  // Check stock for product-level (fallback)
+                  if (product.stockStatus === 'out_of_stock' || product.stock < quantity) {
+                    return next(new ApiError('Product is out of stock or insufficient quantity', 400));
+                  }
+                }
 
-        cart.items.push(itemToPush);
-      }
+                const MAX_RETRIES = 3;
+                let cart;
 
-      await cart.save();
-      break;
-    } catch (err) {
-      if (err.name === 'VersionError' && attempt < MAX_RETRIES - 1) {
-        await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
-        continue;
-      }
-      throw err;
-    }
-  }
+                for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                  try {
+                    cart = await Cart.findOne({ userId: req.user.id });
 
-  cart = await Cart.findById(cart._id)
-    .populate('items.productId', 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status')
-    .populate('items.preMadeBundleId', 'name slug price compareAtPrice images status');
-  const payload = await buildCartResponse(cart);
-  res.status(201).json(
-    new ApiResponse(201, payload, 'Product added to cart')
-  );
-});
+                    if (!cart) {
+                      cart = await Cart.create({
+                        userId: req.user.id,
+                        items: []
+                      });
+                    }
+
+                    const reservedByOthers = await getReservedQuantity(productId, req.user.id, variantId || null);
+                    const availableForUser = Math.max((chosenSize?.stock ?? product.stock) - reservedByOthers, 0);
+                    const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+
+                    // Check if product already in cart (with same variant)
+                    const existingItemIndex = cart.items.findIndex(
+                      item => item.productId?.toString() === productId &&
+                        item.selectedColor === selectedColor &&
+                        item.selectedSize === selectedSize &&
+                        item.variantId === (variantId || null) &&
+                        (item.selectedTieElastic || null) === (selectedTieElastic || null) &&
+                        (item.selectedBridalLength || null) === (selectedBridalLength || null)
+                    );
+
+                    const variantImgUrl = selectedImage || chosenColorVariant?.images?.find(i => i.isPrimary)?.url || chosenColorVariant?.images?.[0]?.url || null;
+
+                    if (existingItemIndex > -1) {
+                      const newQuantity = cart.items[existingItemIndex].quantity + quantity;
+                      if (newQuantity > availableForUser) {
+                        return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
+                      }
+                      cart.items[existingItemIndex].quantity = newQuantity;
+                      cart.items[existingItemIndex].price = chosenSize ? (chosenSize.price ?? product.price) : product.price;
+                      cart.items[existingItemIndex].selectedTieElastic = selectedTieElastic || null;
+                      cart.items[existingItemIndex].selectedBridalLength = selectedBridalLength || null;
+                      cart.items[existingItemIndex].bridalLengthPrice = Number(bridalLengthPrice) || 0;
+                      if (variantImgUrl) {
+                        cart.items[existingItemIndex].selectedImage = variantImgUrl;
+                        if (cart.items[existingItemIndex].variantSnapshot) {
+                          cart.items[existingItemIndex].variantSnapshot.image = variantImgUrl;
+                        }
+                      }
+                      cart.items[existingItemIndex].reservedUntil = reservationUntil;
+                    } else {
+                      if (quantity > availableForUser) {
+                        return next(new ApiError(`Only ${availableForUser} items available in stock`, 400));
+                      }
+                      const itemToPush = {
+                        productId,
+                        quantity,
+                        price: chosenSize ? (chosenSize.price ?? product.price) : product.price,
+                        selectedColor: selectedColor || (chosenColorVariant?.color || null),
+                        selectedSize: selectedSize || (chosenSize?.size || null),
+                        selectedImage: variantImgUrl,
+                        selectedTieElastic: selectedTieElastic || null,
+                        selectedBridalLength: selectedBridalLength || null,
+                        bridalLengthPrice: Number(bridalLengthPrice) || 0,
+                        addedAt: new Date(),
+                        reservedUntil: reservationUntil,
+                        variantId: variantId || null,
+                        variantSnapshot: (chosenColorVariant && chosenSize) ? {
+                          sku: chosenSize.sku || null,
+                          price: chosenSize.price || null,
+                          image: variantImgUrl || chosenColorVariant.images?.[0]?.url || null,
+                          color: chosenColorVariant.color || null,
+                          size: chosenSize.size || null,
+                          specs: chosenColorVariant.specs || null,
+                          hasTieElastic: chosenSize.hasTieElastic || false,
+                          hasBridalLength: chosenSize.hasBridalLength || false,
+                          bridalLengthPrice: chosenSize.bridalLengthPrice || 0
+                        } : null
+                      };
+
+                      cart.items.push(itemToPush);
+                    }
+
+                    await cart.save();
+                    break;
+                  } catch (err) {
+                    if (err.name === 'VersionError' && attempt < MAX_RETRIES - 1) {
+                      await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
+                      continue;
+                    }
+                    throw err;
+                  }
+                }
+
+                cart = await Cart.findById(cart._id)
+                  .populate('items.productId', 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status')
+                  .populate('items.preMadeBundleId', 'name slug price compareAtPrice images status');
+                const payload = await buildCartResponse(cart);
+                res.status(201).json(
+                  new ApiResponse(201, payload, 'Product added to cart')
+                );
+              });
 
 // @route   PUT /api/cart/update/:itemId
 // @desc    Update cart item quantity
@@ -607,9 +631,9 @@ export const syncCart = asyncHandler(async (req, res, next) => {
 
         const existingItemIndex = cart.items.findIndex(
           item => item.productId?.toString() === localItem.productId &&
-                  item.selectedColor === localItem.selectedColor &&
-                  item.selectedSize === localItem.selectedSize &&
-                  item.variantId === (localVariantId || null)
+            item.selectedColor === localItem.selectedColor &&
+            item.selectedSize === localItem.selectedSize &&
+            item.variantId === (localVariantId || null)
         );
 
         const variantImgUrl = localItem.selectedImage || colorV?.images?.find(i => i.isPrimary)?.url || colorV?.images?.[0]?.url || null;
