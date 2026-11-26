@@ -9,6 +9,7 @@ import Hero from '../models/Hero.js';
 import Testimonial from '../models/Testimonial.js';
 import Review from '../models/Review.js';
 import { executeLegacyR2Migration } from './legacyMigration.service.js';
+import r2Service from './r2.service.js';
 import {
   getR2PublicUrl,
   getCustomDomain,
@@ -82,46 +83,62 @@ export async function runCloudinaryToR2Migration({ dryRun = false } = {}) {
     let isModified = false;
 
     if (Array.isArray(product.images) && product.images.length > 0) {
-      product.images.forEach((img) => {
+      for (const img of product.images) {
         if (img.url && img.url.includes('res.cloudinary.com')) {
           const oldUrl = img.url;
+          const key = extractKey(oldUrl, r2PublicUrl) || img.key;
+          const exists = dryRun ? true : await r2Service.checkObjectExists(key).catch(() => false);
+          if (!exists) continue;
           img.url = transformUrl(oldUrl, r2PublicUrl);
+          img.r2Url = img.url;
+          img.imageUrl = img.url;
           img.provider = 'r2';
-          img.key = extractKey(oldUrl, r2PublicUrl) || img.key;
+          img.key = key;
+          img.objectKey = key;
           isModified = true;
           totalReplacedUrls++;
         } else if (img.url && img.url.startsWith(r2PublicUrl) && img.provider !== 'r2') {
           img.provider = 'r2';
           img.key = extractKey(img.url, r2PublicUrl) || img.key;
+          img.objectKey = img.key;
           isModified = true;
         }
-      });
+      }
     }
 
     if (Array.isArray(product.variants) && product.variants.length > 0) {
-      product.variants.forEach((variant) => {
+      for (const variant of product.variants) {
         if (Array.isArray(variant.images) && variant.images.length > 0) {
-          variant.images.forEach((vImg) => {
+          for (const vImg of variant.images) {
             if (vImg.url && vImg.url.includes('res.cloudinary.com')) {
               const oldUrl = vImg.url;
+              const key = extractKey(oldUrl, r2PublicUrl) || vImg.key;
+              const exists = dryRun ? true : await r2Service.checkObjectExists(key).catch(() => false);
+              if (!exists) continue;
               vImg.url = transformUrl(oldUrl, r2PublicUrl);
+              vImg.r2Url = vImg.url;
+              vImg.imageUrl = vImg.url;
               vImg.provider = 'r2';
-              vImg.key = extractKey(oldUrl, r2PublicUrl) || vImg.key;
+              vImg.key = key;
+              vImg.objectKey = key;
               isModified = true;
               totalReplacedUrls++;
             }
-          });
+          }
         }
         if (Array.isArray(variant.sizes)) {
-          variant.sizes.forEach((size) => {
+          for (const size of variant.sizes) {
             if (size.sizeChartUrl && size.sizeChartUrl.includes('res.cloudinary.com')) {
+              const key = extractKey(size.sizeChartUrl, r2PublicUrl);
+              const exists = dryRun ? true : await r2Service.checkObjectExists(key).catch(() => false);
+              if (!exists) continue;
               size.sizeChartUrl = transformUrl(size.sizeChartUrl, r2PublicUrl);
               isModified = true;
               totalReplacedUrls++;
             }
-          });
+          }
         }
-      });
+      }
     }
 
     if (isModified) {

@@ -30,46 +30,193 @@ import {
   sendOrderCancelledEmail
 } from '../services/email.service.js';
 
+/**
+ * Shared variant/size resolver used consistently across stock validation, order creation, deduction, and restoration.
+ */
+const resolveProductVariant = (product, { variantId, selectedColor, selectedSize } = {}) => {
+  if (!product || !Array.isArray(product.variants) || product.variants.length === 0) {
+    return { colorV: null, sizeV: null };
+  }
+
+  let colorV = null;
+  let sizeV = null;
+
+  if (variantId) {
+    for (const v of product.variants) {
+      const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === variantId || sz.sizeId === variantId);
+      if (s) {
+        colorV = v;
+        sizeV = s;
+        break;
+      }
+    }
+    if (!colorV) {
+      colorV = product.variants.find(v => v.colorId === variantId || v.color === variantId) || null;
+      if (colorV) {
+        sizeV = (colorV.sizes || []).find(sz =>
+          sz.size?.trim().toLowerCase() === selectedSize?.trim().toLowerCase() ||
+          sz.sizeId?.trim().toLowerCase() === selectedSize?.trim().toLowerCase()
+        ) || colorV.sizes?.[0] || null;
+      }
+    }
+  }
+
+  if (!colorV && selectedColor) {
+    colorV = product.variants.find(v =>
+      v.color?.trim().toLowerCase() === selectedColor?.trim().toLowerCase() ||
+      v.colorId?.trim().toLowerCase() === selectedColor?.trim().toLowerCase()
+    ) || null;
+    if (colorV) {
+      if (selectedSize) {
+        sizeV = (colorV.sizes || []).find(sz =>
+          sz.size?.trim().toLowerCase() === selectedSize?.trim().toLowerCase() ||
+          sz.sizeId?.trim().toLowerCase() === selectedSize?.trim().toLowerCase()
+        ) || null;
+      }
+      if (!sizeV) {
+        sizeV = colorV.sizes?.[0] || null;
+      }
+    }
+  }
+
+  if (!colorV && product.variants.length === 1) {
+    colorV = product.variants[0];
+    if (selectedSize) {
+      sizeV = (colorV.sizes || []).find(sz =>
+        sz.size?.trim().toLowerCase() === selectedSize?.trim().toLowerCase() ||
+        sz.sizeId?.trim().toLowerCase() === selectedSize?.trim().toLowerCase()
+      ) || null;
+    }
+    if (!sizeV) {
+      sizeV = colorV.sizes?.[0] || null;
+    }
+  }
+
+  return { colorV, sizeV };
+};
+
 const recomputeProductStock = async (productId, session = null) => {
   const q = Product.findById(productId, 'variants');
   if (session) q.session(session);
   const product = await q.lean();
   if (!product) return;
+
   let totalStock = 0;
-  for (const colorVariant of (product.variants || [])) {
-    for (const size of (colorVariant.sizes || [])) {
+  const updatedVariants = (product.variants || []).map((colorVariant) => ({
+    ...colorVariant,
+    sizes: (colorVariant.sizes || []).map((size) => {
       const tie = Number(size.tieStock) || 0;
       const elastic = Number(size.elasticStock) || 0;
       const bridal = Number(size.bridalStock) || 0;
       const hasCust = size.hasTieElastic || size.hasBridalLength || tie > 0 || elastic > 0 || bridal > 0;
       const sizeStock = hasCust ? (tie + elastic + bridal) : (Number(size.stock) || 0);
       totalStock += sizeStock;
+      return { ...size, stock: sizeStock };
+    })
+  }));
 
-      const opts = {
-        arrayFilters: [{ 'c.colorId': colorVariant.colorId }, { 's.sizeId': size.sizeId }],
-        ...(session ? { session } : {})
-      };
-      await Product.updateOne(
-        { _id: productId },
-        { $set: { 'variants.$[c].sizes.$[s].stock': sizeStock } },
-        opts
-      );
-    }
-  }
   const finalOpts = session ? { session } : {};
-  await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } }, finalOpts);
+  await Product.updateOne(
+    { _id: productId },
+    { $set: { variants: updatedVariants, stock: totalStock } },
+    finalOpts
+  );
 };
 
 /**
- * Deduct stock for a single order item (called once when order is created or rejection reverted).
+ * Atomically deduct stock for a single order item with conditional $gte guards.
+ * Throws ApiError(409) if stock is insufficient or concurrently depleted.
  * Returns the productId string if a product was touched, null for bundles.
  */
 const deductOrderItem = async (item, session = null) => {
   const opts = session ? { session } : {};
+  const qty = Math.max(1, Number(item.quantity) || 1);
+
   // Pre-made bundle
   if (item.preMadeBundleId) {
+    const updatedBundle = await PreMadeBundle.findOneAndUpdate(
+      { _id: item.preMadeBundleId, status: 'active', stock: { $gte: qty } },
+      { $inc: { stock: -qty, soldCount: qty } },
+      { new: true, ...opts }
+    );
+    if (!updatedBundle) {
+      throw new ApiError(`Insufficient stock for bundle "${item.productName || 'Bundle'}".`, 409);
+    }
+    return null;
+  }
+  if (!item.productId) return null;
+
+  const q = Product.findOne({ _id: item.productId, isDeleted: { $ne: true } }, { name: 1, variants: 1, stock: 1, stockStatus: 1 });
+  if (session) q.session(session);
+  const prod = await q.lean();
+  if (!prod) {
+    throw new ApiError(`Product "${item.productName || item.productId}" is no longer available.`, 404);
+  }
+
+  if (Array.isArray(prod.variants) && prod.variants.length > 0) {
+    const { colorV, sizeV } = resolveProductVariant(prod, item);
+    if (colorV && sizeV) {
+      const variantLabel = `${prod.name} (${colorV.color || ''}${sizeV.size ? ' / ' + sizeV.size : ''})`.trim();
+      const incFields = {
+        soldCount: qty,
+        'variants.$[c].sizes.$[s].stock': -qty
+      };
+      const sizeFilter = {
+        's.sizeId': sizeV.sizeId,
+        's.isActive': { $ne: false },
+        's.stock': { $gte: qty }
+      };
+
+      if (item.selectedTieElastic === 'tie') {
+        incFields['variants.$[c].sizes.$[s].tieStock'] = -qty;
+        sizeFilter['s.tieStock'] = { $gte: qty };
+      } else if (item.selectedTieElastic === 'elastic') {
+        incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
+        sizeFilter['s.elasticStock'] = { $gte: qty };
+      }
+      if (item.selectedBridalLength === 'bridal') {
+        incFields['variants.$[c].sizes.$[s].bridalStock'] = -qty;
+        sizeFilter['s.bridalStock'] = { $gte: qty };
+      }
+
+      const updateOpts = {
+        arrayFilters: [{ 'c.colorId': colorV.colorId }, sizeFilter],
+        ...opts
+      };
+      const res = await Product.updateOne(
+        { _id: item.productId, isDeleted: { $ne: true } },
+        { $inc: incFields },
+        updateOpts
+      );
+      if (!res || res.modifiedCount !== 1) {
+        throw new ApiError(`"${variantLabel}" is out of stock or has insufficient inventory.`, 409);
+      }
+      return item.productId.toString();
+    }
+  }
+
+  // Simple / non-variant product atomic deduction
+  const updatedProd = await Product.findOneAndUpdate(
+    { _id: item.productId, isDeleted: { $ne: true }, stockStatus: { $ne: 'out_of_stock' }, stock: { $gte: qty } },
+    { $inc: { stock: -qty, soldCount: qty } },
+    { new: true, ...opts }
+  );
+  if (!updatedProd) {
+    throw new ApiError(`"${prod.name || item.productName || 'Product'}" is out of stock or has insufficient inventory.`, 409);
+  }
+  return item.productId.toString();
+};
+
+/**
+ * Restore stock for a single order item (called once when order is cancelled/rejected/rolled back).
+ * Mirrors deductOrderItem exactly. Returns productId string or null.
+ */
+const restoreOrderItem = async (item, session = null) => {
+  const opts = session ? { session } : {};
+  const qty = Math.max(1, Number(item.quantity) || 1);
+  if (item.preMadeBundleId) {
     await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
-      $inc: { stock: -item.quantity, soldCount: item.quantity }
+      $inc: { stock: qty, soldCount: -qty }
     }, opts);
     return null;
   }
@@ -78,158 +225,36 @@ const deductOrderItem = async (item, session = null) => {
   const q = Product.findOne({ _id: item.productId }, { variants: 1 });
   if (session) q.session(session);
   const prod = await q.lean();
-  if (prod && Array.isArray(prod.variants)) {
-    let colorId = null, sizeId = null, targetSize = null;
-    if (item.variantId || item.selectedColor || item.selectedSize) {
-      const q = Product.findOne({ _id: item.productId }, { variants: 1 });
-      if (session) q.session(session);
-      const prod = await q.lean();
-      if (prod && Array.isArray(prod.variants)) {
-        let colorId = null, sizeId = null, targetSize = null;
-        if (item.variantId) {
-          for (const v of prod.variants) {
-            const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
-            if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
-            if (item.variantId) {
-              for (const v of prod.variants) {
-                const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
-                if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
-              }
-            }
-            if (!targetSize && item.selectedColor) {
-              const v = prod.variants.find(vr =>
-                vr.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
-                vr.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
-              );
-              if (v) {
-                colorId = v.colorId;
-                const s = (v.sizes || []).find(sz =>
-                  sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
-                  sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
-                ) || v.sizes?.[0];
-                if (s) { sizeId = s.sizeId; targetSize = s; }
-              }
-            }
-            if (colorId != null && sizeId != null && targetSize != null) {
-            }
-          }
-          if (!targetSize && item.selectedColor) {
-            const v = prod.variants.find(vr =>
-              vr.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
-              vr.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
-            );
-            if (v) {
-              colorId = v.colorId;
-              const s = (v.sizes || []).find(sz =>
-                sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
-                sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
-              ) || v.sizes?.[0];
-              if (s) { sizeId = s.sizeId; targetSize = s; }
-            }
-          }
-          if (colorId != null && sizeId != null && targetSize != null) {
-            const qty = Number(item.quantity) || 1;
-            const incFields = {
-              soldCount: qty,
-              'variants.$[c].sizes.$[s].stock': -qty
-            };
-            // Deduct tie/elastic/bridal stock based on selected customization
-            if (item.selectedTieElastic === 'tie') {
-              incFields['variants.$[c].sizes.$[s].tieStock'] = -qty;
-            } else if (item.selectedTieElastic === 'elastic') {
-              incFields['variants.$[c].sizes.$[s].elasticStock'] = -qty;
-            }
-            if (item.selectedBridalLength === 'bridal') {
-              incFields['variants.$[c].sizes.$[s].bridalStock'] = -qty;
-            }
-            const updateOpts = {
-              arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }],
-              ...(session ? { session } : {})
-            };
-            await Product.updateOne(
-              { _id: item.productId },
-              { $inc: incFields },
-              updateOpts
-            );
-            return item.productId.toString();
-          }
-          await Product.updateOne(
-            { _id: item.productId },
-            { $inc: incFields },
-            updateOpts
-          );
-          return item.productId.toString();
-        }
+  if (prod && Array.isArray(prod.variants) && prod.variants.length > 0) {
+    const { colorV, sizeV } = resolveProductVariant(prod, item);
+    if (colorV && sizeV) {
+      const incFields = {
+        soldCount: -qty,
+        'variants.$[c].sizes.$[s].stock': qty
+      };
+      if (item.selectedTieElastic === 'tie') {
+        incFields['variants.$[c].sizes.$[s].tieStock'] = qty;
+      } else if (item.selectedTieElastic === 'elastic') {
+        incFields['variants.$[c].sizes.$[s].elasticStock'] = qty;
       }
-    }
-
-    // Fallback: legacy/non-variant product
-    await Product.findByIdAndUpdate(item.productId, {
-      $inc: { stock: -item.quantity, soldCount: item.quantity }
-    }, opts);
-    return item.productId.toString();
-  };
-  // Fallback: legacy/non-variant product
-  await Product.findByIdAndUpdate(item.productId, {
-    $inc: { stock: -item.quantity, soldCount: item.quantity }
-  }, opts);
-  return item.productId.toString();
-};
-
-/**
- * Restore stock for a single order item (called once when order is cancelled/rejected).
- * Mirrors deductOrderItem exactly. Returns productId string or null.
- */
-const restoreOrderItem = async (item, session = null) => {
-  const opts = session ? { session } : {};
-  if (item.preMadeBundleId) {
-    await PreMadeBundle.findByIdAndUpdate(item.preMadeBundleId, {
-      $inc: { stock: item.quantity, soldCount: -item.quantity }
-    }, opts);
-    return null;
-  }
-  if (!item.productId) return null;
-
-  if (item.variantId) {
-    const q = Product.findOne({ _id: item.productId }, { variants: 1 });
-    if (session) q.session(session);
-    const prod = await q.lean();
-    if (prod && Array.isArray(prod.variants)) {
-      let colorId = null, sizeId = null, targetSize = null;
-      for (const v of prod.variants) {
-        const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
-        if (s) { colorId = v.colorId; sizeId = s.sizeId; targetSize = s; break; }
+      if (item.selectedBridalLength === 'bridal') {
+        incFields['variants.$[c].sizes.$[s].bridalStock'] = qty;
       }
-      if (colorId != null && sizeId != null && targetSize != null) {
-        const qty = Number(item.quantity) || 1;
-        const incFields = {
-          soldCount: -qty,
-          'variants.$[c].sizes.$[s].stock': qty
-        };
-        if (item.selectedTieElastic === 'tie') {
-          incFields['variants.$[c].sizes.$[s].tieStock'] = qty;
-        } else if (item.selectedTieElastic === 'elastic') {
-          incFields['variants.$[c].sizes.$[s].elasticStock'] = qty;
-        }
-        if (item.selectedBridalLength === 'bridal') {
-          incFields['variants.$[c].sizes.$[s].bridalStock'] = qty;
-        }
-        const updateOpts = {
-          arrayFilters: [{ 'c.colorId': colorId }, { 's.sizeId': sizeId }],
-          ...(session ? { session } : {})
-        };
-        await Product.updateOne(
-          { _id: item.productId },
-          { $inc: incFields },
-          updateOpts
-        );
-        return item.productId.toString();
-      }
+      const updateOpts = {
+        arrayFilters: [{ 'c.colorId': colorV.colorId }, { 's.sizeId': sizeV.sizeId }],
+        ...opts
+      };
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: incFields },
+        updateOpts
+      );
+      return item.productId.toString();
     }
   }
 
   await Product.findByIdAndUpdate(item.productId, {
-    $inc: { stock: item.quantity, soldCount: -item.quantity }
+    $inc: { stock: qty, soldCount: -qty }
   }, opts);
   return item.productId.toString();
 };
@@ -269,51 +294,71 @@ export const checkItemsStock = async (items = [], session = null) => {
       const productIdStr = pId.toString();
       const variantId = item.variantId || null;
 
-      if (variantId || item.selectedColor || item.selectedSize) {
-        if (variantId || item.selectedColor || item.selectedSize || item.selectedTieElastic || item.selectedBridalLength) {
-          // We will resolve the actual variant / size on the product model
-          const key = `${productIdStr}:::${variantId || ''}:::${item.selectedColor || ''}:::${item.selectedSize || ''}`;
-          const existing = variantSizeDemands.get(key) || {
-            productId: pId,
-            variantId,
-            selectedColor: item.selectedColor,
-            selectedSize: item.selectedSize,
-            productName: item.productName || item.product?.name || item.name || 'Product',
-            tieDemand: 0,
-            elasticDemand: 0,
-            bridalDemand: 0,
-            totalQty: 0,
-            item
-          };
-          existing.totalQty += qty;
-          if (item.selectedTieElastic === 'tie') {
-            existing.tieDemand += qty;
-          } else if (item.selectedTieElastic === 'elastic') {
-            existing.elasticDemand += qty;
-          }
-          if (item.selectedBridalLength === 'bridal') {
-            existing.bridalDemand += qty;
-          }
-          variantSizeDemands.set(key, existing);
-        } else {
-          const existing = simpleProductDemands.get(productIdStr) || {
-            productId: pId,
-            name: item.productName || item.product?.name || item.name || 'Product',
-            qty: 0,
-            item
-          };
-          existing.qty += qty;
-          simpleProductDemands.set(productIdStr, existing);
+      if (variantId || item.selectedColor || item.selectedSize || item.selectedTieElastic || item.selectedBridalLength) {
+        // We will resolve the actual variant / size on the product model
+        const key = `${productIdStr}:::${variantId || ''}:::${item.selectedColor || ''}:::${item.selectedSize || ''}`;
+        const existing = variantSizeDemands.get(key) || {
+          productId: pId,
+          variantId,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
+          productName: item.productName || item.product?.name || item.name || 'Product',
+          tieDemand: 0,
+          elasticDemand: 0,
+          bridalDemand: 0,
+          totalQty: 0,
+          item
+        };
+        existing.totalQty += qty;
+        if (item.selectedTieElastic === 'tie') {
+          existing.tieDemand += qty;
+        } else if (item.selectedTieElastic === 'elastic') {
+          existing.elasticDemand += qty;
         }
+        if (item.selectedBridalLength === 'bridal') {
+          existing.bridalDemand += qty;
+        }
+        variantSizeDemands.set(key, existing);
+      } else {
+        const existing = simpleProductDemands.get(productIdStr) || {
+          productId: pId,
+          name: item.productName || item.product?.name || item.name || 'Product',
+          qty: 0,
+          item
+        };
+        existing.qty += qty;
+        simpleProductDemands.set(productIdStr, existing);
       }
     }
   }
 
+  // Batch-fetch all required bundles and products in at most 2 queries (prevents N+1 timeouts)
+  const bundleIds = [...bundleDemands.values()].map(d => d.id).filter(Boolean);
+  const allProductIds = [
+    ...new Set([
+      ...[...simpleProductDemands.values()].map(d => d.productId.toString()),
+      ...[...variantSizeDemands.values()].map(d => d.productId.toString())
+    ])
+  ];
+
+  const bundleQuery = bundleIds.length ? PreMadeBundle.find({ _id: { $in: bundleIds } }) : null;
+  const productQuery = allProductIds.length ? Product.find({ _id: { $in: allProductIds } }) : null;
+  if (session) {
+    if (bundleQuery) bundleQuery.session(session);
+    if (productQuery) productQuery.session(session);
+  }
+
+  const [bundlesList, productsList] = await Promise.all([
+    bundleQuery ? bundleQuery.lean() : Promise.resolve([]),
+    productQuery ? productQuery.lean() : Promise.resolve([])
+  ]);
+
+  const bundleMap = new Map(bundlesList.map(b => [b._id.toString(), b]));
+  const productMap = new Map(productsList.map(p => [p._id.toString(), p]));
+
   // 1. Verify pre-made bundles
   for (const demand of bundleDemands.values()) {
-    const q = PreMadeBundle.findById(demand.id);
-    if (session) q.session(session);
-    const bundle = await q.lean();
+    const bundle = bundleMap.get(demand.id.toString());
 
     if (!bundle || bundle.status === 'inactive') {
       errors.push({
@@ -360,9 +405,7 @@ export const checkItemsStock = async (items = [], session = null) => {
 
   // 2. Verify simple products (without variants)
   for (const demand of simpleProductDemands.values()) {
-    const q = Product.findById(demand.productId);
-    if (session) q.session(session);
-    const prod = await q.lean();
+    const prod = productMap.get(demand.productId.toString());
 
     if (!prod || prod.isDeleted) {
       errors.push({
@@ -412,9 +455,7 @@ export const checkItemsStock = async (items = [], session = null) => {
   const physicalSizeDemands = new Map();
 
   for (const demand of variantSizeDemands.values()) {
-    const q = Product.findById(demand.productId);
-    if (session) q.session(session);
-    const prod = await q.lean();
+    const prod = productMap.get(demand.productId.toString());
 
     if (!prod || prod.isDeleted) {
       errors.push({
@@ -431,59 +472,7 @@ export const checkItemsStock = async (items = [], session = null) => {
       continue;
     }
 
-    let colorV = null;
-    let sizeV = null;
-
-    if (Array.isArray(prod.variants) && prod.variants.length > 0) {
-      if (demand.variantId) {
-        for (const v of prod.variants) {
-          const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === demand.variantId || sz.sizeId === demand.variantId);
-          if (s) {
-            colorV = v;
-            sizeV = s;
-            break;
-          }
-        }
-        if (!colorV) {
-          colorV = prod.variants.find(v => v.colorId === demand.variantId || v.color === demand.variantId);
-          if (colorV) {
-            sizeV = (colorV.sizes || []).find(sz => sz.size === demand.selectedSize || sz.sizeId === demand.selectedSize) || colorV.sizes?.[0] || null;
-          }
-        }
-      }
-
-      if (!colorV && demand.selectedColor) {
-        colorV = prod.variants.find(v =>
-          v.color?.trim().toLowerCase() === demand.selectedColor?.trim().toLowerCase() ||
-          v.colorId?.trim().toLowerCase() === demand.selectedColor?.trim().toLowerCase()
-        );
-        if (colorV) {
-          if (demand.selectedSize) {
-            sizeV = (colorV.sizes || []).find(sz =>
-              sz.size?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase() ||
-              sz.sizeId?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase()
-            );
-          }
-          if (!sizeV) {
-            sizeV = colorV.sizes?.[0] || null;
-          }
-        }
-      }
-
-      // If still not resolved and there's only 1 active variant, use it
-      if (!colorV && prod.variants.length === 1) {
-        colorV = prod.variants[0];
-        if (demand.selectedSize) {
-          sizeV = (colorV.sizes || []).find(sz =>
-            sz.size?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase() ||
-            sz.sizeId?.trim().toLowerCase() === demand.selectedSize?.trim().toLowerCase()
-          );
-        }
-        if (!sizeV) {
-          sizeV = colorV.sizes?.[0] || null;
-        }
-      }
-    }
+    const { colorV, sizeV } = resolveProductVariant(prod, demand);
 
     if (!sizeV) {
       // If a customization option (tie, elastic, bridal) or specific variant was requested, but size cannot be resolved on a variant product:
@@ -647,7 +636,7 @@ export const checkItemsStock = async (items = [], session = null) => {
           availableStock: 0,
           requestedQuantity: tieDemand,
           isOutOfStock: true,
-          message: `Tie option for "${variantLababel}" is out of stock. Available: 0, requested: ${tieDemand}`
+          message: `Tie option for "${variantLabel}" is out of stock. Available: 0, requested: ${tieDemand}`
         });
       } else if (tieDemand > tieStock) {
         errors.push({
@@ -707,7 +696,7 @@ export const checkItemsStock = async (items = [], session = null) => {
           availableStock: 0,
           requestedQuantity: bridalDemand,
           isOutOfStock: true,
-          message: `Bridal Length option for "${variantLabel}" is out of stocand}`
+          message: `Bridal Length option for "${variantLabel}" is out of stock. Available: 0, requested: ${bridalDemand}`
         });
       } else if (bridalDemand > bridalStock) {
         errors.push({
@@ -906,8 +895,8 @@ export const createOrder = asyncHandler(async (req, res, next) => {
 
   // Acquire distributed submission lock to safeguard against duplicate order submissions
   const normalizedEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
-  const idempotencyKey = req.headers['x-idempotency-key'] ||
-    req.body.idempotencyKey ||
+  const clientIdempotencyKey = (req.headers['x-idempotency-key'] || req.body.idempotencyKey || '').toString().trim() || null;
+  const idempotencyKey = clientIdempotencyKey ||
     (req.user ? `user_${req.user.id || req.user._id}` : `guest_${guestVerificationToken || normalizedEmail}`);
   const lockKey = `order_checkout_${idempotencyKey}`;
   const lockAcquired = await rateLimiterService.acquireLock(lockKey, 30);
@@ -919,6 +908,17 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   let orderCreatedSuccessfully = false;
 
   try {
+    // Idempotency replay check: if this exact client submission already succeeded, return the existing order
+    if (clientIdempotencyKey) {
+      const existingOrder = await Order.findOne({ idempotencyKey: clientIdempotencyKey, isDeleted: { $ne: true } });
+      if (existingOrder) {
+        orderCreatedSuccessfully = true;
+        return res.status(200).json(
+          new ApiResponse(200, { order: existingOrder }, 'Order already created')
+        );
+      }
+    }
+
     // Guest checkout email verification check (atomic check-and-set to prevent race conditions)
     if (!req.user) {
       const normalizedGuestEmail = customer.email.toLowerCase().trim();
@@ -999,47 +999,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         return next(new ApiError(`Product ${item.productId} not found`, 404));
       }
 
-      let colorV = null;
-      let sizeV = null;
-      if (Array.isArray(product.variants) && product.variants.length > 0) {
-        // 1. Try finding by variantId (matches `${v.colorId}-${sz.sizeId}` or `sz.sizeId`)
-        if (item.variantId) {
-          for (const v of product.variants) {
-            const s = (v.sizes || []).find(sz => `${v.colorId}-${sz.sizeId}` === item.variantId || sz.sizeId === item.variantId);
-            if (s) {
-              colorV = v;
-              sizeV = s;
-              break;
-            }
-          }
-          // If not found in sizes, check if variantId matches colorId
-          if (!colorV) {
-            colorV = product.variants.find(v => v.colorId === item.variantId || v.color === item.variantId);
-            if (colorV) {
-              sizeV = (colorV.sizes || []).find(sz => sz.size === item.selectedSize || sz.sizeId === item.selectedSize) || colorV.sizes?.[0] || null;
-            }
-          }
-        }
-
-        // 2. If not found by variantId, try finding by selectedColor
-        if (!colorV && item.selectedColor) {
-          colorV = product.variants.find(v =>
-            v.color?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase() ||
-            v.colorId?.trim().toLowerCase() === item.selectedColor?.trim().toLowerCase()
-          );
-          if (colorV) {
-            if (item.selectedSize) {
-              sizeV = (colorV.sizes || []).find(sz =>
-                sz.size?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase() ||
-                sz.sizeId?.trim().toLowerCase() === item.selectedSize?.trim().toLowerCase()
-              );
-            }
-            if (!sizeV) {
-              sizeV = colorV.sizes?.[0] || null;
-            }
-          }
-        }
-      }
+      const { colorV, sizeV } = resolveProductVariant(product, item);
 
       if (item.variantId && !colorV && !sizeV) {
         return next(new ApiError(`Variant ${item.variantId} not found for product ${product.name}`, 404));
@@ -1229,86 +1189,139 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     const receiptKey = typeof receiptRes === 'object' ? (receiptRes?.objectKey || receiptRes?.key) : extractImageKey(canonicalReceiptUrl);
     const receiptPublicId = typeof receiptRes === 'object' ? receiptRes?.publicId : undefined;
 
-    // Create order
-    const normalizedCustomerEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
-    const order = await Order.create({
-      userId: req.user?.id || null,
-      customer: {
-        name: (customer.name || '').trim(),
-        email: normalizedCustomerEmail,
-        phone: (customer.phone || '').trim(),
-        alternatePhone: customer.alternatePhone ? customer.alternatePhone.trim() : null,
-        houseNumber: customer.houseNumber || null,
-        streetNumber: customer.streetNumber || null,
-        nearestLandmark: customer.nearestLandmark || null,
-        completeAddress: customer.completeAddress || customer.address || '',
-        address: customer.completeAddress || customer.address || '',
-        tehsil: customer.tehsil || null,
-        district: customer.district || null,
-        city: customer.city || null,
-        postalCode: customer.postalCode || null,
-        specialInstructions: customer.specialInstructions || null
-      },
-      items: orderItems,
-      subtotal,
-      discount,
-      shipping,
-      deliveryFee: shipping,
-      total,
-      deliveryOption: selectedDelivery.id,
-      deliveryOptionName: selectedDelivery.name,
-      estimatedDeliveryTime: selectedDelivery.estimatedDeliveryTime,
-      courier: selectedDelivery.courier,
-      couponCode: couponCode?.toUpperCase(),
-      couponDiscount,
-      paymentMethod: paymentMethod || 'bank_transfer',
-      customerNotes,
-      paymentReceipt: {
-        provider: receiptProvider,
-        key: receiptKey,
-        objectKey: receiptKey,
-        publicId: receiptPublicId,
-        url: canonicalReceiptUrl,
-        imageUrl: canonicalReceiptUrl,
-        r2Url: canonicalReceiptUrl,
-        uploadedAt: new Date()
-      },
-      paymentStatus: 'pending'
-    });
-
-    // Update coupon usage if applicable
-    if (couponCode) {
-      await Coupon.findOneAndUpdate(
-        { code: couponCode.toUpperCase() },
-        {
-          $inc: { usedCount: 1 },
-          $push: {
-            usedBy: {
-              userId: req.user?.id,
-              orderId: order._id,
-              usedAt: new Date(),
-              discountAmount: couponDiscount
-            }
-          }
+    // Atomic stock deduction + Order creation (transactional when supported, compensating rollback on standalone)
+    let session = null;
+    if (supportsTransactions()) {
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      } catch (txErr) {
+        if (session) {
+          try { await session.endSession(); } catch (_) { }
+          session = null;
         }
-      );
+      }
     }
 
-    // Deduct stock for all items and mark order as stock-deducted (idempotency guard)
+    const deductedItems = [];
     const touchedProductIds = new Set();
-    for (const item of orderItems) {
-      const pId = await deductOrderItem(item);
-      if (pId) touchedProductIds.add(pId);
+    let order = null;
+
+    try {
+      // 1. Atomically deduct stock BEFORE creating the order so overselling never creates an order
+      for (const item of orderItems) {
+        const pId = await deductOrderItem(item, session);
+        deductedItems.push(item);
+        if (pId) touchedProductIds.add(pId);
+      }
+      for (const productId of touchedProductIds) {
+        await recomputeProductStock(productId, session);
+      }
+
+      // 2. Create order (with stockDeducted: true already set)
+      const normalizedCustomerEmail = (customer?.email || req.user?.email || '').toLowerCase().trim();
+      const orderPayloadDoc = {
+        userId: req.user?.id || null,
+        customer: {
+          name: (customer.name || '').trim(),
+          email: normalizedCustomerEmail,
+          phone: (customer.phone || '').trim(),
+          alternatePhone: customer.alternatePhone ? customer.alternatePhone.trim() : null,
+          houseNumber: customer.houseNumber || null,
+          streetNumber: customer.streetNumber || null,
+          nearestLandmark: customer.nearestLandmark || null,
+          completeAddress: customer.completeAddress || customer.address || '',
+          address: customer.completeAddress || customer.address || '',
+          tehsil: customer.tehsil || null,
+          district: customer.district || null,
+          city: customer.city || null,
+          postalCode: customer.postalCode || null,
+          specialInstructions: customer.specialInstructions || null
+        },
+        items: orderItems,
+        subtotal,
+        discount,
+        shipping,
+        deliveryFee: shipping,
+        total,
+        deliveryOption: selectedDelivery.id,
+        deliveryOptionName: selectedDelivery.name,
+        estimatedDeliveryTime: selectedDelivery.estimatedDeliveryTime,
+        courier: selectedDelivery.courier,
+        couponCode: couponCode?.toUpperCase(),
+        couponDiscount,
+        paymentMethod: paymentMethod || 'bank_transfer',
+        customerNotes,
+        paymentReceipt: {
+          provider: receiptProvider,
+          key: receiptKey,
+          objectKey: receiptKey,
+          publicId: receiptPublicId,
+          url: canonicalReceiptUrl,
+          imageUrl: canonicalReceiptUrl,
+          r2Url: canonicalReceiptUrl,
+          uploadedAt: new Date()
+        },
+        paymentStatus: 'pending',
+        stockDeducted: true,
+        ...(clientIdempotencyKey ? { idempotencyKey: clientIdempotencyKey } : {})
+      };
+
+      if (session) {
+        const createdArr = await Order.create([orderPayloadDoc], { session });
+        order = createdArr[0];
+      } else {
+        order = await Order.create(orderPayloadDoc);
+      }
+
+      // 3. Update coupon usage if applicable
+      if (couponCode) {
+        await Coupon.findOneAndUpdate(
+          { code: couponCode.toUpperCase() },
+          {
+            $inc: { usedCount: 1 },
+            $push: {
+              usedBy: {
+                userId: req.user?.id,
+                orderId: order._id,
+                usedAt: new Date(),
+                discountAmount: couponDiscount
+              }
+            }
+          },
+          session ? { session } : {}
+        );
+      }
+
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
+      }
+    } catch (txOrCreateErr) {
+      if (session && session.inTransaction()) {
+        try { await session.abortTransaction(); } catch (_) { }
+      } else if (!session && deductedItems.length > 0) {
+        // Compensating rollback on standalone MongoDB
+        try {
+          for (const item of deductedItems) {
+            await restoreOrderItem(item);
+          }
+          for (const productId of touchedProductIds) {
+            await recomputeProductStock(productId);
+          }
+        } catch (rollbackErr) {
+          console.error('Failed to rollback deducted stock after order creation failure:', rollbackErr);
+        }
+      }
+      throw txOrCreateErr;
+    } finally {
+      if (session) {
+        try { await session.endSession(); } catch (_) { }
+      }
     }
-    for (const productId of touchedProductIds) {
-      await recomputeProductStock(productId);
-    }
+
     // Invalidate cached product listings and details to ensure live stock visibility
     cacheService.delPattern('products_');
     cacheService.delPattern('product_detail_');
-    // Mark stock as deducted so restoreAllStock knows it needs to restore later if cancelled
-    await Order.updateOne({ _id: order._id }, { $set: { stockDeducted: true } });
-    order.stockDeducted = true;
 
     // If registered user opted to save/update checkout details, persist them
     if (req.user && (req.body.saveCheckoutDetails === true || req.body.saveCheckoutDetails === 'true')) {

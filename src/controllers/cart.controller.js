@@ -6,6 +6,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { getBundleRule, computeLineWithBundle } from '../utils/bundlePricing.js';
+import { checkItemsStock } from './order.controller.js';
 
 const RESERVATION_MINUTES = 10;
 
@@ -104,11 +105,11 @@ export const getCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ userId: req.user.id })
     .populate({
       path: 'items.productId',
-      select: 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status'
+      select: 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status isDeleted'
     })
     .populate({
       path: 'items.preMadeBundleId',
-      select: 'name slug price compareAtPrice images status'
+      select: 'name slug price compareAtPrice images status stock'
     });
 
   if (!cart) {
@@ -118,30 +119,8 @@ export const getCart = asyncHandler(async (req, res) => {
     });
   }
 
-  const validItems = cart.items.filter(item => {
-    if (item.preMadeBundleId) {
-      return item.preMadeBundleId.status === 'active';
-    }
-    return item.productId && item.productId.status === 'active' && !item.productId.isDeleted;
-  });
-
-  if (validItems.length !== cart.items.length) {
-    cart.items = validItems;
-    try {
-      await cart.save();
-    } catch (err) {
-      if (err.name !== 'VersionError') throw err;
-      cart = await Cart.findOne({ userId: req.user.id })
-        .populate({
-          path: 'items.productId',
-          select: 'name slug price originalPrice compareAtPrice images stock stockStatus colors sizes variants status'
-        })
-        .populate({
-          path: 'items.preMadeBundleId',
-          select: 'name slug price compareAtPrice images status'
-        });
-    }
-  }
+  // Note: Do NOT silently remove unavailable/deleted/out-of-stock items here.
+  // They remain in the cart so the customer is explicitly informed and can remove them.
 
   const payload = await buildCartResponse(cart);
   res.json(
@@ -297,7 +276,18 @@ export const addToCart = asyncHandler(async (req, res, next) => {
                     }
 
                     const reservedByOthers = await getReservedQuantity(productId, req.user.id, variantId || null);
-                    const availableForUser = Math.max((chosenSize?.stock ?? product.stock) - reservedByOthers, 0);
+                    let maxVariantOrProductStock = Number(chosenSize?.stock ?? product.stock) || 0;
+                    if (chosenSize) {
+                      if (selectedTieElastic === 'tie' && chosenSize.tieStock !== undefined) {
+                        maxVariantOrProductStock = Math.min(maxVariantOrProductStock, Number(chosenSize.tieStock) || 0);
+                      } else if (selectedTieElastic === 'elastic' && chosenSize.elasticStock !== undefined) {
+                        maxVariantOrProductStock = Math.min(maxVariantOrProductStock, Number(chosenSize.elasticStock) || 0);
+                      }
+                      if (selectedBridalLength === 'bridal' && chosenSize.bridalStock !== undefined) {
+                        maxVariantOrProductStock = Math.min(maxVariantOrProductStock, Number(chosenSize.bridalStock) || 0);
+                      }
+                    }
+                    const availableForUser = Math.max(maxVariantOrProductStock - reservedByOthers, 0);
                     const reservationUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
                     // Check if product already in cart (with same variant)
@@ -311,6 +301,20 @@ export const addToCart = asyncHandler(async (req, res, next) => {
                     );
 
                     const variantImgUrl = selectedImage || chosenColorVariant?.images?.find(i => i.isPrimary)?.url || chosenColorVariant?.images?.[0]?.url || null;
+
+                    const requestedQty = existingItemIndex > -1 ? (cart.items[existingItemIndex].quantity + quantity) : quantity;
+                    const stockCheck = await checkItemsStock([{
+                      productId,
+                      variantId: variantId || null,
+                      quantity: requestedQty,
+                      selectedColor: selectedColor || null,
+                      selectedSize: selectedSize || null,
+                      selectedTieElastic: selectedTieElastic || null,
+                      selectedBridalLength: selectedBridalLength || null
+                    }]);
+                    if (!stockCheck.valid) {
+                      return next(new ApiError(stockCheck.errors[0]?.message || 'Selected item is out of stock or has insufficient inventory', 400));
+                    }
 
                     if (existingItemIndex > -1) {
                       const newQuantity = cart.items[existingItemIndex].quantity + quantity;
@@ -425,9 +429,12 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
       }
 
       // Check stock availability (product)
-      const product = await Product.findById(item.productId);
+      const product = await Product.findOne({ _id: item.productId, isDeleted: { $ne: true } });
       if (!product) {
         return next(new ApiError('Product not found', 404));
+      }
+      if (product.stockStatus === 'out_of_stock') {
+        return next(new ApiError(`"${product.name}" is out of stock`, 400));
       }
 
       let colorV = null;
@@ -445,6 +452,19 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
       const chosenVariant = sizeV ? { ...sizeV, price: sizeV.price, stock: sizeV.stock } : null;
       if (item.variantId && !chosenVariant) {
         return next(new ApiError('Variant not found', 404));
+      }
+
+      const stockCheck = await checkItemsStock([{
+        productId: item.productId,
+        variantId: item.variantId || null,
+        quantity,
+        selectedColor: item.selectedColor || null,
+        selectedSize: item.selectedSize || null,
+        selectedTieElastic: item.selectedTieElastic || null,
+        selectedBridalLength: item.selectedBridalLength || null
+      }]);
+      if (!stockCheck.valid) {
+        return next(new ApiError(stockCheck.errors[0]?.message || 'Requested quantity exceeds available stock', 400));
       }
 
       const reservedByOthers = await getReservedQuantity(item.productId, req.user.id, item.variantId || null);

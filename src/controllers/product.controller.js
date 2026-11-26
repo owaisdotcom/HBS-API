@@ -239,28 +239,22 @@ export const getProduct = asyncHandler(async (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
 
-  const cacheKey = `product_detail_${id}`;
-  let product = cacheService.get(cacheKey);
+  // Always fetch live product data from DB so inventory/stock levels are never stale
+  let product = null;
+  if (id.match(/^[0-9a-fA-F]{24}$/)) {
+    product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
+      .populate('categories', 'name slug')
+      .populate('categoryPath', 'name slug')
+      .lean();
+  } else {
+    product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
+      .populate('categories', 'name slug')
+      .populate('categoryPath', 'name slug')
+      .lean();
+  }
 
   if (!product) {
-    // Try to find by ID first, then by slug
-    if (id.match(/^[0-9a-fA-F]{24}$/)) {
-      product = await Product.findOne({ _id: id, isDeleted: { $ne: true } })
-        .populate('categories', 'name slug')
-        .populate('categoryPath', 'name slug')
-        .lean();
-    } else {
-      product = await Product.findOne({ slug: id, isDeleted: { $ne: true } })
-        .populate('categories', 'name slug')
-        .populate('categoryPath', 'name slug')
-        .lean();
-    }
-
-    if (!product) {
-      return next(new ApiError('Product not found', 404));
-    }
-
-    cacheService.set(cacheKey, product, 120);
+    return next(new ApiError('Product not found', 404));
   }
 
   const reservationMap = await getReservationMap([product._id]);
@@ -670,14 +664,17 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   let newImagesOrder = [];
   let shouldUpdateImages = false;
 
-  if (req.body.existingImages) {
+  if (req.body.existingImages !== undefined) {
     shouldUpdateImages = true;
     try {
       existingImagesWithOrder = typeof req.body.existingImages === 'string'
         ? JSON.parse(req.body.existingImages)
         : (Array.isArray(req.body.existingImages) ? req.body.existingImages : []);
+      if (!Array.isArray(existingImagesWithOrder)) {
+        return next(new ApiError('existingImages must be a valid array', 400));
+      }
     } catch (e) {
-      existingImagesWithOrder = [];
+      return next(new ApiError('Invalid existingImages JSON payload', 400));
     }
   }
 
@@ -782,8 +779,13 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (req.body.thumbnailExistingUrl) {
     const rawThumb = req.body.thumbnailExistingUrl;
     const thumbUrl = resolveImageUrl(rawThumb) || rawThumb;
+    const thumbKey = extractImageKey(thumbUrl);
     product.images = [{
+      provider: 'r2',
+      key: thumbKey,
+      objectKey: thumbKey,
       url: thumbUrl,
+      imageUrl: thumbUrl,
       r2Url: thumbUrl,
       isPrimary: true,
       order: 0
@@ -794,9 +796,15 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     const newThumb = uploadedNewImages.find(img => img.fileIndex === idx);
     if (newThumb) {
       const thumbUrl = resolveImageUrl(newThumb.url) || newThumb.url;
+      const thumbR2Url = newThumb.r2Url ? (resolveImageUrl(newThumb.r2Url) || newThumb.r2Url) : thumbUrl;
+      const thumbKey = newThumb.objectKey || newThumb.key || extractImageKey(thumbUrl);
       product.images = [{
+        provider: newThumb.provider || 'r2',
+        key: thumbKey,
+        objectKey: thumbKey,
         url: thumbUrl,
-        r2Url: newThumb.r2Url ? (resolveImageUrl(newThumb.r2Url) || newThumb.r2Url) : thumbUrl,
+        imageUrl: thumbUrl,
+        r2Url: thumbR2Url,
         isPrimary: true,
         order: 0
       }];
@@ -1143,46 +1151,37 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   cacheService.delPattern('product_detail_');
   cacheService.delPattern('homepage_');
 
-  // Safe post-save storage cleanup: only executed AFTER product.save() succeeds
-  // and verifies image is not used by variants, size charts, or other products
+  // Safe post-save storage cleanup: only executed AFTER product.save() succeeds.
+  // Compares canonical R2 object keys (not raw URL strings) so domain normalization never causes false deletions,
+  // and delegates cross-collection reference checks (Products, Orders, Bundles, Categories, etc.) to r2ReferenceGuard.
   if (shouldUpdateImages && previousImages && previousImages.length > 0) {
     try {
-      const currentProductUrls = new Set();
-      (product.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
+      const currentProductKeys = new Set();
+      const addKey = (val) => {
+        const k = extractImageKey(val);
+        if (k) currentProductKeys.add(k);
+      };
+
+      (product.images || []).forEach(addKey);
       (product.variants || []).forEach(v => {
-        (v.images || []).forEach(img => img?.url && currentProductUrls.add(img.url));
-        (v.sizes || []).forEach(s => s?.sizeChartUrl && currentProductUrls.add(s.sizeChartUrl));
+        (v.images || []).forEach(addKey);
+        (v.sizes || []).forEach(s => {
+          addKey(s?.sizeChartObjectKey);
+          addKey(s?.sizeChartR2Url);
+          addKey(s?.sizeChartUrl);
+        });
       });
 
-      const candidateRemovedImages = previousImages.filter(
-        prevImg => prevImg && prevImg.url && !currentProductUrls.has(prevImg.url)
-      );
+      const candidateRemovedImages = previousImages.filter(prevImg => {
+        const prevKey = extractImageKey(prevImg);
+        return prevKey && !currentProductKeys.has(prevKey);
+      });
 
       for (const removed of candidateRemovedImages) {
-        const queryConditions = [
-          { 'images.url': removed.url },
-          { 'variants.images.url': removed.url },
-          { 'variants.sizes.sizeChartUrl': removed.url }
-        ];
-        if (removed.key) {
-          queryConditions.push({ 'images.key': removed.key });
-          queryConditions.push({ 'variants.images.key': removed.key });
-        }
-
-        const isShared = await Product.countDocuments({
-          _id: { $ne: product._id },
-          isDeleted: { $ne: true },
-          $or: queryConditions
+        await uploadService.deleteImage(removed, {
+          productId: product._id.toString(),
+          requestId: req.requestId
         });
-
-        if (isShared === 0) {
-          await uploadService.deleteImage(removed, {
-            productId: product._id.toString(),
-            requestId: req.requestId
-          });
-        } else {
-          console.log(`[UpdateProduct] Preserved shared image: ${removed.url}`);
-        }
       }
     } catch (cleanupErr) {
       console.error('[UpdateProduct] Safe storage cleanup error:', cleanupErr.message);

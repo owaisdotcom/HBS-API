@@ -26,7 +26,7 @@ class UploadService {
       console.error(`[UploadService] Batch upload failed for folder '${folder}'. Cleaning up ${results.length} uploaded files...`);
       for (const item of results) {
         try {
-          await this.deleteImage(item);
+          await this.deleteImage(item, { isUncommittedBatchRollback: true });
         } catch (cleanupErr) {
           console.error(`[UploadService] Cleanup failed for item: ${JSON.stringify(item)} - ${cleanupErr.message}`);
         }

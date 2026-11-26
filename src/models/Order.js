@@ -239,6 +239,9 @@ const orderSchema = new mongoose.Schema({
   stockDeducted: { type: Boolean, default: false }, // set true after createOrder deducts stock
   stockRestored: { type: Boolean, default: false }, // set true after restock on cancel/reject
 
+  // Idempotency key for duplicate submission protection
+  idempotencyKey: { type: String, index: { unique: true, sparse: true } },
+
   // Soft deletion flags
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null }

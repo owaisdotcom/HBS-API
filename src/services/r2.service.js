@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import path from 'path';
 import sharp from 'sharp';
 import { getR2PublicUrl, extractImageKey, resolveImageUrl } from '../utils/imageUrl.js';
+import { isObjectReferencedInDatabase } from './r2ReferenceGuard.service.js';
 
 class R2Service {
   constructor() {
@@ -110,6 +111,9 @@ class R2Service {
 
       await client.send(command);
 
+      // Verify uploaded object exists in R2 before returning success to DB callers
+      await client.send(new HeadObjectCommand({ Bucket: bucketName, Key: key }));
+
       const r2DevUrl = this.getR2DevUrl();
       const finalUrl = `${publicUrl}/${key}`;
       const r2Url = `${r2DevUrl}/${key}`;
@@ -167,7 +171,8 @@ class R2Service {
   }
 
   /**
-   * Delete object from R2 with structured diagnostics
+   * Delete object from R2 with mandatory cross-collection reference guard.
+   * Refuses deletion if any Product, Order, Bundle, Category, Cart, or Setting still references the key.
    */
   async deleteFile(imageOrKeyOrUrl, options = {}) {
     const key = this.extractKey(imageOrKeyOrUrl);
@@ -177,6 +182,19 @@ class R2Service {
     if (!key) {
       console.warn(`[R2][DELETE_SKIP] requestId=${requestId} productId=${productId} unable to derive key from identifier`);
       return false;
+    }
+
+    // Enforce reference check unless explicitly rolling back an uncommitted batch upload
+    if (!options.isUncommittedBatchRollback) {
+      const refCheck = await isObjectReferencedInDatabase(key, {
+        excludeProductId: options.excludeProductId
+      });
+      if (refCheck.referenced) {
+        console.warn(
+          `[R2][DELETE_BLOCKED_REFERENCED] requestId=${requestId} productId=${productId} key=${key} collections=${refCheck.collections.join(',')}`
+        );
+        return false;
+      }
     }
 
     console.log(`[R2][DELETE_START] requestId=${requestId} productId=${productId} key=${key} bucket=${this.getBucketName()}`);
